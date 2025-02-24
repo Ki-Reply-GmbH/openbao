@@ -707,18 +707,21 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 			b.Core.logger.Info("shutting down prior to restoring snapshot")
 			if err := b.Core.preSeal(); err != nil {
 				b.Core.logger.Error("raft snapshot restore failed preSeal", "error", err)
+				ctxCancel()
 				return err
 			}
 
 			b.Core.logger.Info("applying snapshot")
 			if err := raftStorage.RestoreSnapshot(ctx, metadata, snapFile); err != nil {
 				b.Core.logger.Error("error while restoring raft snapshot", "error", err)
+				ctxCancel()
 				return err
 			}
 
 			// Run invalidation logic synchronously here
 			callback := b.Core.raftSnapshotRestoreCallback(false, false)
 			if err := callback(ctx); err != nil {
+				ctxCancel()
 				return err
 			}
 
@@ -730,11 +733,13 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 					Value: []byte(b.Core.leaderUUID),
 				}); err != nil {
 					b.Core.logger.Error("cluster setup failed", "error", err)
+					ctxCancel()
 					return err
 				}
 				// re-advertise our cluster information
 				if err := b.Core.advertiseLeader(ctx, b.Core.leaderUUID, nil); err != nil {
 					b.Core.logger.Error("cluster setup failed", "error", err)
+					ctxCancel()
 					return err
 				}
 			}
