@@ -108,6 +108,7 @@ consumption:
 			}
 		}
 	}
+	cancelFunc()
 }
 
 func TestAgentBackoff(t *testing.T) {
