@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -48,12 +49,6 @@ func (n *Namespace) Validate() error {
 		return fmt.Errorf("%v is a reserved path and cannot be used as a namespace", n.Path)
 	}
 
-	// Canonicalize ensures we have a trailing slash; remove it for this
-	// comparison to ensure we have no other slashes.
-	if strings.Contains(n.Path[:len(n.Path)-1], "/") {
-		return errors.New("path separator ('/') cannot be used in namespace path")
-	}
-
 	return nil
 }
 
@@ -79,6 +74,19 @@ func (n *Namespace) HasParent(possibleParent *Namespace) bool {
 		return false
 	default:
 		return strings.HasPrefix(n.Path, possibleParent.Path)
+	}
+}
+
+var pathSuffixMatcher = regexp.MustCompile(`[^/]+/?$`)
+
+func (n *Namespace) ParentPath() (string, bool) {
+	switch {
+	case n.Path == "":
+		return "", false
+	case !pathSuffixMatcher.MatchString(n.Path):
+		return "", false
+	default:
+		return pathSuffixMatcher.ReplaceAllString(n.Path, ""), true
 	}
 }
 
