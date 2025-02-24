@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
+	hnamespace "github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -256,6 +257,13 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 		}
 	}
 
+	inNs, err := hnamespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	entry.Namespace.Parent = inNs.ID
+
 	if err := ns.writeNamespace(ctx, entry); err != nil {
 		return fmt.Errorf("failed to persist namespace: %w", err)
 	}
@@ -270,6 +278,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 	namespace.UUID = entry.UUID
 	namespace.Namespace.ID = entry.Namespace.ID
 	namespace.Namespace.Path = entry.Namespace.Path
+	namespace.Namespace.Parent = entry.Namespace.Parent
 
 	return nil
 }
@@ -430,12 +439,17 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeRoot bool) 
 		return nil, err
 	}
 
+	inNs, err := hnamespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
 	entries := make([]*namespace.Namespace, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || item.Namespace.Parent != inNs.ID {
 			continue
 		}
 
@@ -453,12 +467,17 @@ func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeRoot bo
 		return nil, err
 	}
 
+	inNs, err := hnamespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || item.Namespace.Parent != inNs.ID {
 			continue
 		}
 
@@ -476,12 +495,17 @@ func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeRoo
 		return nil, err
 	}
 
+	inNs, err := hnamespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || item.Namespace.Parent != inNs.ID {
 			continue
 		}
 
@@ -499,12 +523,17 @@ func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeRoot bo
 		return nil, err
 	}
 
+	inNs, err := hnamespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || item.Namespace.Parent != inNs.ID {
 			continue
 		}
 
