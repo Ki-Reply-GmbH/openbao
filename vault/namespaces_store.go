@@ -537,7 +537,7 @@ func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includePar
 }
 
 // ListNamespacePaths is used to list the paths of all available namespaces
-func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeParent bool) ([]string, error) {
+func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeParent, trimPath bool) ([]string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_paths"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -558,7 +558,11 @@ func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeParent 
 			continue
 		}
 
-		entries = append(entries, item.Namespace.Path)
+		if trimPath {
+			entries = append(entries, parent.TrimmedPath(item.Namespace.Path))
+		} else {
+			entries = append(entries, item.Namespace.Path)
+		}
 	}
 
 	return entries, nil
@@ -648,7 +652,7 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(baseCtx context.Context, h
 		return newCtx, parentNs, reqPath, err
 	}
 
-	paths, err := ns.ListNamespacePaths(newCtx, false)
+	paths, err := ns.ListNamespacePaths(newCtx, false, false)
 	if err != nil {
 		return newCtx, parentNs, reqPath, err
 	}

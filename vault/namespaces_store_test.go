@@ -25,7 +25,7 @@ func TestNamespaceStore(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListNamespacePaths(ctx, false, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -58,7 +58,7 @@ func TestNamespaceStore(t *testing.T) {
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemAccessor)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListNamespacePaths(ctx, false, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemPath)
@@ -106,7 +106,7 @@ func TestNamespaceStore(t *testing.T) {
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemAccessor)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListNamespacePaths(ctx, false, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemPath)
@@ -124,7 +124,7 @@ func TestNamespaceStore(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListNamespacePaths(ctx, false, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -149,7 +149,7 @@ func TestNamespaceStore(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListNamespacePaths(ctx, false, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
