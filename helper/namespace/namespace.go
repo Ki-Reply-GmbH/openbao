@@ -66,19 +66,19 @@ var (
 	}
 )
 
-func (n *Namespace) HasParent(possibleParent *Namespace) bool {
+func (n *Namespace) HasAncestor(possibleAncestor *Namespace) bool {
 	switch {
-	case possibleParent.Path == "":
+	case possibleAncestor.Path == "":
 		return true
 	case n.Path == "":
 		return false
 	default:
-		return strings.HasPrefix(n.Path, possibleParent.Path)
+		return strings.HasPrefix(n.Path, possibleAncestor.Path)
 	}
 }
 
-func (n *Namespace) IsParent(possibleParent *Namespace) bool {
-	if !n.HasParent(possibleParent) {
+func (n *Namespace) HasParent(possibleParent *Namespace) bool {
+	if !n.HasAncestor(possibleParent) {
 		return false
 	}
 

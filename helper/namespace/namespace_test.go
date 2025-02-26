@@ -109,7 +109,7 @@ func TestSplitIDFromString(t *testing.T) {
 	}
 }
 
-func TestHasParent(t *testing.T) {
+func TestHasAncestor(t *testing.T) {
 	// Create ns1
 	ns1 := &Namespace{
 		ID:   "id1",
@@ -197,7 +197,7 @@ func TestHasParent(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		actual := test.ns.HasParent(test.parent)
+		actual := test.ns.HasAncestor(test.parent)
 		if actual != test.expected {
 			t.Fatalf("bad ancestor calculation; name: %q, actual: %t, expected: %t", test.name, actual, test.expected)
 		}
