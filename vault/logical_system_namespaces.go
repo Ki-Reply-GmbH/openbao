@@ -155,7 +155,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		//TODO: remove parent namespace prefix
-		namespaces, err := b.Core.namespaceStore.ListNamespacePaths(ctx, false /* includeRoot */)
+		namespaces, err := b.Core.namespaceStore.ListNamespacePaths(ctx, false /* includeParent */)
 		if err != nil {
 			return nil, err
 		}

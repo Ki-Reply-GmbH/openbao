@@ -522,7 +522,11 @@ func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includePar
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeParent && item.Namespace.ID == parent.ID || !item.Namespace.HasParent(parent) {
+		if !includeParent && item.Namespace.ID == parent.ID {
+			continue
+		}
+
+		if !item.Namespace.IsParent(parent) {
 			continue
 		}
 
@@ -550,7 +554,7 @@ func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeParent 
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeParent && item.Namespace.ID == parent.ID || !item.Namespace.HasParent(parent) {
+		if !includeParent && item.Namespace.ID == parent.ID || !item.Namespace.IsParent(parent) {
 			continue
 		}
 

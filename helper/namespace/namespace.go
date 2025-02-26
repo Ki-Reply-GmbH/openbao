@@ -77,6 +77,23 @@ func (n *Namespace) HasParent(possibleParent *Namespace) bool {
 	}
 }
 
+func (n *Namespace) IsParent(possibleParent *Namespace) bool {
+	if !n.HasParent(possibleParent) {
+		return false
+	}
+
+	if n.Path == possibleParent.Path {
+		return false
+	}
+
+	nsName := Canonicalize(possibleParent.TrimmedPath(n.Path))
+	if strings.Contains(nsName[:len(nsName)-1], "/") {
+		return false
+	}
+
+	return true
+}
+
 var pathSuffixMatcher = regexp.MustCompile(`[^/]+/?$`)
 
 func (n *Namespace) ParentPath() (string, bool) {
