@@ -154,10 +154,9 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 // handleNamespacesList handles /sys/namespaces/ endpoints to provide the enabled namespaces
 func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		//TODO: remove parent namespace prefix
 		namespaces, err := b.Core.namespaceStore.ListNamespacePaths(ctx, false /* includeParent */, true /* trimParent */)
 		if err != nil {
-			return nil, err
+			return handleError(err)
 		}
 
 		return logical.ListResponse(namespaces), nil
@@ -168,22 +167,27 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+		path = namespace.Canonicalize(p.Join(ns.Path, path))
 
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		nsEntry, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
 		if err != nil {
 			return handleError(err)
 		}
 
-		if ns == nil {
+		if nsEntry == nil {
 			return nil, nil
 		}
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuid":            ns.UUID,
-				"id":              ns.Namespace.ID,
-				"path":            ns.Namespace.Path,
-				"custom_metadata": ns.Namespace.CustomMetadata,
+				"uuid":            nsEntry.UUID,
+				"id":              nsEntry.Namespace.ID,
+				"path":            nsEntry.Namespace.Path,
+				"custom_metadata": nsEntry.Namespace.CustomMetadata,
 			},
 		}
 
@@ -197,7 +201,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		path := data.Get("path").(string)
 		ns, err := namespace.FromContext(ctx)
 		if err != nil {
-			return nil, err
+			return handleError(err)
 		}
 		path = namespace.Canonicalize(p.Join(ns.Path, path))
 
@@ -243,19 +247,24 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return handleError(err)
+		}
+		path = namespace.Canonicalize(p.Join(ns.Path, path))
 
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		nsEntry, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load namespace: %w", err)
 		}
 
-		if ns == nil {
+		if nsEntry == nil {
 			resp := &logical.Response{}
 			resp.AddWarning("requested namespace does not exist")
 			return resp, nil
 		}
 
-		if err := b.Core.namespaceStore.DeleteNamespace(ctx, ns.UUID); err != nil {
+		if err := b.Core.namespaceStore.DeleteNamespace(ctx, nsEntry.UUID); err != nil {
 			return handleError(err)
 		}
 

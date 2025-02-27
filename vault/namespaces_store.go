@@ -227,10 +227,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 		return fmt.Errorf("failed validating namespace: %w", err)
 	}
 
-	parentPath, ok := namespace.Namespace.ParentPath()
-	if !ok {
-		return fmt.Errorf("could not get parent of namespace: %s", namespace.Namespace.Path)
-	}
+	parentPath := namespace.Namespace.ParentPath()
 	parent, err := ns.getNamespaceByPathLocked(ctx, parentPath)
 	if err != nil || parent == nil {
 		return fmt.Errorf("parent namespace does not exist: %s", parentPath)
@@ -380,8 +377,6 @@ func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (
 		return nil, err
 	}
 
-	// TODO (tgehrke): Add parent check
-
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
@@ -389,8 +384,6 @@ func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (
 }
 
 func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path string) (*NamespaceEntry, error) {
-	// TODO (tgehrke): Add parent check
-
 	path = namespace.Canonicalize(path)
 	for _, item := range ns.namespaces {
 		if item.Namespace.Path == path {
