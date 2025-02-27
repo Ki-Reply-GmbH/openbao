@@ -61,6 +61,28 @@ func testListNamespaces(b *SystemBackend, parent string) (*logical.Response, err
 	return f(ctx, &req, &fd)
 }
 
+func testReadNamespaces(b *SystemBackend, path, parent string) (*logical.Response, error) {
+	f := b.handleNamespacesRead()
+	parentNs, err := testGetParentNs(b, parent)
+	if err != nil {
+		return nil, err
+	}
+	ctx := namespace.ContextWithNamespace(context.TODO(), parentNs)
+	req := logical.Request{}
+	fd := framework.FieldData{
+		Raw: map[string]any{
+			"path": path,
+		},
+		Schema: map[string]*framework.FieldSchema{
+			"path": {
+				Type:     framework.TypeString,
+				Required: true,
+			},
+		},
+	}
+	return f(ctx, &req, &fd)
+}
+
 func TestSystemBackend_NamespacesList(t *testing.T) {
 	b := testSystemBackend(t)
 	be := b.(*SystemBackend)
@@ -85,4 +107,36 @@ func TestSystemBackend_NamespacesList(t *testing.T) {
 	require.Len(t, keys, 1)
 	require.Equal(t, "bar/", keys[0])
 
+}
+
+func TestSystemBackend_NamespacesRead(t *testing.T) {
+	b := testSystemBackend(t)
+	be := b.(*SystemBackend)
+
+	res, err := testCreateNamespace(be, "foo", "")
+	require.NoError(t, err)
+	require.Empty(t, res)
+
+	res, err = testCreateNamespace(be, "bar", "foo")
+	require.NoError(t, err)
+	require.Empty(t, res)
+
+	res, err = testReadNamespaces(be, "foo/", "")
+	require.NoError(t, err)
+	require.NotEmpty(t, res)
+	require.Equal(t, res.Data["path"], "foo/")
+
+	res, err = testReadNamespaces(be, "foo/bar", "")
+	require.NoError(t, err)
+	require.NotEmpty(t, res)
+	require.Equal(t, res.Data["path"], "foo/bar/")
+
+	res, err = testReadNamespaces(be, "bar", "foo")
+	require.NoError(t, err)
+	require.NotEmpty(t, res)
+	require.Equal(t, res.Data["path"], "foo/bar/")
+
+	res, err = testReadNamespaces(be, "bar", "")
+	require.NoError(t, err)
+	require.Empty(t, res)
 }
