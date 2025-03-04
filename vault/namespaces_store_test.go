@@ -2,8 +2,11 @@ package vault
 
 import (
 	"context"
+	"math/rand"
+	"strconv"
 	"testing"
 
+	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/stretchr/testify/require"
 )
@@ -170,4 +173,112 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, item.Namespace.Path, namespace.Canonicalize("ns1"))
 	require.Equal(t, item.Namespace.Path, "ns1/")
 	require.Equal(t, item.Namespace.Path, itemPath)
+}
+
+func BenchmarkNamespaceStore(b *testing.B) {
+	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
+	s := c.namespaceStore
+
+	ctx := context.TODO()
+
+	n := 10_000
+
+	for i := range n {
+		item := &NamespaceEntry{
+			Namespace: &namespace.Namespace{
+				Path: "ns" + strconv.Itoa(i),
+			},
+		}
+		s.SetNamespace(ctx, item)
+	}
+
+	require.Equal(b, n+1, len(s.namespaces))
+
+	b.Run("GetNamespace", func(b *testing.B) {
+		n := s.size()
+		for b.Loop() {
+			idx := rand.Intn(n)
+			uuid := s.namespaces[idx].UUID
+			s.GetNamespace(ctx, uuid)
+		}
+	})
+
+	b.Run("GetNamespaceByAccessor", func(b *testing.B) {
+		n := s.size()
+		for b.Loop() {
+			idx := rand.Intn(n)
+			accessor := s.namespaces[idx].Namespace.ID
+			s.GetNamespaceByAccessor(ctx, accessor)
+		}
+	})
+
+	b.Run("GetNamespaceByPath", func(b *testing.B) {
+		n := s.size()
+		for b.Loop() {
+			idx := rand.Intn(n)
+			path := s.namespaces[idx].Namespace.Path
+			s.GetNamespaceByPath(ctx, path)
+		}
+	})
+
+	b.Run("ModifyNamespaceByPath", func(b *testing.B) {
+		n := s.size()
+		for b.Loop() {
+			idx := rand.Intn(n)
+			path := s.namespaces[idx].Namespace.Path
+			s.ModifyNamespaceByPath(ctx, path, testModifyNamespace)
+		}
+	})
+
+	b.Run("ListNamespaces", func(b *testing.B) {
+		for b.Loop() {
+			s.ListNamespaces(ctx, false)
+		}
+	})
+
+	b.Run("ListNamespaceUUIDs", func(b *testing.B) {
+		for b.Loop() {
+			s.ListNamespaceUUIDs(ctx, false)
+		}
+	})
+
+	b.Run("ListNamespaceAccessors", func(b *testing.B) {
+		for b.Loop() {
+			s.ListNamespaceAccessors(ctx, false)
+		}
+	})
+
+	b.Run("ListNamespacePaths", func(b *testing.B) {
+		for b.Loop() {
+			s.ListNamespacePaths(ctx, false)
+		}
+	})
+
+	b.Run("ResolveNamespaceFromRequest", func(b *testing.B) {
+		rootCtx := namespace.RootContext(context.TODO())
+		n := s.size()
+		for b.Loop() {
+			idx := rand.Intn(n)
+			ns := s.namespaces[idx].Namespace
+			ctx := namespace.ContextWithNamespace(rootCtx, ns)
+			s.ResolveNamespaceFromRequest(rootCtx, ctx, "/sys/namespaces")
+		}
+	})
+
+	b.Run("DeleteNamespace", func(b *testing.B) {
+		for b.Loop() {
+			n := s.size()
+			idx := rand.Intn(n)
+			uuid := s.namespaces[idx].UUID
+			s.DeleteNamespace(ctx, uuid)
+		}
+	})
+}
+func testModifyNamespace(_ context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+	uuid := ns.UUID
+	accessor := ns.Namespace.ID
+	ns.Namespace.CustomMetadata["uuid"] = uuid
+	ns.Namespace.CustomMetadata["accessor"] = accessor
+
+	return ns, nil
 }

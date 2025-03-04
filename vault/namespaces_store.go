@@ -105,6 +105,10 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 	return ns, nil
 }
 
+func (ns *NamespaceStore) size() int {
+	return len(ns.namespaces)
+}
+
 func (ns *NamespaceStore) checkInvalidation(ctx context.Context) error {
 	if !ns.invalidated.Load() {
 		return nil
