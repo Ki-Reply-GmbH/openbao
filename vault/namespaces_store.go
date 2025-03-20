@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"path"
@@ -66,7 +67,8 @@ type NamespaceStore struct {
 // in case there is additional data we wish to store that isn't relevant to
 // a namespace instance.
 type NamespaceEntry struct {
-	UUID      string               `json:"uuid"`
+	UUID      string `json:"uuid"`
+	Lock      *string
 	Namespace *namespace.Namespace `json:"namespace"`
 }
 
@@ -78,6 +80,7 @@ func (ne *NamespaceEntry) Clone() *NamespaceEntry {
 	}
 	return &NamespaceEntry{
 		UUID: ne.UUID,
+		Lock: ne.Lock,
 		Namespace: &namespace.Namespace{
 			ID:             ne.Namespace.ID,
 			Path:           ne.Namespace.Path,
@@ -242,6 +245,52 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *Namespace
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
 	return ns.setNamespaceLocked(ctx, namespace)
+}
+
+func (ns *NamespaceStore) LockNamespaces(ctx context.Context, path string) (string, error) {
+	defer metrics.MeasureSince([]string{"namespace", "lock_namespaces"}, time.Now())
+
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return "", err
+	}
+
+	key := rand.Text()
+
+	entry, err := ns.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, entry *NamespaceEntry) (*NamespaceEntry, error) {
+		entry.Lock = &key
+		return entry, nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return *entry.Lock, nil
+}
+
+func (ns *NamespaceStore) UnlockNamespaces(ctx context.Context, path string, key string) error {
+	defer metrics.MeasureSince([]string{"namespace", "unlock_namespaces"}, time.Now())
+
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return err
+	}
+
+	_, err := ns.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, entry *NamespaceEntry) (*NamespaceEntry, error) {
+		if entry.Lock == nil {
+			// already unlocked
+			return entry, nil
+		}
+		if *entry.Lock != key {
+			return entry, errors.New("invalid unlock key")
+		}
+
+		entry.Lock = nil
+		return entry, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // setNamespaceLocked must be called while holding a write lock over the

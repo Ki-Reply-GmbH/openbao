@@ -51,6 +51,14 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 	}
 
+	lockSchema := map[string]*framework.FieldSchema{
+		"unlock_key": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Key to unlock the namespace.",
+		},
+	}
+
 	return []*framework.Path{
 		{
 			Pattern: "namespaces/?$",
@@ -78,6 +86,71 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["list-namespaces"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["list-namespaces"][1]),
+		},
+
+		{
+			Pattern: "namespaces/api-lock/lock(/(?P<path>.+))?",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+				OperationVerb:   "lock",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Path of the namespace.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesLock(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: lockSchema}},
+					},
+					Summary: "Lock a namespace and its children.",
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+		},
+
+		{
+			Pattern: "namespaces/api-lock/unlock(/(?P<path>.+))?",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+				OperationVerb:   "unlock",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Path of the namespace.",
+				},
+				"unlock_key": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Key to unlock the namespace.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesUnlock(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK"}},
+					},
+					Summary: "Unlock a namespace and its children.",
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
 		},
 
 		{
@@ -260,6 +333,37 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			"custom_metadata": entry.Namespace.CustomMetadata,
 		}}
 		return resp, nil
+	}
+}
+
+func (b *SystemBackend) handleNamespacesLock() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+
+		key, err := b.Core.namespaceStore.LockNamespaces(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+
+		resp := &logical.Response{
+			Data: map[string]any{
+				"unlock_key": key,
+			},
+		}
+		return resp, nil
+	}
+}
+
+func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+		key := data.Get("unlock_key").(string)
+
+		err := b.Core.namespaceStore.UnlockNamespaces(ctx, path, key)
+		if err != nil {
+			return nil, err
+		}
+		return &logical.Response{}, nil
 	}
 }
 
