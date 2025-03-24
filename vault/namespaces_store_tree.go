@@ -13,13 +13,13 @@ import (
 // by the NamespaceStore's lock when being accessed or modified.
 type namespaceTree struct {
 	root *namespaceNode
-	size int
 }
 
 type namespaceNode struct {
-	parent   *namespaceNode
-	children map[string]*namespaceNode
-	entry    *NamespaceEntry
+	parent      *namespaceNode
+	descendants int
+	children    map[string]*namespaceNode
+	entry       *NamespaceEntry
 }
 
 // newNamespaceTree creates a new namespaceTree with the given NamespaceEntry as
@@ -100,14 +100,17 @@ func (nt *namespaceTree) List(path string, includeParent bool, recursive bool) (
 		node = n
 	}
 
-	var nodes []*namespaceNode
+	numNodes := len(node.children)
+	if recursive {
+		numNodes = node.descendants
+	}
+	nodes := make([]*namespaceNode, 0, numNodes+1)
 	nodes = append(nodes, node)
-
-	var entries []*NamespaceEntry
+	entries := make([]*NamespaceEntry, 0, numNodes)
 	if includeParent {
-		entries = make([]*NamespaceEntry, 0, len(node.children)+1)
 		entries = append(entries, node.entry)
 	}
+
 	for idx := 0; idx < len(nodes); idx++ {
 		node = nodes[idx]
 		for _, child := range node.children {
@@ -132,7 +135,9 @@ func (nt *namespaceTree) Insert(entry *NamespaceEntry) error {
 	segments = segments[:len(segments)-1]
 	l := len(segments)
 	node := nt.root
+	nodes := make([]*namespaceNode, 0, l)
 	for i, segment := range segments {
+		nodes = append(nodes, node)
 		n, ok := node.children[segment]
 		if !ok {
 			if i != l-1 {
@@ -143,7 +148,9 @@ func (nt *namespaceTree) Insert(entry *NamespaceEntry) error {
 				children: make(map[string]*namespaceNode),
 				entry:    entry,
 			}
-			nt.size += 1
+			for _, node := range nodes {
+				node.descendants += 1
+			}
 			return nil
 		}
 
@@ -165,7 +172,9 @@ func (nt *namespaceTree) Delete(path string) error {
 	segments := strings.SplitAfter(path, "/")
 	segments = segments[:len(segments)-1]
 	node := nt.root
+	nodes := make([]*namespaceNode, 0, len(segments))
 	for _, segment := range segments {
+		nodes = append(nodes, node)
 		n, ok := node.children[segment]
 		if !ok {
 			return nil
@@ -179,29 +188,41 @@ func (nt *namespaceTree) Delete(path string) error {
 	}
 
 	delete(node.parent.children, segments[len(segments)-1])
-	nt.size -= 1
+	for _, node := range nodes {
+		node.descendants -= 1
+	}
 
 	return nil
 }
 
 // validate validates that all nodes in the tree have entry set
 func (nt *namespaceTree) validate() error {
-	nodes := make([]*namespaceNode, 0, nt.size)
+	nodes := make([]*namespaceNode, 0, nt.size())
 	nodes = append(nodes, nt.root)
 
 	var errs []error
 
 	for idx := 0; idx < len(nodes); idx++ {
 		node := nodes[idx]
+		desc := node.descendants
+		calcDesc := 0
 		for _, child := range node.children {
 			if node.entry == nil {
 				errs = append(errs, fmt.Errorf("orphan namespace found: %s", child.entry.Namespace.Path))
 			}
+			calcDesc += child.descendants + 1
 			nodes = append(nodes, child)
+		}
+		if desc != calcDesc {
+			errs = append(errs, fmt.Errorf("node descendant calculation is wrong. Expected %d, found %d", desc, calcDesc))
 		}
 	}
 
 	return errors.Join(errs...)
+}
+
+func (nt *namespaceTree) size() int {
+	return nt.root.descendants + 1
 }
 
 // unsafeInsert performs an unsafe insert of the namespace entry. It will create
@@ -211,8 +232,10 @@ func (nt *namespaceTree) unsafeInsert(entry *NamespaceEntry) {
 	segments := strings.SplitAfter(entry.Namespace.Path, "/")
 	segments = segments[:len(segments)-1]
 	node := nt.root
+	nodes := make([]*namespaceNode, 0, len(segments))
 
 	for _, segment := range segments {
+		nodes = append(nodes, node)
 		n, ok := node.children[segment]
 		if !ok {
 			child := &namespaceNode{
@@ -220,8 +243,10 @@ func (nt *namespaceTree) unsafeInsert(entry *NamespaceEntry) {
 				children: make(map[string]*namespaceNode),
 			}
 			node.children[segment] = child
-			nt.size += 1
 			node = child
+			for _, node := range nodes {
+				node.descendants += 1
+			}
 			continue
 		}
 

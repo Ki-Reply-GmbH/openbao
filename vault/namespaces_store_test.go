@@ -239,6 +239,7 @@ func TestNamespaceTree(t *testing.T) {
 	}
 	err := tree.validate()
 	require.NoError(t, err)
+	require.Equal(t, 5, tree.size())
 
 	namespaces2 := []*NamespaceEntry{
 		{Namespace: &namespace.Namespace{Path: "ns3/ns6/ns7/", ID: "00007"}, UUID: "00007"},
@@ -250,6 +251,7 @@ func TestNamespaceTree(t *testing.T) {
 	}
 	err = tree.validate()
 	require.Error(t, err)
+	require.Equal(t, 9, tree.size())
 
 	namespaces3 := []*NamespaceEntry{
 		{Namespace: &namespace.Namespace{Path: "ns3/ns6/", ID: "00006"}, UUID: "00006"},
@@ -266,19 +268,20 @@ func TestNamespaceTree(t *testing.T) {
 
 	err = tree.validate()
 	require.NoError(t, err)
+	require.Equal(t, 9, tree.size())
 
-	beforeSize := tree.size
+	beforeSize := tree.size()
 	err = tree.Delete("ns9/ns10/")
 	require.NoError(t, err)
-	require.Equal(t, beforeSize, tree.size)
+	require.Equal(t, beforeSize, tree.size())
 
 	err = tree.Delete("ns3/")
 	require.Error(t, err)
-	require.Equal(t, beforeSize, tree.size)
+	require.Equal(t, beforeSize, tree.size())
 
 	err = tree.Delete("ns1/ns2/")
 	require.NoError(t, err)
-	require.Equal(t, beforeSize-1, tree.size)
+	require.Equal(t, beforeSize-1, tree.size())
 
 	entries, err := tree.List("", false, false)
 	require.NoError(t, err)
@@ -286,7 +289,7 @@ func TestNamespaceTree(t *testing.T) {
 
 	entries, err = tree.List("", false, true)
 	require.NoError(t, err)
-	require.Equal(t, tree.size, len(entries))
+	require.Equal(t, tree.size()-1, len(entries))
 
 	entry, ok := tree.Get("ns1/")
 	require.True(t, ok)
