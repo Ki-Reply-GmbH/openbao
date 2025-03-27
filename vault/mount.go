@@ -2151,7 +2151,6 @@ func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view B
 	case mountTypeCubbyhole:
 		ch := backend.(*CubbyholeBackend)
 		ch.saltUUID = entry.UUID
-		ch.storageView = view
 		c.cubbyholeBackend = ch
 	case mountTypeIdentity:
 		c.identityStore = backend.(*IdentityStore)
@@ -2209,6 +2208,8 @@ func (c *Core) namespaceMountEntryView(ctx context.Context, namespaceID, prefix 
 // mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
 func (c *Core) mountEntryView(ctx context.Context, me *MountEntry) (BarrierView, error) {
 	switch me.Type {
+	case mountTypeNSSystem:
+		return c.namespaceMountEntryView(ctx, me.NamespaceID, systemBarrierPrefix)
 	case mountTypeSystem:
 		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
 	case mountTypeToken:
