@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -456,6 +457,24 @@ func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (
 	defer ns.lock.RUnlock()
 
 	return ns.getNamespaceByPathLocked(ctx, path)
+}
+
+func (ns *NamespaceStore) GetNamespaceByLongestPrefix(ctx context.Context, path string) (*namespace.Namespace, string) {
+	ctxNs, err := namespace.FromContext(ctx)
+	if err != nil {
+		ctxNs = namespace.RootNamespace
+	}
+
+	// e.g. needed for /sys/unseal, where the namespace store is not yet initialized
+	if ns == nil {
+		return ctxNs, path
+	}
+
+	combinedPath := ctxNs.Path + path
+	ns.lock.RLock()
+	prefix, entry, _ := ns.namespacesByPath.LongestPrefix(combinedPath)
+	ns.lock.RUnlock()
+	return entry, strings.TrimPrefix(combinedPath, prefix)
 }
 
 func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path string) (*namespace.Namespace, error) {
