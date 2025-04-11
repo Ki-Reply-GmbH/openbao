@@ -74,6 +74,7 @@ var (
 	RootNamespace    *Namespace    = &Namespace{
 		ID:             RootNamespaceID,
 		Path:           "",
+		Tainted:        false,
 		CustomMetadata: make(map[string]string),
 	}
 )

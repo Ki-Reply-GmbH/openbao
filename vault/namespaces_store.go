@@ -604,6 +604,10 @@ func (ns *NamespaceStore) ListNamespaceEntries(ctx context.Context, includeParen
 
 // taintNamespace is used to taint the namespace scheduled to be deleted
 func (ns *NamespaceStore) taintNamespace(ctx context.Context, nsEntry *NamespaceEntry) error {
+	if nsEntry.Namespace.ID == namespace.RootNamespaceID {
+		return errors.New("cannot taint a root namespace")
+	}
+
 	if err := ns.checkInvalidation(ctx); err != nil {
 		return err
 	}
@@ -656,7 +660,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 	for _, policy := range policiesToClear {
 		err := ns.core.policyStore.deletePolicyForce(nsCtx, policy, PolicyTypeACL)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete policy: %s - %w", policy, err)
 		}
 	}
 
@@ -685,8 +689,6 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 			return fmt.Errorf("failed to unmount: %s - %w", me.Path, err)
 		}
 	}
-
-	// TODO: clear other ns configs
 
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()

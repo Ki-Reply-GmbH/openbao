@@ -31,6 +31,7 @@ func newNamespaceTree(root *NamespaceEntry) *namespaceTree {
 	}
 	return &namespaceTree{
 		root: node,
+		size: 1,
 	}
 }
 
