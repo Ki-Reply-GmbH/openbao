@@ -6,11 +6,9 @@ package dbplugin
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/proto"
 	"github.com/openbao/openbao/sdk/v2/helper/base62"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
@@ -132,11 +130,7 @@ func (g *gRPCServer) NewUser(ctx context.Context, req *proto.NewUserRequest) (*p
 	var expiration time.Time
 
 	if req.GetExpiration() != nil {
-		exp, err := ptypes.Timestamp(req.GetExpiration())
-		if err != nil {
-			return &proto.NewUserResponse{}, status.Errorf(codes.InvalidArgument, "unable to parse expiration date: %s", err)
-		}
-		expiration = exp
+		expiration = req.GetExpiration().AsTime()
 	}
 
 	impl, err := g.getDatabase(ctx)
@@ -210,13 +204,8 @@ func getUpdateUserRequest(req *proto.UpdateUserRequest) (UpdateUserRequest, erro
 
 	var expiration *ChangeExpiration
 	if req.GetExpiration() != nil && req.GetExpiration().GetNewExpiration() != nil {
-		newExpiration, err := ptypes.Timestamp(req.GetExpiration().GetNewExpiration())
-		if err != nil {
-			return UpdateUserRequest{}, fmt.Errorf("unable to parse new expiration: %w", err)
-		}
-
 		expiration = &ChangeExpiration{
-			NewExpiration: newExpiration,
+			NewExpiration: req.GetExpiration().GetNewExpiration().AsTime(),
 			Statements:    getStatementsFromProto(req.GetExpiration().GetStatements()),
 		}
 	}
