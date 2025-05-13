@@ -119,14 +119,14 @@ func TestGetMultiplexIDFromContext(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			resp, err := GetMultiplexIDFromContext(test.ctx)
 
-			if test.expectedErr != nil && test.expectedErr.Error() != "" && err == nil {
+			switch {
+			case test.expectedErr == nil && err == nil:
+			case test.expectedErr != nil && test.expectedErr.Error() != "" && err == nil:
 				t.Fatal("err expected, got nil")
-			} else if !reflect.DeepEqual(err, test.expectedErr) {
-				t.Fatalf("Actual error: %#v\nExpected error: %#v", err, test.expectedErr)
-			}
-
-			if test.expectedErr != nil && test.expectedErr.Error() == "" && err != nil {
+			case test.expectedErr == nil && err != nil:
 				t.Fatalf("no error expected, got: %s", err)
+			case err.Error() != test.expectedErr.Error():
+				t.Fatalf("Actual error: %#v\nExpected error: %#v", err, test.expectedErr)
 			}
 
 			if !reflect.DeepEqual(resp, test.expectedResp) {

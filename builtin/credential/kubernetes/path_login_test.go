@@ -16,7 +16,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -1451,7 +1450,7 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 					t.Errorf("getAliasName() error = %v, wantErr %v", err, tt.wantErr)
 					return
 				}
-				if !reflect.DeepEqual(expectedErr, err) {
+				if !errors.Is(err, expectedErr) {
 					t.Errorf("getAliasName() expected error = %v, actual %v", expectedErr, err)
 				}
 			}

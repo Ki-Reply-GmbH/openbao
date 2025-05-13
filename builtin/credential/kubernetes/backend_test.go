@@ -7,11 +7,11 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -213,7 +213,7 @@ func Test_kubeAuthBackend_updateTLSConfig(t *testing.T) {
 						t.Fatalf("updateTLSConfig() error = %v, wantErr %v", err, config.wantErr)
 					}
 
-					if !reflect.DeepEqual(err, config.expectError) {
+					if !errors.Is(err, config.expectError) {
 						t.Fatalf("updateTLSConfig() error = %v, expectErr %v", err, config.expectError)
 					}
 
@@ -332,7 +332,7 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 				t.Errorf("initialize() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if !reflect.DeepEqual(err, tt.expectErr) {
+			if !errors.Is(err, tt.expectErr) {
 				t.Fatalf("initialize() error = %v, expectErr %v", err, tt.expectErr)
 			}
 
@@ -457,7 +457,7 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 				t.Errorf("runTLSConfigUpdater() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if !reflect.DeepEqual(err, tt.expectErr) {
+			if !errors.Is(err, tt.expectErr) {
 				t.Fatalf("runTLSConfigUpdater() error = %v, expectErr %v", err, tt.expectErr)
 			}
 

@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"net/url"
-	"reflect"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
@@ -72,7 +71,7 @@ func TestDatabaseErrorSanitizerMiddleware(t *testing.T) {
 			mw := NewDatabaseErrorSanitizerMiddleware(db, test.secretsFunc)
 
 			actualErr := mw.sanitize(test.inputErr)
-			if !reflect.DeepEqual(actualErr, test.expectedError) {
+			if actualErr.Error() != test.expectedError.Error() {
 				t.Fatalf("Actual error: %s\nExpected error: %s", actualErr, test.expectedError)
 			}
 		})
@@ -92,7 +91,7 @@ func TestDatabaseErrorSanitizerMiddleware(t *testing.T) {
 		expectedErr := errors.New("password: <redacted> with some stuff after it")
 
 		_, err := mw.Initialize(context.Background(), InitializeRequest{})
-		if !reflect.DeepEqual(err, expectedErr) {
+		if err.Error() != expectedErr.Error() {
 			t.Fatalf("Actual err: %s\n Expected err: %s", err, expectedErr)
 		}
 
@@ -118,7 +117,7 @@ func TestDatabaseErrorSanitizerMiddleware(t *testing.T) {
 		expectedErr := errors.New("password: <redacted> with some stuff after it")
 
 		_, err := mw.NewUser(context.Background(), NewUserRequest{})
-		if !reflect.DeepEqual(err, expectedErr) {
+		if err.Error() != expectedErr.Error() {
 			t.Fatalf("Actual err: %s\n Expected err: %s", err, expectedErr)
 		}
 
@@ -144,7 +143,7 @@ func TestDatabaseErrorSanitizerMiddleware(t *testing.T) {
 		expectedErr := errors.New("password: <redacted> with some stuff after it")
 
 		_, err := mw.UpdateUser(context.Background(), UpdateUserRequest{})
-		if !reflect.DeepEqual(err, expectedErr) {
+		if err.Error() != expectedErr.Error() {
 			t.Fatalf("Actual err: %s\n Expected err: %s", err, expectedErr)
 		}
 
@@ -170,7 +169,7 @@ func TestDatabaseErrorSanitizerMiddleware(t *testing.T) {
 		expectedErr := errors.New("password: <redacted> with some stuff after it")
 
 		_, err := mw.DeleteUser(context.Background(), DeleteUserRequest{})
-		if !reflect.DeepEqual(err, expectedErr) {
+		if err.Error() != expectedErr.Error() {
 			t.Fatalf("Actual err: %s\n Expected err: %s", err, expectedErr)
 		}
 
@@ -196,7 +195,7 @@ func TestDatabaseErrorSanitizerMiddleware(t *testing.T) {
 		expectedErr := errors.New("password: <redacted> with some stuff after it")
 
 		_, err := mw.Type()
-		if !reflect.DeepEqual(err, expectedErr) {
+		if err.Error() != expectedErr.Error() {
 			t.Fatalf("Actual err: %s\n Expected err: %s", err, expectedErr)
 		}
 
@@ -222,7 +221,7 @@ func TestDatabaseErrorSanitizerMiddleware(t *testing.T) {
 		expectedErr := errors.New("password: <redacted> with some stuff after it")
 
 		err := mw.Close()
-		if !reflect.DeepEqual(err, expectedErr) {
+		if err.Error() != expectedErr.Error() {
 			t.Fatalf("Actual err: %s\n Expected err: %s", err, expectedErr)
 		}
 
