@@ -555,7 +555,7 @@ func (d *autoSeal) StartHealthCheck() {
 		lastTestOk := true
 		lastSeenOk := time.Now()
 
-		fail := func(msg string, args ...interface{}) {
+		fail := func(msg string, args ...any) {
 			d.logger.Warn(msg, args...)
 			if lastTestOk {
 				healthCheck.Reset(sealHealthTestIntervalUnhealthy)

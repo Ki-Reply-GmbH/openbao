@@ -140,7 +140,7 @@ func TestDeleteAfterReading(t *testing.T) {
 		}
 
 		config := &auth.AuthConfig{
-			Config: map[string]interface{}{
+			Config: map[string]any{
 				"path": tokenPath,
 				"role": "unusedrole",
 			},
@@ -227,7 +227,7 @@ func TestDeleteAfterReadingSymlink(t *testing.T) {
 		os.Symlink(tokenPath, symlinkName)
 
 		config := &auth.AuthConfig{
-			Config: map[string]interface{}{
+			Config: map[string]any{
 				"path": symlinkName,
 				"role": "unusedrole",
 			},

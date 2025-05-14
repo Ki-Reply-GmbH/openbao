@@ -23,7 +23,7 @@ func TestCheckOuts(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"binddn":   "euclid",
 			"password": "password",
 			"url":      "ldap://ldap.forumsys.com:389",
@@ -83,7 +83,7 @@ func TestCheckOutRaces(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      libraryPrefix + "test-set",
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"service_account_names":        []string{"tester1@example.com", "tester2@example.com"},
 					"ttl":                          "10h",
 					"max_ttl":                      "11h",
@@ -94,7 +94,7 @@ func TestCheckOutRaces(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      libraryPrefix + "test-set",
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"service_account_names": []string{"tester1@example.com", "tester2@example.com", "tester3@example.com"},
 				},
 			})
@@ -102,7 +102,7 @@ func TestCheckOutRaces(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      libraryPrefix + "test-set",
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"service_account_names": []string{"tester1@example.com", "tester2@example.com"},
 				},
 			})
@@ -115,7 +115,7 @@ func TestCheckOutRaces(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      libraryPrefix + "test-set",
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"service_account_names":        []string{"tester1@example.com", "tester2@example.com"},
 					"ttl":                          "10h",
 					"disable_check_in_enforcement": false,
@@ -135,7 +135,7 @@ func TestCheckOutRaces(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      libraryPrefix + "test-set2",
 				Storage:   s,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"service_account_names": "tester1@example.com",
 				},
 			})
@@ -199,7 +199,7 @@ func WriteSet(b logical.Backend, s logical.Storage) func(t *testing.T) {
 			Operation: logical.CreateOperation,
 			Path:      libraryPrefix + "test-set",
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"service_account_names":        []string{"tester1@example.com", "tester2@example.com"},
 				"ttl":                          "10h",
 				"max_ttl":                      "11h",
@@ -222,7 +222,7 @@ func AddAnotherServiceAccount(b logical.Backend, s logical.Storage) func(t *test
 			Operation: logical.UpdateOperation,
 			Path:      libraryPrefix + "test-set",
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"service_account_names": []string{"tester1@example.com", "tester2@example.com", "tester3@example.com"},
 			},
 		}
@@ -242,7 +242,7 @@ func RemoveServiceAccount(b logical.Backend, s logical.Storage) func(t *testing.
 			Operation: logical.UpdateOperation,
 			Path:      libraryPrefix + "test-set",
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"service_account_names": []string{"tester1@example.com", "tester2@example.com"},
 			},
 		}
@@ -295,7 +295,7 @@ func WriteSetToggleOff(b logical.Backend, s logical.Storage) func(t *testing.T) 
 			Operation: logical.UpdateOperation,
 			Path:      libraryPrefix + "test-set",
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"service_account_names":        []string{"tester1@example.com", "tester2@example.com"},
 				"ttl":                          "10h",
 				"disable_check_in_enforcement": false,
@@ -356,7 +356,7 @@ func ReadSetStatus(b logical.Backend, s logical.Storage) func(t *testing.T) {
 		if resp.Data["tester1@example.com"] == nil {
 			t.Fatal("expected non-nil map")
 		}
-		testerStatus := resp.Data["tester1@example.com"].(map[string]interface{})
+		testerStatus := resp.Data["tester1@example.com"].(map[string]any)
 		if !testerStatus["available"].(bool) {
 			t.Fatal("should be available for checkout")
 		}
@@ -369,7 +369,7 @@ func WriteSetWithConflictingServiceAccounts(b logical.Backend, s logical.Storage
 			Operation: logical.CreateOperation,
 			Path:      libraryPrefix + "test-set2",
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"service_account_names": "tester1@example.com",
 			},
 		}
@@ -444,7 +444,7 @@ func CheckInitialStatus(b logical.Backend, s logical.Storage) func(t *testing.T)
 		if resp.Data["tester1@example.com"] == nil {
 			t.Fatal("expected map to not be nil")
 		}
-		tester1CheckOut := resp.Data["tester1@example.com"].(map[string]interface{})
+		tester1CheckOut := resp.Data["tester1@example.com"].(map[string]any)
 		available := tester1CheckOut["available"].(bool)
 		if !available {
 			t.Fatal("tester1 should be available")
@@ -453,7 +453,7 @@ func CheckInitialStatus(b logical.Backend, s logical.Storage) func(t *testing.T)
 		if resp.Data["tester2@example.com"] == nil {
 			t.Fatal("expected map to not be nil")
 		}
-		tester2CheckOut := resp.Data["tester2@example.com"].(map[string]interface{})
+		tester2CheckOut := resp.Data["tester2@example.com"].(map[string]any)
 		available = tester2CheckOut["available"].(bool)
 		if !available {
 			t.Fatal("tester2 should be available")
@@ -524,13 +524,13 @@ func CheckUpdatedStatus(b logical.Backend, s logical.Storage) func(t *testing.T)
 		if resp.Data["tester1@example.com"] == nil {
 			t.Fatal("expected map to not be nil")
 		}
-		tester1CheckOut := resp.Data["tester1@example.com"].(map[string]interface{})
+		tester1CheckOut := resp.Data["tester1@example.com"].(map[string]any)
 		tester1Available := tester1CheckOut["available"].(bool)
 
 		if resp.Data["tester2@example.com"] == nil {
 			t.Fatal("expected map to not be nil")
 		}
-		tester2CheckOut := resp.Data["tester2@example.com"].(map[string]interface{})
+		tester2CheckOut := resp.Data["tester2@example.com"].(map[string]any)
 		tester2Available := tester2CheckOut["available"].(bool)
 
 		if tester1Available && tester2Available {

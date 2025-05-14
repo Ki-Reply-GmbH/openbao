@@ -28,7 +28,7 @@ type Looker interface {
 // logical.SystemView implementations satisfy this interface.
 type RunnerUtil interface {
 	NewPluginClient(ctx context.Context, config PluginClientConfig) (PluginClient, error)
-	ResponseWrapData(ctx context.Context, data map[string]interface{}, ttl time.Duration, jwt bool) (*wrapping.ResponseWrapInfo, error)
+	ResponseWrapData(ctx context.Context, data map[string]any, ttl time.Duration, jwt bool) (*wrapping.ResponseWrapInfo, error)
 	MlockEnabled() bool
 	VaultVersion(ctx context.Context) (string, error)
 }
@@ -58,7 +58,7 @@ type PluginRunner struct {
 	Env            []string                    `json:"env" structs:"env"`
 	Sha256         []byte                      `json:"sha256" structs:"sha256"`
 	Builtin        bool                        `json:"builtin" structs:"builtin"`
-	BuiltinFactory func() (interface{}, error) `json:"-" structs:"-"`
+	BuiltinFactory func() (any, error) `json:"-" structs:"-"`
 }
 
 // Run takes a wrapper RunnerUtil instance along with the go-plugin parameters and

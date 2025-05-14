@@ -53,7 +53,7 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 	}
 
 	// create a userpass user
-	_, err = client.Logical().Write("auth/userpass/users/bsmith", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bsmith", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
@@ -139,7 +139,7 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 
 			// login for default lockout threshold times with wrong credentials
 			for i := 0; i < UserLockoutThresholdDefault; i++ {
-				_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]interface{}{
+				_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
 					"password": "wrongPassword",
 				})
 				if err == nil {
@@ -151,7 +151,7 @@ func TestIdentityStore_DisableUserLockoutTest(t *testing.T) {
 			}
 
 			// login to check if user locked
-			_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]interface{}{
+			_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
 				"password": "wrongPassword",
 			})
 			if err == nil {

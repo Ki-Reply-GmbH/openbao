@@ -17,35 +17,35 @@ func TestSysAudit(t *testing.T) {
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
 
-	resp := testHttpPost(t, token, addr+"/v1/sys/audit/noop", map[string]interface{}{
+	resp := testHttpPost(t, token, addr+"/v1/sys/audit/noop", map[string]any{
 		"type": "noop",
 	})
 	testResponseStatus(t, resp, 204)
 
 	resp = testHttpGet(t, token, addr+"/v1/sys/audit")
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"lease_id":       "",
 		"renewable":      false,
 		"lease_duration": json.Number("0"),
 		"wrap_info":      nil,
 		"warnings":       nil,
 		"auth":           nil,
-		"data": map[string]interface{}{
-			"noop/": map[string]interface{}{
+		"data": map[string]any{
+			"noop/": map[string]any{
 				"path":        "noop/",
 				"type":        "noop",
 				"description": "",
-				"options":     map[string]interface{}{},
+				"options":     map[string]any{},
 				"local":       false,
 			},
 		},
-		"noop/": map[string]interface{}{
+		"noop/": map[string]any{
 			"path":        "noop/",
 			"type":        "noop",
 			"description": "",
-			"options":     map[string]interface{}{},
+			"options":     map[string]any{},
 			"local":       false,
 		},
 	}
@@ -65,7 +65,7 @@ func TestSysDisableAudit(t *testing.T) {
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
 
-	resp := testHttpPost(t, token, addr+"/v1/sys/audit/foo", map[string]interface{}{
+	resp := testHttpPost(t, token, addr+"/v1/sys/audit/foo", map[string]any{
 		"type": "noop",
 	})
 	testResponseStatus(t, resp, 204)
@@ -75,15 +75,15 @@ func TestSysDisableAudit(t *testing.T) {
 
 	resp = testHttpGet(t, token, addr+"/v1/sys/audit")
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"lease_id":       "",
 		"renewable":      false,
 		"lease_duration": json.Number("0"),
 		"wrap_info":      nil,
 		"warnings":       nil,
 		"auth":           nil,
-		"data":           map[string]interface{}{},
+		"data":           map[string]any{},
 	}
 
 	testResponseStatus(t, resp, 200)
@@ -102,24 +102,24 @@ func TestSysAuditHash(t *testing.T) {
 	defer ln.Close()
 	TestServerAuth(t, addr, token)
 
-	resp := testHttpPost(t, token, addr+"/v1/sys/audit/noop", map[string]interface{}{
+	resp := testHttpPost(t, token, addr+"/v1/sys/audit/noop", map[string]any{
 		"type": "noop",
 	})
 	testResponseStatus(t, resp, 204)
 
-	resp = testHttpPost(t, token, addr+"/v1/sys/audit-hash/noop", map[string]interface{}{
+	resp = testHttpPost(t, token, addr+"/v1/sys/audit-hash/noop", map[string]any{
 		"input": "bar",
 	})
 
-	var actual map[string]interface{}
-	expected := map[string]interface{}{
+	var actual map[string]any
+	expected := map[string]any{
 		"lease_id":       "",
 		"renewable":      false,
 		"lease_duration": json.Number("0"),
 		"wrap_info":      nil,
 		"warnings":       nil,
 		"auth":           nil,
-		"data": map[string]interface{}{
+		"data": map[string]any{
 			"hash": "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
 		},
 		"hash": "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",

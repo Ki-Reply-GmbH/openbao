@@ -54,13 +54,13 @@ func setupK8sEnvVars() func() {
 
 func Test_configWithDynamicValues(t *testing.T) {
 	testCases := map[string]struct {
-		config              map[string]interface{}
+		config              map[string]any
 		setupInClusterFiles bool
 		setupK8sEnvVars     bool
 		expected            *kubeConfig
 	}{
 		"empty config uses env": {
-			config:              map[string]interface{}{},
+			config:              map[string]any{},
 			setupInClusterFiles: true,
 			setupK8sEnvVars:     true,
 			expected: &kubeConfig{
@@ -71,7 +71,7 @@ func Test_configWithDynamicValues(t *testing.T) {
 			},
 		},
 		"no CA or JWT, default to local": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"kubernetes_host": "host",
 			},
 			setupInClusterFiles: true,
@@ -83,7 +83,7 @@ func Test_configWithDynamicValues(t *testing.T) {
 			},
 		},
 		"CA set, default to local JWT": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"kubernetes_host":    "host",
 				"kubernetes_ca_cert": testCACert,
 			},
@@ -96,7 +96,7 @@ func Test_configWithDynamicValues(t *testing.T) {
 			},
 		},
 		"JWT set, default to local CA": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"kubernetes_host":     "host",
 				"service_account_jwt": "jwt",
 			},
@@ -109,7 +109,7 @@ func Test_configWithDynamicValues(t *testing.T) {
 			},
 		},
 		"CA and disable local default": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"kubernetes_host":      "host",
 				"kubernetes_ca_cert":   testCACert,
 				"disable_local_ca_jwt": true,
@@ -122,7 +122,7 @@ func Test_configWithDynamicValues(t *testing.T) {
 			},
 		},
 		"no CA and disable local default": {
-			config: map[string]interface{}{
+			config: map[string]any{
 				"kubernetes_host":      "host",
 				"disable_local_ca_jwt": true,
 			},

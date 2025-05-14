@@ -20,7 +20,7 @@ func TestTransit_BatchRewrapCase1(t *testing.T) {
 	// Upsert the key and encrypt the data
 	plaintext := "dGhlIHF1aWNrIGJyb3duIGZveA=="
 
-	encData := map[string]interface{}{
+	encData := map[string]any{
 		"plaintext": plaintext,
 	}
 
@@ -47,7 +47,7 @@ func TestTransit_BatchRewrapCase1(t *testing.T) {
 		t.Fatalf("unexpected key version; got: %d, expected: %d", keyVersion, 1)
 	}
 
-	rewrapData := map[string]interface{}{
+	rewrapData := map[string]any{
 		"ciphertext": ciphertext,
 	}
 
@@ -123,7 +123,7 @@ func TestTransit_BatchRewrapCase2(t *testing.T) {
 	// Upsert the key and encrypt the data
 	plaintext := "dGhlIHF1aWNrIGJyb3duIGZveA=="
 
-	encData := map[string]interface{}{
+	encData := map[string]any{
 		"plaintext": plaintext,
 		"context":   "dmlzaGFsCg==",
 	}
@@ -151,7 +151,7 @@ func TestTransit_BatchRewrapCase2(t *testing.T) {
 		t.Fatalf("unexpected key version; got: %d, expected: %d", keyVersion, 1)
 	}
 
-	rewrapData := map[string]interface{}{
+	rewrapData := map[string]any{
 		"ciphertext": ciphertext,
 		"context":    "dmlzaGFsCg==",
 	}
@@ -226,11 +226,11 @@ func TestTransit_BatchRewrapCase3(t *testing.T) {
 
 	b, s := createBackendWithStorage(t)
 
-	batchEncryptionInput := []interface{}{
-		map[string]interface{}{"plaintext": "dmlzaGFsCg==", "reference": "ek"},
-		map[string]interface{}{"plaintext": "dGhlIHF1aWNrIGJyb3duIGZveA==", "reference": "do"},
+	batchEncryptionInput := []any{
+		map[string]any{"plaintext": "dmlzaGFsCg==", "reference": "ek"},
+		map[string]any{"plaintext": "dGhlIHF1aWNrIGJyb3duIGZveA==", "reference": "do"},
 	}
-	batchEncryptionData := map[string]interface{}{
+	batchEncryptionData := map[string]any{
 		"batch_input": batchEncryptionInput,
 	}
 	batchReq := &logical.Request{
@@ -246,12 +246,12 @@ func TestTransit_BatchRewrapCase3(t *testing.T) {
 
 	batchEncryptionResponseItems := resp.Data["batch_results"].([]EncryptBatchResponseItem)
 
-	batchRewrapInput := make([]interface{}, len(batchEncryptionResponseItems))
+	batchRewrapInput := make([]any, len(batchEncryptionResponseItems))
 	for i, item := range batchEncryptionResponseItems {
-		batchRewrapInput[i] = map[string]interface{}{"ciphertext": item.Ciphertext, "reference": item.Reference}
+		batchRewrapInput[i] = map[string]any{"ciphertext": item.Ciphertext, "reference": item.Reference}
 	}
 
-	batchRewrapData := map[string]interface{}{
+	batchRewrapData := map[string]any{
 		"batch_input": batchRewrapInput,
 	}
 
@@ -292,7 +292,7 @@ func TestTransit_BatchRewrapCase3(t *testing.T) {
 	for i, eItem := range batchEncryptionResponseItems {
 		rItem := batchRewrapResponseItems[i]
 
-		inputRef := batchEncryptionInput[i].(map[string]interface{})["reference"]
+		inputRef := batchEncryptionInput[i].(map[string]any)["reference"]
 		if eItem.Reference != inputRef {
 			t.Fatalf("bad: reference mismatch. Expected %s, Actual: %s", inputRef, eItem.Reference)
 		}
@@ -309,7 +309,7 @@ func TestTransit_BatchRewrapCase3(t *testing.T) {
 			t.Fatalf("unexpected key version; got: %d, expected: %d", rItem.KeyVersion, 2)
 		}
 
-		decReq.Data = map[string]interface{}{
+		decReq.Data = map[string]any{
 			"ciphertext": rItem.Ciphertext,
 		}
 

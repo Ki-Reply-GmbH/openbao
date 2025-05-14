@@ -128,7 +128,7 @@ ed25519.`,
 		Description: `The type of key to use; defaults to the empty string
 to use whatever is specified by the role. "rsa","ec", and "ed25519" are the
 only valid values outside of the empty string.`,
-		AllowedValues: []interface{}{"", "rsa", "ec", "ed25519"},
+		AllowedValues: []any{"", "rsa", "ec", "ed25519"},
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "",
 		},
@@ -485,7 +485,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 
 	caChainGen := newCaChainOutput(parsedBundle, data)
 
-	respData := map[string]interface{}{
+	respData := map[string]any{
 		"not_before":    int64(parsedBundle.Certificate.NotBefore.Unix()),
 		"expiration":    int64(parsedBundle.Certificate.NotAfter.Unix()),
 		"serial_number": cb.SerialNumber,
@@ -543,7 +543,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	default:
 		resp = b.Secret(SecretCertsType).Response(
 			respData,
-			map[string]interface{}{
+			map[string]any{
 				"serial_number": cb.SerialNumber,
 			})
 		resp.Secret.TTL = parsedBundle.Certificate.NotAfter.Sub(time.Now())

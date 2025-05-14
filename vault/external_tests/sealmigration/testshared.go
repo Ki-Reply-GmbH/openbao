@@ -251,12 +251,12 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := deep.Equal(secret.Data, map[string]interface{}{"zork": "quux"}); len(diff) > 0 {
+	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
 
 	// Write a new secret
-	_, err = leader.Client.Logical().Write("kv-wrapped/test", map[string]interface{}{
+	_, err = leader.Client.Logical().Write("kv-wrapped/test", map[string]any{
 		"zork": "quux",
 	})
 	if err != nil {
@@ -322,12 +322,12 @@ func migrateFromShamirToTransit_Pre14(t *testing.T, logger hclog.Logger, storage
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := deep.Equal(secret.Data, map[string]interface{}{"zork": "quux"}); len(diff) > 0 {
+	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
 
 	// Write a new secret
-	_, err = leader.Client.Logical().Write("kv-wrapped/test", map[string]interface{}{
+	_, err = leader.Client.Logical().Write("kv-wrapped/test", map[string]any{
 		"zork": "quux",
 	})
 	if err != nil {
@@ -348,7 +348,7 @@ func validateMigration(t *testing.T, storage teststorage.ReusableStorage,
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := deep.Equal(secret.Data, map[string]interface{}{"zork": "quux"}); len(diff) > 0 {
+	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
 
@@ -428,7 +428,7 @@ func migratePost14(t *testing.T, storage teststorage.ReusableStorage, cluster *v
 	unseal(t, cluster.Cores[0].Client, unsealKeys)
 
 	// Write a new secret
-	_, err = leader.Client.Logical().Write("kv-wrapped/test", map[string]interface{}{
+	_, err = leader.Client.Logical().Write("kv-wrapped/test", map[string]any{
 		"zork": "quux",
 	})
 	if err != nil {
@@ -617,7 +617,7 @@ func initializeShamir(t *testing.T, logger hclog.Logger, storage teststorage.Reu
 	}
 
 	// Write a secret that we will read back out later.
-	_, err = client.Logical().Write("kv-wrapped/foo", map[string]interface{}{
+	_, err = client.Logical().Write("kv-wrapped/foo", map[string]any{
 		"zork": "quux",
 	})
 	if err != nil {
@@ -684,14 +684,14 @@ func runShamir(t *testing.T, logger hclog.Logger, storage teststorage.ReusableSt
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := deep.Equal(secret.Data, map[string]interface{}{"zork": "quux"}); len(diff) > 0 {
+	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
 	secret, err = client.Logical().Read("kv-wrapped/test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := deep.Equal(secret.Data, map[string]interface{}{"zork": "quux"}); len(diff) > 0 {
+	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
 }
@@ -748,7 +748,7 @@ func InitializeTransit(t *testing.T, logger hclog.Logger, storage teststorage.Re
 	}
 
 	// Write a secret that we will read back out later.
-	_, err = client.Logical().Write("kv-wrapped/foo", map[string]interface{}{
+	_, err = client.Logical().Write("kv-wrapped/foo", map[string]any{
 		"zork": "quux",
 	})
 	if err != nil {
@@ -818,7 +818,7 @@ func runAutoseal(t *testing.T, logger hclog.Logger, storage teststorage.Reusable
 	if err != nil {
 		t.Fatal(err)
 	}
-	if diff := deep.Equal(secret.Data, map[string]interface{}{"zork": "quux"}); len(diff) > 0 {
+	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
 	secret, err = client.Logical().Read("kv-wrapped/test")
@@ -828,7 +828,7 @@ func runAutoseal(t *testing.T, logger hclog.Logger, storage teststorage.Reusable
 	if secret == nil {
 		t.Fatal("secret is nil")
 	}
-	if diff := deep.Equal(secret.Data, map[string]interface{}{"zork": "quux"}); len(diff) > 0 {
+	if diff := deep.Equal(secret.Data, map[string]any{"zork": "quux"}); len(diff) > 0 {
 		t.Fatal(diff)
 	}
 }

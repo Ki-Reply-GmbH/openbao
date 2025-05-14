@@ -76,17 +76,17 @@ func HashRequest(salter *salt.Salt, in *logical.Request, HMACAccessor bool, nonH
 			return nil, err
 		}
 
-		err = hashMap(fn, req.Data, copy.(map[string]interface{}), nonHMACDataKeys, false)
+		err = hashMap(fn, req.Data, copy.(map[string]any), nonHMACDataKeys, false)
 		if err != nil {
 			return nil, err
 		}
-		req.Data = copy.(map[string]interface{})
+		req.Data = copy.(map[string]any)
 	}
 
 	return &req, nil
 }
 
-func hashMap(fn func(string) string, origData map[string]interface{}, data map[string]interface{}, nonHMACDataKeys []string, elideListResponseData bool) error {
+func hashMap(fn func(string) string, origData map[string]any, data map[string]any, nonHMACDataKeys []string, elideListResponseData bool) error {
 	return HashStructure(origData, data, fn, nonHMACDataKeys, elideListResponseData)
 }
 
@@ -123,7 +123,7 @@ func HashResponse(
 			return nil, err
 		}
 
-		mapCopy := copy.(map[string]interface{})
+		mapCopy := copy.(map[string]any)
 		if b, ok := mapCopy[logical.HTTPRawBody].([]byte); ok {
 			mapCopy[logical.HTTPRawBody] = string(b)
 		}
@@ -157,12 +157,12 @@ func HashResponse(
 // This transformation inherently changes all structs to maps, which makes
 // each of the structs fields addressable through reflection in the copy,
 // (which is now a map).  This will allow us to write into all fields.
-func getUnmarshaledCopy(data interface{}) (interface{}, error) {
+func getUnmarshaledCopy(data any) (any, error) {
 	marshaledData, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
-	unmarshaledCopy := map[string]interface{}{}
+	unmarshaledCopy := map[string]any{}
 	if err := json.Unmarshal(marshaledData, &unmarshaledCopy); err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func HashWrapInfo(salter *salt.Salt, in *wrapping.ResponseWrapInfo, HMACAccessor
 // by getValueFromCopy() to walk the copy.
 //
 // For the HashCallback, see the built-in HashCallbacks below.
-func HashStructure(original interface{}, copy interface{}, cb HashCallback,
+func HashStructure(original any, copy any, cb HashCallback,
 	ignoredKeys []string, elideListResponseData bool,
 ) error {
 	walker := &hashWalker{
@@ -244,7 +244,7 @@ type hashWalker struct {
 	// element of csKey, only nesting to another structure increases the size of
 	// this slice.
 	csKey                 []reflect.Value
-	UnmarshalledCopy      interface{}
+	UnmarshalledCopy      any
 	ElideListResponseData bool
 }
 
@@ -431,7 +431,7 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 }
 
 // get current value from copy to be written to.
-func (w *hashWalker) getValueFromCopy() interface{} {
+func (w *hashWalker) getValueFromCopy() any {
 	size := len(w.cs)
 	currentValue := w.UnmarshalledCopy
 	startKey := 2  // First key in w.csKey maps to w.loc[2]
@@ -452,13 +452,13 @@ func (w *hashWalker) getValueFromCopy() interface{} {
 	return currentValue
 }
 
-func (w *hashWalker) getMapFromCopy() map[string]interface{} {
+func (w *hashWalker) getMapFromCopy() map[string]any {
 	return getMap(w.getValueFromCopy())
 }
 
-func getMap(inputData interface{}) map[string]interface{} {
-	var value map[string]interface{}
-	if v, ok := inputData.(map[string]interface{}); ok {
+func getMap(inputData any) map[string]any {
+	var value map[string]any
+	if v, ok := inputData.(map[string]any); ok {
 		value = v
 	} else {
 		panic("bad map")
@@ -466,13 +466,13 @@ func getMap(inputData interface{}) map[string]interface{} {
 	return value
 }
 
-func (w *hashWalker) getSliceFromCopy() []interface{} {
+func (w *hashWalker) getSliceFromCopy() []any {
 	return getSlice(w.getValueFromCopy())
 }
 
-func getSlice(inputData interface{}) []interface{} {
-	var value []interface{}
-	if v, ok := inputData.([]interface{}); ok {
+func getSlice(inputData any) []any {
+	var value []any
+	if v, ok := inputData.([]any); ok {
 		value = v
 	} else {
 		panic("bad slice")
@@ -498,9 +498,9 @@ func (w *hashWalker) isElided() bool {
 	}
 
 	// Based on audit.doElideListResponseDataWithCopy
-	// we are lookinfor a map[string]interface{} which
+	// we are lookinfor a map[string]any which
 	// contains a "keys" field of type []string
-	// or a "key_info" field of type map[string]interface{}
+	// or a "key_info" field of type map[string]any
 	if w.loc[currentLoc-3] != reflectwalk.Map ||
 		w.loc[currentLoc-2] != reflectwalk.MapValue {
 		return false
@@ -521,11 +521,11 @@ func (w *hashWalker) isElided() bool {
 		}
 	}
 
-	// a "key_info" field of type map[string]interface{} ?
+	// a "key_info" field of type map[string]any ?
 	if w.loc[currentLoc-1] == reflectwalk.Map &&
 		w.loc[currentLoc] == reflectwalk.MapValue &&
 		k == "key_info" {
-		_, vOk := v.Interface().(map[string]interface{})
+		_, vOk := v.Interface().(map[string]any)
 		if vOk {
 			return true
 		}

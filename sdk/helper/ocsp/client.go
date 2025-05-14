@@ -35,7 +35,7 @@ import (
 // set to ocspModeFailClosed for fail closed mode
 type FailOpenMode uint32
 
-type requestFunc func(method, urlStr string, body interface{}) (*retryablehttp.Request, error)
+type requestFunc func(method, urlStr string, body any) (*retryablehttp.Request, error)
 
 type clientInterface interface {
 	Do(req *retryablehttp.Request) (*http.Response, error)
@@ -786,7 +786,7 @@ func (c *Client) extractOCSPCacheResponseValue(cacheValue *ocspCachedResponse, s
 func (c *Client) writeOCSPCache(ctx context.Context, storage logical.Storage) error {
 	c.Logger().Debug("writing OCSP Response cache")
 	t := time.Now()
-	m := make(map[string][]interface{})
+	m := make(map[string][]any)
 	keys := c.ocspResponseCache.Keys()
 	if len(keys) > persistedCacheSize {
 		keys = keys[:persistedCacheSize]
@@ -802,7 +802,7 @@ func (c *Client) writeOCSPCache(ctx context.Context, storage logical.Storage) er
 				if err != nil {
 					return err
 				}
-				m[cacheKeyInBase64] = []interface{}{entry.status, entry.time, entry.producedAt, entry.thisUpdate, entry.nextUpdate}
+				m[cacheKeyInBase64] = []any{entry.status, entry.time, entry.producedAt, entry.thisUpdate, entry.nextUpdate}
 			}
 		}
 	}
@@ -829,7 +829,7 @@ func (c *Client) readOCSPCache(ctx context.Context, storage logical.Storage) err
 	if entry == nil {
 		return nil
 	}
-	var untypedCache map[string][]interface{}
+	var untypedCache map[string][]any
 
 	err = jsonutil.DecodeJSON(entry.Value, &untypedCache)
 	if err != nil {

@@ -37,7 +37,7 @@ func TestIdentityStore_Groups_AddByNameEntityUpdate(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":              groupName,
 			"member_entity_ids": expectedMemberEntityIDs,
 		},
@@ -50,7 +50,7 @@ func TestIdentityStore_Groups_AddByNameEntityUpdate(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":              groupName,
 			"member_entity_ids": []string{},
 		},
@@ -83,7 +83,7 @@ func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": "group1",
 		},
 	})
@@ -99,7 +99,7 @@ func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":             "group2",
 			"policies":         "default",
 			"member_group_ids": expectedMemberGroupIDs,
@@ -113,7 +113,7 @@ func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group/name/group2",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": "default,another-policy",
 		},
 	})
@@ -143,7 +143,7 @@ func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": "testgroup",
 		},
 	})
@@ -206,7 +206,7 @@ func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
 	resp, err := i.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": "child",
 		},
 	})
@@ -219,7 +219,7 @@ func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":             "parent",
 			"member_group_ids": []string{childGroupID},
 		},
@@ -245,7 +245,7 @@ func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group/name/parent",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"member_group_ids": []string{},
 		},
 	})
@@ -277,7 +277,7 @@ func TestIdentityStore_CaseInsensitiveGroupName(t *testing.T) {
 	resp, err := i.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": testGroupName,
 		},
 	})
@@ -373,7 +373,7 @@ func TestIdentityStore_GroupByName(t *testing.T) {
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group/name/testgroupname",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"metadata": groupMetadata,
 		},
 	})
@@ -463,7 +463,7 @@ func TestIdentityStore_Groups_TypeMembershipAdditions(t *testing.T) {
 	groupReq := &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type":              "external",
 			"member_entity_ids": "sampleentityid",
 		},
@@ -477,7 +477,7 @@ func TestIdentityStore_Groups_TypeMembershipAdditions(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 
-	groupReq.Data = map[string]interface{}{
+	groupReq.Data = map[string]any{
 		"type":             "external",
 		"member_group_ids": "samplegroupid",
 	}
@@ -508,7 +508,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 	}
 	internalGroupID := resp.Data["id"].(string)
 
-	groupReq.Data = map[string]interface{}{
+	groupReq.Data = map[string]any{
 		"type": "external",
 	}
 	resp, err = i.HandleRequest(ctx, groupReq)
@@ -518,7 +518,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 	externalGroupID := resp.Data["id"].(string)
 
 	// Try to mark internal group as external
-	groupReq.Data = map[string]interface{}{
+	groupReq.Data = map[string]any{
 		"type": "external",
 	}
 	groupReq.Path = "group/id/" + internalGroupID
@@ -531,7 +531,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 	}
 
 	// Try to mark internal group as external
-	groupReq.Data = map[string]interface{}{
+	groupReq.Data = map[string]any{
 		"type": "internal",
 	}
 	groupReq.Path = "group/id/" + externalGroupID
@@ -679,7 +679,7 @@ func TestIdentityStore_GroupsCreateUpdate(t *testing.T) {
 	entityID2 := resp.Data["id"].(string)
 
 	// Create a group with the above created 2 entities as its members
-	groupData := map[string]interface{}{
+	groupData := map[string]any{
 		"policies":          "testpolicy1,testPolicy1 , testpolicy2",
 		"metadata":          []string{"testkey1=testvalue1", "testkey2=testvalue2"},
 		"member_entity_ids": []string{entityID1, entityID2},
@@ -723,7 +723,7 @@ func TestIdentityStore_GroupsCreateUpdate(t *testing.T) {
 		t.Fatalf("bad: resp: %#v, err: %v", resp, err)
 	}
 
-	expectedData := map[string]interface{}{
+	expectedData := map[string]any{
 		"policies": []string{"testpolicy1", "testpolicy2"},
 		"metadata": map[string]string{
 			"testkey1": "testvalue1",
@@ -785,7 +785,7 @@ func TestIdentityStore_GroupsCreateUpdateDuplicatePolicy(t *testing.T) {
 	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a group with the above created 2 entities as its members
-	groupData := map[string]interface{}{
+	groupData := map[string]any{
 		"policies": []string{"testpolicy1", "testpolicy2"},
 		"metadata": []string{"testkey1=testvalue1", "testkey2=testvalue2"},
 	}
@@ -815,7 +815,7 @@ func TestIdentityStore_GroupsCreateUpdateDuplicatePolicy(t *testing.T) {
 		t.Fatalf("bad: resp: %#v, err: %v", resp, err)
 	}
 
-	expectedData := map[string]interface{}{
+	expectedData := map[string]any{
 		"policies": []string{"testpolicy1", "testpolicy2"},
 		"metadata": map[string]string{
 			"testkey1": "testvalue1",
@@ -890,7 +890,7 @@ func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 	entityID2 := resp.Data["id"].(string)
 
 	// Create a group with the above created 2 entities as its members
-	groupData := map[string]interface{}{
+	groupData := map[string]any{
 		"policies":          "testpolicy1,testpolicy2",
 		"metadata":          []string{"testkey1=testvalue1", "testkey2=testvalue2"},
 		"member_entity_ids": []string{entityID1, entityID2},
@@ -934,7 +934,7 @@ func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 		t.Fatalf("bad: resp: %#v, err: %v", resp, err)
 	}
 
-	expectedData := map[string]interface{}{
+	expectedData := map[string]any{
 		"policies": []string{"testpolicy1", "testpolicy2"},
 		"metadata": map[string]string{
 			"testkey1": "testvalue1",
@@ -1012,7 +1012,7 @@ func TestIdentityStore_GroupMultiCase(t *testing.T) {
 	}
 
 	// Create 'build' group
-	buildGroupData := map[string]interface{}{
+	buildGroupData := map[string]any{
 		"name":     "build",
 		"policies": "buildpolicy",
 	}
@@ -1024,7 +1024,7 @@ func TestIdentityStore_GroupMultiCase(t *testing.T) {
 	buildGroupID := resp.Data["id"].(string)
 
 	// Create 'deploy' group
-	deployGroupData := map[string]interface{}{
+	deployGroupData := map[string]any{
 		"name":     "deploy",
 		"policies": "deploypolicy",
 	}
@@ -1050,7 +1050,7 @@ func TestIdentityStore_GroupMultiCase(t *testing.T) {
 	entityIDReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "group/id/" + buildGroupID,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"member_entity_ids": []string{entityID1},
 		},
 	}
@@ -1103,7 +1103,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	}
 
 	// Create 'kube' group
-	kubeGroupData := map[string]interface{}{
+	kubeGroupData := map[string]any{
 		"name":     "kube",
 		"policies": "kubepolicy",
 	}
@@ -1115,7 +1115,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	kubeGroupID := resp.Data["id"].(string)
 
 	// Create 'identity' group
-	identityGroupData := map[string]interface{}{
+	identityGroupData := map[string]any{
 		"name":     "identity",
 		"policies": "identitypolicy",
 	}
@@ -1127,7 +1127,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	identityGroupID := resp.Data["id"].(string)
 
 	// Create 'build' group
-	buildGroupData := map[string]interface{}{
+	buildGroupData := map[string]any{
 		"name":     "build",
 		"policies": "buildpolicy",
 	}
@@ -1139,7 +1139,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	buildGroupID := resp.Data["id"].(string)
 
 	// Create 'deploy' group
-	deployGroupData := map[string]interface{}{
+	deployGroupData := map[string]any{
 		"name":     "deploy",
 		"policies": "deploypolicy",
 	}
@@ -1152,7 +1152,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 
 	// Create 'vault' with 'kube' and 'identity' as member groups
 	vaultMemberGroupIDs := []string{kubeGroupID, identityGroupID}
-	vaultGroupData := map[string]interface{}{
+	vaultGroupData := map[string]any{
 		"name":             "vault",
 		"policies":         "vaultpolicy",
 		"member_group_ids": vaultMemberGroupIDs,
@@ -1166,7 +1166,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 
 	// Create 'ops' group with 'build' and 'deploy' as member groups
 	opsMemberGroupIDs := []string{buildGroupID, deployGroupID}
-	opsGroupData := map[string]interface{}{
+	opsGroupData := map[string]any{
 		"name":             "ops",
 		"policies":         "opspolicy",
 		"member_group_ids": opsMemberGroupIDs,
@@ -1180,7 +1180,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 
 	// Create 'eng' group with 'vault' and 'ops' as member groups
 	engMemberGroupIDs := []string{vaultGroupID, opsGroupID}
-	engGroupData := map[string]interface{}{
+	engGroupData := map[string]any{
 		"name":             "eng",
 		"policies":         "engpolicy",
 		"member_group_ids": engMemberGroupIDs,
@@ -1275,7 +1275,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	entityIDReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "group/id/" + kubeGroupID,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"member_entity_ids": []string{entityID1},
 		},
 	}
@@ -1293,7 +1293,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 
 	// Add the entity as a member of 'ops' group
 	entityIDReq.Path = "group/id/" + opsGroupID
-	entityIDReq.Data = map[string]interface{}{
+	entityIDReq.Data = map[string]any{
 		"member_entity_ids": []string{entityID2},
 	}
 	resp, err = is.HandleRequest(ctx, entityIDReq)
@@ -1310,7 +1310,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 
 	// Add the entity as a member of 'eng' group
 	entityIDReq.Path = "group/id/" + engGroupID
-	entityIDReq.Data = map[string]interface{}{
+	entityIDReq.Data = map[string]any{
 		"member_entity_ids": []string{entityID3},
 		"member_group_ids":  engMemberGroupIDs,
 	}
@@ -1407,7 +1407,7 @@ func TestIdentityStore_GroupCycleDetection(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": group1Name,
 		},
 	})
@@ -1420,7 +1420,7 @@ func TestIdentityStore_GroupCycleDetection(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": group2Name,
 		},
 	})
@@ -1433,7 +1433,7 @@ func TestIdentityStore_GroupCycleDetection(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": group3Name,
 		},
 	})
@@ -1446,7 +1446,7 @@ func TestIdentityStore_GroupCycleDetection(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":             group1Name,
 			"member_group_ids": []string{},
 		},
@@ -1458,7 +1458,7 @@ func TestIdentityStore_GroupCycleDetection(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":             group2Name,
 			"member_group_ids": []string{group3Id},
 		},
@@ -1470,7 +1470,7 @@ func TestIdentityStore_GroupCycleDetection(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":             group3Name,
 			"member_group_ids": []string{group1Id, group2Id},
 		},

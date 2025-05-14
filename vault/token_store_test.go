@@ -43,7 +43,7 @@ func TestTokenStore_CreateOrphanResponse(t *testing.T) {
 		Operation:   logical.UpdateOperation,
 		Path:        "auth/token/create-orphan",
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": "default",
 		},
 	})
@@ -77,7 +77,7 @@ func testTokenStore_CubbyholeDeletion(t *testing.T, c *Core, rootToken string) {
 			Operation:   logical.UpdateOperation,
 			Path:        "create",
 			ClientToken: rootToken,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"ttl": "600s",
 			},
 		}
@@ -89,7 +89,7 @@ func testTokenStore_CubbyholeDeletion(t *testing.T, c *Core, rootToken string) {
 			ClientToken: token,
 			Operation:   logical.UpdateOperation,
 			Path:        "cubbyhole/sample/data",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"foo": "bar",
 			},
 		})
@@ -145,7 +145,7 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, ns *namesp
 			Operation:   logical.UpdateOperation,
 			Path:        "create",
 			ClientToken: root,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"ttl": "600s",
 			},
 		}
@@ -164,7 +164,7 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, ns *namesp
 				ClientToken: invalidToken,
 				Operation:   logical.UpdateOperation,
 				Path:        "cubbyhole/sample/data",
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"foo": "bar",
 				},
 				Storage: view,
@@ -182,7 +182,7 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, ns *namesp
 			ClientToken: token,
 			Operation:   logical.UpdateOperation,
 			Path:        "cubbyhole/sample/data",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"foo": "bar",
 			},
 		})
@@ -815,7 +815,7 @@ func TestTokenStore_HandleRequest_LookupAccessor(t *testing.T) {
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "lookup-accessor")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"accessor": out.Accessor,
 	}
 
@@ -969,7 +969,7 @@ func TestTokenStore_HandleRequest_Renew_Revoke_Accessor(t *testing.T) {
 
 	lookupAccessor := func() int64 {
 		req := logical.TestRequest(t, logical.UpdateOperation, "lookup-accessor")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"accessor": out.Accessor,
 		}
 		resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
@@ -1000,7 +1000,7 @@ func TestTokenStore_HandleRequest_Renew_Revoke_Accessor(t *testing.T) {
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "renew-accessor")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"accessor": out.Accessor,
 	}
 	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
@@ -1020,7 +1020,7 @@ func TestTokenStore_HandleRequest_Renew_Revoke_Accessor(t *testing.T) {
 	}
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "revoke-accessor")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"accessor": out.Accessor,
 	}
 
@@ -1061,7 +1061,7 @@ func TestTokenStore_HandleRequest_Renew_Revoke_Accessor(t *testing.T) {
 	}
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "revoke-accessor")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"accessor": out.Accessor,
 	}
 
@@ -1478,7 +1478,7 @@ func TestTokenStore_Revoke_Leases(t *testing.T) {
 				TTL: 20 * time.Millisecond,
 			},
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"access_key": "xyz",
 			"secret_key": "abcd",
 		},
@@ -2135,7 +2135,7 @@ func TestTokenStore_HandleRequest_CreateToken_Root_RootChild_NoExpiry_Expiry(t *
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "create")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"ttl":      "5m",
 		"policies": "root",
 	}
@@ -2149,7 +2149,7 @@ func TestTokenStore_HandleRequest_CreateToken_Root_RootChild_NoExpiry_Expiry(t *
 	}
 
 	req.ClientToken = resp.Auth.ClientToken
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"ttl": "0",
 	}
 	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
@@ -2404,7 +2404,7 @@ func TestTokenStore_HandleRequest_Revoke(t *testing.T) {
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "revoke")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"token": "child",
 	}
 	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
@@ -2439,7 +2439,7 @@ func TestTokenStore_HandleRequest_Revoke(t *testing.T) {
 	testMakeServiceTokenViaBackend(t, ts, "child", "sub-child", "50s", []string{"foo"})
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "revoke")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"token": "child",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -2479,7 +2479,7 @@ func TestTokenStore_HandleRequest_RevokeOrphan(t *testing.T) {
 	ctx := namespace.RootContext(context.Background())
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "revoke-orphan")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"token": "child",
 	}
 	req.ClientToken = root
@@ -2541,7 +2541,7 @@ func TestTokenStore_HandleRequest_RevokeOrphan_NonRoot(t *testing.T) {
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "revoke-orphan")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"token": "child",
 	}
 	req.ClientToken = "child"
@@ -2580,7 +2580,7 @@ func testTokenStoreHandleRequestLookup(t *testing.T, batch, periodic bool) {
 	c, _, root := TestCoreUnsealed(t)
 	ts := c.tokenStore
 	req := logical.TestRequest(t, logical.UpdateOperation, "lookup")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"token": root,
 	}
 	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
@@ -2593,7 +2593,7 @@ func testTokenStoreHandleRequestLookup(t *testing.T, batch, periodic bool) {
 
 	internalRoot, _ := c.DecodeSSCToken(root)
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"id":               internalRoot,
 		"accessor":         resp.Data["accessor"].(string),
 		"policies":         []string{"root"},
@@ -2636,7 +2636,7 @@ func testTokenStoreHandleRequestLookup(t *testing.T, batch, periodic bool) {
 
 	// Test via POST
 	req = logical.TestRequest(t, logical.UpdateOperation, "lookup")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"token": expID,
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -2647,7 +2647,7 @@ func testTokenStoreHandleRequestLookup(t *testing.T, batch, periodic bool) {
 		t.Fatalf("bad: %#v", resp)
 	}
 
-	exp = map[string]interface{}{
+	exp = map[string]any{
 		"id":               expID,
 		"accessor":         resp.Data["accessor"],
 		"policies":         []string{"default", "foo"},
@@ -2691,7 +2691,7 @@ func testTokenStoreHandleRequestLookup(t *testing.T, batch, periodic bool) {
 
 	// Test last_renewal_time functionality
 	req = logical.TestRequest(t, logical.UpdateOperation, "renew")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"token": expID,
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -2738,7 +2738,7 @@ func TestTokenStore_HandleRequest_LookupSelf(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"id":               "client",
 		"accessor":         resp.Data["accessor"],
 		"policies":         []string{"default", "foo"},
@@ -2806,7 +2806,7 @@ func TestTokenStore_HandleRequest_Renew(t *testing.T) {
 
 	beforeRenew := time.Now()
 	req := logical.TestRequest(t, logical.UpdateOperation, "renew")
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"token":     root.ID,
 		"increment": "3600s",
 	}
@@ -2839,7 +2839,7 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAlias(t *testing.T) 
 	resp, err := i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":     "testentity",
 			"policies": []string{testPolicyName},
 		},
@@ -2857,13 +2857,13 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAlias(t *testing.T) 
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
-	tokenMountAccessor := resp.Data["token/"].(map[string]interface{})["accessor"].(string)
+	tokenMountAccessor := resp.Data["token/"].(map[string]any)["accessor"].(string)
 
 	// Create manually an entity alias
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           entityAliasName,
 			"canonical_id":   entityID,
 			"mount_accessor": tokenMountAccessor,
@@ -2878,7 +2878,7 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAlias(t *testing.T) 
 		Path:        "auth/token/roles/" + testRoleName,
 		ClientToken: root,
 		Operation:   logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"orphan":                 true,
 			"period":                 "72h",
 			"path_suffix":            "happenin",
@@ -2894,7 +2894,7 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAlias(t *testing.T) 
 		Path:        "auth/token/create/" + testRoleName,
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"entity_alias": entityAliasName,
 		},
 	})
@@ -2932,7 +2932,7 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAliasMixedCase(t *te
 	resp, err := i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":     "testentity",
 			"policies": []string{testPolicyName},
 		},
@@ -2950,13 +2950,13 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAliasMixedCase(t *te
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
-	tokenMountAccessor := resp.Data["token/"].(map[string]interface{})["accessor"].(string)
+	tokenMountAccessor := resp.Data["token/"].(map[string]any)["accessor"].(string)
 
 	// Create manually an entity alias
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           entityAliasName,
 			"canonical_id":   entityID,
 			"mount_accessor": tokenMountAccessor,
@@ -2971,7 +2971,7 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAliasMixedCase(t *te
 		Path:        "auth/token/roles/" + testRoleName,
 		ClientToken: root,
 		Operation:   logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"orphan":                 true,
 			"period":                 "72h",
 			"path_suffix":            "happenin",
@@ -2987,7 +2987,7 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAliasMixedCase(t *te
 		Path:        "auth/token/create/" + testRoleName,
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"entity_alias": entityAliasName,
 		},
 	})
@@ -3003,7 +3003,7 @@ func TestTokenStore_HandleRequest_CreateToken_ExistingEntityAliasMixedCase(t *te
 		Path:        "auth/token/create/" + testRoleName,
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"entity_alias": entityAliasNameLower,
 		},
 	})
@@ -3030,7 +3030,7 @@ func TestTokenStore_HandleRequest_CreateToken_NonExistingEntityAlias(t *testing.
 		Path:        "auth/token/roles/" + testRoleName,
 		ClientToken: root,
 		Operation:   logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"period":                 "72h",
 			"path_suffix":            "happenin",
 			"bound_cidrs":            []string{"0.0.0.0/0"},
@@ -3046,7 +3046,7 @@ func TestTokenStore_HandleRequest_CreateToken_NonExistingEntityAlias(t *testing.
 		Path:        "auth/token/create/" + testRoleName,
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"entity_alias": entityAliasName,
 		},
 	})
@@ -3067,7 +3067,7 @@ func TestTokenStore_HandleRequest_CreateToken_NonExistingEntityAlias(t *testing.
 	}
 
 	// Get the attached alias information
-	aliases := resp.Data["aliases"].([]interface{})
+	aliases := resp.Data["aliases"].([]any)
 	if len(aliases) != 1 {
 		t.Fatalf("expected only one alias but got %d; Aliases: %#v", len(aliases), aliases)
 	}
@@ -3117,7 +3117,7 @@ func TestTokenStore_HandleRequest_CreateToken_GlobPatternWildcardEntityAlias(t *
 				Path:        "auth/token/roles/" + testRoleName,
 				ClientToken: root,
 				Operation:   logical.CreateOperation,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"period":                 "72h",
 					"path_suffix":            "happening",
 					"bound_cidrs":            []string{"0.0.0.0/0"},
@@ -3133,7 +3133,7 @@ func TestTokenStore_HandleRequest_CreateToken_GlobPatternWildcardEntityAlias(t *
 				Path:        "auth/token/create/" + testRoleName,
 				Operation:   logical.UpdateOperation,
 				ClientToken: root,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"entity_alias": test.aliasName,
 				},
 			})
@@ -3154,7 +3154,7 @@ func TestTokenStore_HandleRequest_CreateToken_GlobPatternWildcardEntityAlias(t *
 			}
 
 			// Get the attached alias information
-			aliases := resp.Data["aliases"].([]interface{})
+			aliases := resp.Data["aliases"].([]any)
 			if len(aliases) != 1 {
 				t.Fatalf("expected only one alias but got %d; Aliases: %#v", len(aliases), aliases)
 			}
@@ -3183,7 +3183,7 @@ func TestTokenStore_HandleRequest_CreateToken_NotAllowedEntityAlias(t *testing.T
 	resp, err := i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":     "testentity",
 			"policies": []string{testPolicyName},
 		},
@@ -3201,13 +3201,13 @@ func TestTokenStore_HandleRequest_CreateToken_NotAllowedEntityAlias(t *testing.T
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
-	tokenMountAccessor := resp.Data["token/"].(map[string]interface{})["accessor"].(string)
+	tokenMountAccessor := resp.Data["token/"].(map[string]any)["accessor"].(string)
 
 	// Create manually an entity alias
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity-alias",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":           entityAliasName,
 			"canonical_id":   entityID,
 			"mount_accessor": tokenMountAccessor,
@@ -3222,7 +3222,7 @@ func TestTokenStore_HandleRequest_CreateToken_NotAllowedEntityAlias(t *testing.T
 		Path:        "auth/token/roles/" + testRoleName,
 		ClientToken: root,
 		Operation:   logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"period":                 "72h",
 			"allowed_entity_aliases": []string{"test1", "test2", "testentityaliasn"},
 		},
@@ -3235,7 +3235,7 @@ func TestTokenStore_HandleRequest_CreateToken_NotAllowedEntityAlias(t *testing.T
 		Path:        "auth/token/create/" + testRoleName,
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"entity_alias": entityAliasName,
 		},
 	})
@@ -3256,7 +3256,7 @@ func TestTokenStore_HandleRequest_CreateToken_NoRoleEntityAlias(t *testing.T) {
 		Path:        "auth/token/create",
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"entity_alias": entityAliasName,
 		},
 	})
@@ -3329,7 +3329,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 
 	// First test creation
 	req.Operation = logical.CreateOperation
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"orphan":           true,
 		"period":           "72h",
 		"allowed_policies": "test1,test2",
@@ -3349,7 +3349,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 	}
 
 	req.Operation = logical.ReadOperation
-	req.Data = map[string]interface{}{}
+	req.Data = map[string]any{}
 
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil || (resp != nil && resp.IsError()) {
@@ -3360,7 +3360,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatal("got a nil response")
 	}
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"name":                     "test",
 		"orphan":                   true,
 		"token_period":             int64(259200),
@@ -3395,7 +3395,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 	// Now test updating; this should be set to an UpdateOperation
 	// automatically due to the existence check
 	req.Operation = logical.CreateOperation
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"period":                  "79h",
 		"allowed_policies":        "test3",
 		"path_suffix":             "happenin",
@@ -3415,7 +3415,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 	}
 
 	req.Operation = logical.ReadOperation
-	req.Data = map[string]interface{}{}
+	req.Data = map[string]any{}
 
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil || (resp != nil && resp.IsError()) {
@@ -3425,7 +3425,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatal("got a nil response")
 	}
 
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"name":                     "test",
 		"orphan":                   true,
 		"period":                   int64(284400),
@@ -3458,7 +3458,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 
 	// Now set explicit max ttl and clear the period
 	req.Operation = logical.CreateOperation
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"explicit_max_ttl": "5",
 		"period":           "0s",
 	}
@@ -3468,7 +3468,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 	}
 
 	req.Operation = logical.ReadOperation
-	req.Data = map[string]interface{}{}
+	req.Data = map[string]any{}
 
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil || (resp != nil && resp.IsError()) {
@@ -3478,7 +3478,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatal("got a nil response")
 	}
 
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"name":                     "test",
 		"orphan":                   true,
 		"explicit_max_ttl":         int64(5),
@@ -3511,7 +3511,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 
 	// Update path_suffix and bound_cidrs with empty values
 	req.Operation = logical.CreateOperation
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"path_suffix":             "",
 		"bound_cidrs":             []string{},
 		"token_no_default_policy": false,
@@ -3522,7 +3522,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 	}
 
 	req.Operation = logical.ReadOperation
-	req.Data = map[string]interface{}{}
+	req.Data = map[string]any{}
 
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil || (resp != nil && resp.IsError()) {
@@ -3532,7 +3532,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatal("got a nil response")
 	}
 
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"name":                     "test",
 		"orphan":                   true,
 		"token_explicit_max_ttl":   int64(5),
@@ -3556,7 +3556,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 
 	req.Operation = logical.ListOperation
 	req.Path = "auth/token/roles"
-	req.Data = map[string]interface{}{}
+	req.Data = map[string]any{}
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
@@ -3610,7 +3610,7 @@ func TestTokenStore_RoleDisallowedPoliciesWithRoot(t *testing.T) {
 	roleReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "roles/role1",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"disallowed_policies": "root,testpolicy",
 		},
 		ClientToken: root,
@@ -3663,7 +3663,7 @@ func TestTokenStore_RoleDisallowedPolicies(t *testing.T) {
 	// Create roles with different disallowed_policies configuration
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/test1")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"disallowed_policies": "test1",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -3673,7 +3673,7 @@ func TestTokenStore_RoleDisallowedPolicies(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/test23")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"disallowed_policies": "test2,test3",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -3683,7 +3683,7 @@ func TestTokenStore_RoleDisallowedPolicies(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/test123")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"disallowed_policies": "test1,test2,test3",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -3694,7 +3694,7 @@ func TestTokenStore_RoleDisallowedPolicies(t *testing.T) {
 	// policy containing a glob character in the non-glob disallowed_policies field
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/testglobdisabled")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"disallowed_policies": "test*",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -3762,7 +3762,7 @@ func TestTokenStore_RoleDisallowedPolicies(t *testing.T) {
 	// Create a role to have 'default' policy disallowed
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/default")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"disallowed_policies": "default",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -3784,7 +3784,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"allowed_policies": "test1,test2",
 	}
 
@@ -3796,7 +3796,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 		t.Fatal("expected a nil response")
 	}
 
-	req.Data = map[string]interface{}{}
+	req.Data = map[string]any{}
 
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"foo"}
@@ -3814,7 +3814,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 	// test not glob matching when using allowed_policies instead of allowed_policies_glob
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/testnoglob")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"allowed_policies": "test*",
 	}
 
@@ -3848,7 +3848,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 	// When allowed_policies is blank, should fall back to a subset of the parent policies
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"allowed_policies": "",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -3874,7 +3874,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 	}
 	parentToken := resp.Auth.ClientToken
 
-	req.Data = map[string]interface{}{}
+	req.Data = map[string]any{}
 	req.ClientToken = parentToken
 
 	req.Path = "create/test"
@@ -3937,7 +3937,7 @@ func TestTokenStore_RoleDisallowedPoliciesGlob(t *testing.T) {
 	// Create roles with different disallowed_policies configuration
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/test1")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"disallowed_policies_glob": "test1",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -3947,7 +3947,7 @@ func TestTokenStore_RoleDisallowedPoliciesGlob(t *testing.T) {
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/testnot23")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"disallowed_policies_glob": "test2,test3*",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -4016,7 +4016,7 @@ func TestTokenStore_RoleDisallowedPoliciesGlob(t *testing.T) {
 	// Create a role to have 'default' policy disallowed
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/default")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"disallowed_policies_glob": "default",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
@@ -4039,7 +4039,7 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 	// test literal matching works in allowed_policies_glob
 	req := logical.TestRequest(t, logical.UpdateOperation, "roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"allowed_policies_glob": "test1,test2",
 	}
 
@@ -4051,7 +4051,7 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 		t.Fatal("expected a nil response")
 	}
 
-	req.Data = map[string]interface{}{}
+	req.Data = map[string]any{}
 
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"foo"}
@@ -4069,7 +4069,7 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 	// test glob matching in allowed_policies_glob
 	req = logical.TestRequest(t, logical.UpdateOperation, "roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"allowed_policies_glob": "test*",
 	}
 
@@ -4101,7 +4101,7 @@ func TestTokenStore_RoleOrphan(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"orphan": true,
 	}
 
@@ -4142,7 +4142,7 @@ func TestTokenStore_RolePathSuffix(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.CreateOperation, "roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"path_suffix": "happenin",
 	}
 
@@ -4185,7 +4185,7 @@ func TestTokenStore_RolePeriod(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/token/roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"period": 5,
 	}
 
@@ -4203,7 +4203,7 @@ func TestTokenStore_RolePeriod(t *testing.T) {
 	// increment works.
 	{
 		req.Path = "auth/token/create"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"policies": []string{"default"},
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4251,7 +4251,7 @@ func TestTokenStore_RolePeriod(t *testing.T) {
 		// max
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/renew-self"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"increment": 2,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4308,7 +4308,7 @@ func TestTokenStore_RolePeriod(t *testing.T) {
 
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/renew-self"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"increment": 2,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4341,7 +4341,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 	// Make sure we can't make it larger than the system/mount max; we should get a warning on role write and an error on token creation
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/token/roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"explicit_max_ttl": "100h",
 	}
 
@@ -4366,7 +4366,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 	// Reset to a good explicit max
 	req = logical.TestRequest(t, logical.UpdateOperation, "auth/token/roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"explicit_max_ttl": "10s",
 	}
 
@@ -4383,7 +4383,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 	// increase
 	{
 		req.Path = "auth/token/create"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"policies": []string{"default"},
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4470,7 +4470,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/renew-self"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"increment": 300,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4494,7 +4494,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/renew-self"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"increment": 300,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4518,7 +4518,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/renew-self"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"increment": 300,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4602,7 +4602,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"name":                     "test",
 			"orphan":                   false,
 			"period":                   int64(1),
@@ -4637,7 +4637,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 	// Put values in just the old locations, but through the API
 	{
 		req := logical.TestRequest(t, logical.UpdateOperation, "roles/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"explicit_max_ttl": 7200,
 			"token_type":       "default-service",
 			"period":           5,
@@ -4658,7 +4658,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"name":                     "test",
 			"orphan":                   false,
 			"period":                   int64(5),
@@ -4692,7 +4692,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 	// Same thing for just the new locations
 	{
 		req := logical.TestRequest(t, logical.UpdateOperation, "roles/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"token_explicit_max_ttl": 5200,
 			"token_type":             "default-service",
 			"token_period":           7,
@@ -4713,7 +4713,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"name":                     "test",
 			"orphan":                   false,
 			"period":                   int64(0),
@@ -4743,7 +4743,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 	// Put values in both locations
 	{
 		req := logical.TestRequest(t, logical.UpdateOperation, "roles/test")
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"token_explicit_max_ttl": 7200,
 			"explicit_max_ttl":       5200,
 			"token_type":             "service",
@@ -4770,7 +4770,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 
-		expected := map[string]interface{}{
+		expected := map[string]any{
 			"name":                     "test",
 			"orphan":                   false,
 			"period":                   int64(0),
@@ -4810,7 +4810,7 @@ func TestTokenStore_Periodic(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/token/roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"period": 5,
 	}
 
@@ -4858,7 +4858,7 @@ func TestTokenStore_Periodic(t *testing.T) {
 
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/renew-self"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"increment": 1,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4885,7 +4885,7 @@ func TestTokenStore_Periodic(t *testing.T) {
 		req.ClientToken = root
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/create/test"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"period": 5,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4919,7 +4919,7 @@ func TestTokenStore_Periodic(t *testing.T) {
 
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/renew-self"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"increment": 1,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -4980,7 +4980,7 @@ func TestTokenStore_NumUses(t *testing.T) {
 	// Create a test role with limited token_num_uses
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/token/roles/test-limited-uses")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"token_num_uses": roleNumUses,
 	}
 	resp, err := core.HandleRequest(namespace.RootContext(nil), req)
@@ -4993,7 +4993,7 @@ func TestTokenStore_NumUses(t *testing.T) {
 
 	// Create a test role with unlimited token_num_uses
 	req.Path = "auth/token/roles/test-unlimited-uses"
-	req.Data = map[string]interface{}{}
+	req.Data = map[string]any{}
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
@@ -5012,7 +5012,7 @@ func TestTokenStore_NumUses(t *testing.T) {
 
 	// second token, override num_uses with a lesser value, this should become the value
 	// applied to the token
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"num_uses": lesserNumUses,
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -5021,7 +5021,7 @@ func TestTokenStore_NumUses(t *testing.T) {
 
 	// third token, override num_uses with a greater value, the value
 	// applied to the token should come from the limited uses role
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"num_uses": greaterNumUses,
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -5031,7 +5031,7 @@ func TestTokenStore_NumUses(t *testing.T) {
 	// fourth token, override num_uses with a zero value, a num_uses value of zero
 	// has an internal meaning of unlimited so num_uses == 1 is actually less than
 	// num_uses == 0. In this case, the lesser value of the limited-uses role should be applied.
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"num_uses": 0,
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -5041,7 +5041,7 @@ func TestTokenStore_NumUses(t *testing.T) {
 	// fifth token, override num_uses with a value from a role that has unlimited num_uses. num_uses
 	// should be the specified num_uses parameter at the create endpoint
 	req.Path = "auth/token/create/test-unlimited-uses"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"num_uses": lesserNumUses,
 	}
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -5066,7 +5066,7 @@ func TestTokenStore_Periodic_ExplicitMax(t *testing.T) {
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "auth/token/roles/test")
 	req.ClientToken = root
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"period": 5,
 	}
 
@@ -5083,7 +5083,7 @@ func TestTokenStore_Periodic_ExplicitMax(t *testing.T) {
 		req.ClientToken = root
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/create"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"period":           5,
 			"explicit_max_ttl": 4,
 		}
@@ -5118,7 +5118,7 @@ func TestTokenStore_Periodic_ExplicitMax(t *testing.T) {
 
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/renew-self"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"increment": 76,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -5145,7 +5145,7 @@ func TestTokenStore_Periodic_ExplicitMax(t *testing.T) {
 		req.Path = "auth/token/roles/test"
 		req.ClientToken = root
 		req.Operation = logical.UpdateOperation
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"period":           5,
 			"explicit_max_ttl": 4,
 		}
@@ -5192,7 +5192,7 @@ func TestTokenStore_Periodic_ExplicitMax(t *testing.T) {
 
 		req.Operation = logical.UpdateOperation
 		req.Path = "auth/token/renew-self"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"increment": 1,
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -5228,7 +5228,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 
 	// Root token creates a token with desired policy. The created token
 	// should also have 'default' attached to it.
-	tokenData := map[string]interface{}{
+	tokenData := map[string]any{
 		"policies": []string{"policy1"},
 	}
 	tokenReq := &logical.Request{
@@ -5265,7 +5265,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 	// A non-root token which has 'default' policy attached and period explicitly
 	// set to its zero value requests for a child token. Child token should be
 	// successfully created and have 'default' policy attached.
-	tokenReq.Data = map[string]interface{}{
+	tokenReq.Data = map[string]any{
 		"period": "0s",
 	}
 	resp = testMakeTokenViaRequest(t, ts, tokenReq)
@@ -5275,7 +5275,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 
 	// A non-root token which has 'default' policy attached, request for a
 	// child token to not have 'default' policy while not sending a list
-	tokenReq.Data = map[string]interface{}{
+	tokenReq.Data = map[string]any{
 		"no_default_policy": true,
 	}
 	resp = testMakeTokenViaRequest(t, ts, tokenReq)
@@ -5285,7 +5285,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 
 	// In this case "default" shouldn't exist because we are not inheriting
 	// parent policies
-	tokenReq.Data = map[string]interface{}{
+	tokenReq.Data = map[string]any{
 		"policies":          []string{"policy1"},
 		"no_default_policy": true,
 	}
@@ -5314,7 +5314,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 		t.Fatalf("err: %v, resp: %v", err, resp)
 	}
 	tokenReq.Path = "create/role1"
-	tokenReq.Data = map[string]interface{}{
+	tokenReq.Data = map[string]any{
 		"policies": []string{"policy1"},
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), tokenReq)
@@ -5329,7 +5329,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 	// tokens generated using that role should still have the 'default' policy
 	// attached to them.
 	roleReq.Operation = logical.UpdateOperation
-	roleReq.Data = map[string]interface{}{
+	roleReq.Data = map[string]any{
 		"allowed_policies": "policy1",
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), roleReq)
@@ -5346,7 +5346,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 	// tokens generated using that role should not have 'default' policy
 	// attached to them if disallowed_policies contains "default"
 	roleReq.Operation = logical.UpdateOperation
-	roleReq.Data = map[string]interface{}{
+	roleReq.Data = map[string]any{
 		"allowed_policies":    "policy1",
 		"disallowed_policies": "default",
 	}
@@ -5360,7 +5360,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 		t.Fatalf("bad: policies: expected: [policy1]; actual: %s", resp.Auth.Policies)
 	}
 
-	roleReq.Data = map[string]interface{}{
+	roleReq.Data = map[string]any{
 		"allowed_policies":    "",
 		"disallowed_policies": "default",
 	}
@@ -5375,7 +5375,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 	}
 
 	// Ensure that if default is in both allowed and disallowed, disallowed wins
-	roleReq.Data = map[string]interface{}{
+	roleReq.Data = map[string]any{
 		"allowed_policies":    "default",
 		"disallowed_policies": "default",
 	}
@@ -5402,7 +5402,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 		ClientToken: root,
 		Path:        "roles/role1",
 		Operation:   logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_policies":    "allowed1,allowed2",
 			"disallowed_policies": "disallowed1,disallowed2",
 		},
@@ -5416,7 +5416,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 		Path:        "create/role1",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": []string{"allowed1"},
 		},
 	}
@@ -5435,7 +5435,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 		Path:        "create/role1",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies":          []string{"allowed1"},
 			"no_default_policy": true,
 		},
@@ -5450,7 +5450,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 		t.Fatalf("bad: expected:%#v actual:%#v", expected, resp.Auth.Policies)
 	}
 
-	tokenReq.Data = map[string]interface{}{
+	tokenReq.Data = map[string]any{
 		"policies": []string{"disallowed1"},
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), tokenReq)
@@ -5459,7 +5459,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 	}
 
 	roleReq.Operation = logical.UpdateOperation
-	roleReq.Data = map[string]interface{}{
+	roleReq.Data = map[string]any{
 		"allowed_policies":    "allowed1,common",
 		"disallowed_policies": "disallowed1,common",
 	}
@@ -5468,7 +5468,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 		t.Fatalf("err: %v, resp: %v", err, resp)
 	}
 
-	tokenReq.Data = map[string]interface{}{
+	tokenReq.Data = map[string]any{
 		"policies": []string{"allowed1", "common"},
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), tokenReq)
@@ -5492,7 +5492,7 @@ func TestTokenStore_RevokeUseCountToken(t *testing.T) {
 		Path:        "create",
 		ClientToken: root.ID,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"num_uses": 1,
 		},
 	}
@@ -5671,7 +5671,7 @@ func TestTokenStore_HandleTidyCase1(t *testing.T) {
 			Operation:   logical.UpdateOperation,
 			Path:        "create",
 			ClientToken: root,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"policies": []string{"policy1"},
 			},
 		}
@@ -5797,7 +5797,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 			Operation:   logical.UpdateOperation,
 			Path:        "create",
 			ClientToken: root,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"policies": []string{"policy1"},
 			},
 		}
@@ -5809,7 +5809,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 			Operation:   logical.UpdateOperation,
 			Path:        "create",
 			ClientToken: tut,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"policies": []string{"policy1"},
 			},
 		}
@@ -5902,7 +5902,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 	req := logical.TestRequest(t, logical.UpdateOperation, "lookup-accessor")
 
 	for _, accessor := range keys {
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"accessor": accessor,
 		}
 
@@ -6086,7 +6086,7 @@ func TestTokenStore_Batch_CannotCreateChildren(t *testing.T) {
 		Path:        "create",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": []string{"policy1"},
 			"type":     "batch",
 		},
@@ -6114,7 +6114,7 @@ func TestTokenStore_Batch_CannotRevoke(t *testing.T) {
 		Path:        "create",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": []string{"policy1"},
 			"type":     "batch",
 		},
@@ -6146,7 +6146,7 @@ func TestTokenStore_Batch_NoCubbyhole(t *testing.T) {
 		Path:        "create",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"policies": []string{"policy1"},
 			"type":     "batch",
 		},
@@ -6201,7 +6201,7 @@ func TestTokenStore_TokenID(t *testing.T) {
 			ClientToken: root,
 			Path:        "create",
 			Operation:   logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"id": "foobar",
 			},
 		})
@@ -6225,7 +6225,7 @@ func TestTokenStore_TokenID(t *testing.T) {
 			ClientToken: initToken,
 			Path:        "create",
 			Operation:   logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"id": "hvs.foobar",
 			},
 		})
@@ -6245,7 +6245,7 @@ func TestTokenStore_TokenID(t *testing.T) {
 			ClientToken: root,
 			Path:        "create",
 			Operation:   logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"id": "foobar.baz",
 			},
 		})

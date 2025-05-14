@@ -96,7 +96,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/approle/role/test1", addConstraints(!bindSecretID, map[string]interface{}{
+	_, err = client.Logical().Write("auth/approle/role/test1", addConstraints(!bindSecretID, map[string]any{
 		"bind_secret_id": bindSecretID,
 		"token_ttl":      "6s",
 		"token_max_ttl":  "10s",
@@ -126,7 +126,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 	}
 	roleID1 := resp.Data["role_id"].(string)
 
-	_, err = client.Logical().Write("auth/approle/role/test2", addConstraints(!bindSecretID, map[string]interface{}{
+	_, err = client.Logical().Write("auth/approle/role/test2", addConstraints(!bindSecretID, map[string]any{
 		"bind_secret_id": bindSecretID,
 		"token_ttl":      "6s",
 		"token_max_ttl":  "10s",
@@ -202,7 +202,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 			logger.Trace("wrote secret_id_file_path with wrong-secret", "path", secretFromAgent)
 		}
 	}
-	conf := map[string]interface{}{
+	conf := map[string]any{
 		"role_id_file_path":   role,
 		"secret_id_file_path": secretFromAgent,
 	}
@@ -239,7 +239,7 @@ func testAppRoleEndToEnd(t *testing.T, removeSecretIDFile bool, bindSecretID boo
 
 	config := &sink.SinkConfig{
 		Logger: logger.Named("sink.file"),
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"path": out,
 		},
 	}
@@ -436,7 +436,7 @@ func TestAppRoleLongRoleName(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write(fmt.Sprintf("auth/approle/role/%s", approleName), map[string]interface{}{
+	_, err = client.Logical().Write(fmt.Sprintf("auth/approle/role/%s", approleName), map[string]any{
 		"token_ttl":     "6s",
 		"token_max_ttl": "10s",
 	})
@@ -502,7 +502,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/approle/role/test1", addConstraints(!bindSecretID, map[string]interface{}{
+	_, err = client.Logical().Write("auth/approle/role/test1", addConstraints(!bindSecretID, map[string]any{
 		"bind_secret_id": bindSecretID,
 		"token_ttl":      "6s",
 		"token_max_ttl":  "10s",
@@ -590,7 +590,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 			logger.Trace("wrote secret_id_file_path with wrong-secret", "path", secretFromAgent)
 		}
 	}
-	conf := map[string]interface{}{
+	conf := map[string]any{
 		"role_id_file_path":                   role,
 		"secret_id_file_path":                 secretFromAgent,
 		"secret_id_response_wrapping_path":    "auth/approle/role/test1/secret-id",
@@ -627,7 +627,7 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 
 	config := &sink.SinkConfig{
 		Logger: logger.Named("sink.file"),
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"path": out,
 		},
 	}
@@ -793,10 +793,10 @@ func testAppRoleWithWrapping(t *testing.T, bindSecretID bool, secretIDLess bool,
 	}
 }
 
-func addConstraints(add bool, cfg map[string]interface{}) map[string]interface{} {
+func addConstraints(add bool, cfg map[string]any) map[string]any {
 	if add {
 		// extraConstraints to add when bind_secret_id=false (otherwise Vault would fail with: "at least one constraint should be enabled on the role")
-		extraConstraints := map[string]interface{}{
+		extraConstraints := map[string]any{
 			"secret_id_bound_cidrs": "127.0.0.1/32",
 			"token_bound_cidrs":     "127.0.0.1/32",
 		}

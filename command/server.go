@@ -719,7 +719,7 @@ type quiescenceSink struct {
 	t *time.Timer
 }
 
-func (q quiescenceSink) Accept(name string, level hclog.Level, msg string, args ...interface{}) {
+func (q quiescenceSink) Accept(name string, level hclog.Level, msg string, args ...any) {
 	q.t.Reset(100 * time.Millisecond)
 }
 
@@ -1750,7 +1750,7 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 			Operation:   logical.UpdateOperation,
 			ClientToken: init.RootToken,
 			Path:        "auth/token/create",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"id":                coreConfig.DevToken,
 				"policies":          []string{"root"},
 				"no_parent":         true,
@@ -1798,7 +1798,7 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 		Operation:   logical.UpdateOperation,
 		ClientToken: init.RootToken,
 		Path:        "sys/mounts/secret",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type":        "kv",
 			"path":        "secret/",
 			"description": "key/value secret storage",
@@ -1896,7 +1896,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 			Operation:   logical.UpdateOperation,
 			ClientToken: testCluster.RootToken,
 			Path:        "auth/token/create",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"id":                base.DevToken,
 				"policies":          []string{"root"},
 				"no_parent":         true,
@@ -2073,7 +2073,7 @@ func (c *ServerCommand) addPlugin(path, token string, core *vault.Core) error {
 		Operation:   logical.UpdateOperation,
 		ClientToken: token,
 		Path:        fmt.Sprintf("sys/plugins/catalog/%s", name),
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"sha256":  sha256sum,
 			"command": name,
 		},
@@ -2844,34 +2844,34 @@ type grpclogFaker struct {
 	log    bool
 }
 
-func (g *grpclogFaker) Fatal(args ...interface{}) {
+func (g *grpclogFaker) Fatal(args ...any) {
 	g.logger.Error(fmt.Sprint(args...))
 	os.Exit(1)
 }
 
-func (g *grpclogFaker) Fatalf(format string, args ...interface{}) {
+func (g *grpclogFaker) Fatalf(format string, args ...any) {
 	g.logger.Error(fmt.Sprintf(format, args...))
 	os.Exit(1)
 }
 
-func (g *grpclogFaker) Fatalln(args ...interface{}) {
+func (g *grpclogFaker) Fatalln(args ...any) {
 	g.logger.Error(fmt.Sprintln(args...))
 	os.Exit(1)
 }
 
-func (g *grpclogFaker) Print(args ...interface{}) {
+func (g *grpclogFaker) Print(args ...any) {
 	if g.log && g.logger.IsDebug() {
 		g.logger.Debug(fmt.Sprint(args...))
 	}
 }
 
-func (g *grpclogFaker) Printf(format string, args ...interface{}) {
+func (g *grpclogFaker) Printf(format string, args ...any) {
 	if g.log && g.logger.IsDebug() {
 		g.logger.Debug(fmt.Sprintf(format, args...))
 	}
 }
 
-func (g *grpclogFaker) Println(args ...interface{}) {
+func (g *grpclogFaker) Println(args ...any) {
 	if g.log && g.logger.IsDebug() {
 		g.logger.Debug(fmt.Sprintln(args...))
 	}

@@ -110,7 +110,7 @@ func RunZLintContainer(t *testing.T, certificate string) []byte {
 func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ignored []string) {
 	b, s := pki.CreateBackendWithStorage(t)
 
-	resp, err := pki.CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	resp, err := pki.CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name":  "Root X1",
 		"country":      "US",
 		"organization": "Dadgarcorp",
@@ -121,7 +121,7 @@ func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ig
 	require.NoError(t, err)
 	rootCert := resp.Data["certificate"].(string)
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	output := RunZLintContainer(t, rootCert)
 
 	if err := json.Unmarshal(output, &parsed); err != nil {
@@ -129,7 +129,7 @@ func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ig
 	}
 
 	for key, rawValue := range parsed {
-		value := rawValue.(map[string]interface{})
+		value := rawValue.(map[string]any)
 		result, ok := value["result"]
 		if !ok || result == "NA" {
 			continue

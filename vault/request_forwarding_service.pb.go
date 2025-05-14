@@ -485,7 +485,7 @@ func file_vault_request_forwarding_service_proto_rawDescGZIP() []byte {
 }
 
 var file_vault_request_forwarding_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-var file_vault_request_forwarding_service_proto_goTypes = []interface{}{
+var file_vault_request_forwarding_service_proto_goTypes = []any{
 	(*EchoRequest)(nil),         // 0: vault.EchoRequest
 	(*EchoReply)(nil),           // 1: vault.EchoReply
 	(*NodeInformation)(nil),     // 2: vault.NodeInformation
@@ -513,7 +513,7 @@ func file_vault_request_forwarding_service_proto_init() {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_vault_request_forwarding_service_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_vault_request_forwarding_service_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*EchoRequest); i {
 			case 0:
 				return &v.state
@@ -525,7 +525,7 @@ func file_vault_request_forwarding_service_proto_init() {
 				return nil
 			}
 		}
-		file_vault_request_forwarding_service_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_vault_request_forwarding_service_proto_msgTypes[1].Exporter = func(v any, i int) any {
 			switch v := v.(*EchoReply); i {
 			case 0:
 				return &v.state
@@ -537,7 +537,7 @@ func file_vault_request_forwarding_service_proto_init() {
 				return nil
 			}
 		}
-		file_vault_request_forwarding_service_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+		file_vault_request_forwarding_service_proto_msgTypes[2].Exporter = func(v any, i int) any {
 			switch v := v.(*NodeInformation); i {
 			case 0:
 				return &v.state
@@ -549,7 +549,7 @@ func file_vault_request_forwarding_service_proto_init() {
 				return nil
 			}
 		}
-		file_vault_request_forwarding_service_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+		file_vault_request_forwarding_service_proto_msgTypes[3].Exporter = func(v any, i int) any {
 			switch v := v.(*ClientKey); i {
 			case 0:
 				return &v.state

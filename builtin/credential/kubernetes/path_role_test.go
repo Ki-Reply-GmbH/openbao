@@ -67,12 +67,12 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 
 func TestPath_Create(t *testing.T) {
 	testCases := map[string]struct {
-		data     map[string]interface{}
+		data     map[string]any
 		expected *roleStorageEntry
 		wantErr  error
 	}{
 		"default": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names":      "name",
 				"bound_service_account_namespaces": "namespace",
 				"policies":                         "test",
@@ -104,7 +104,7 @@ func TestPath_Create(t *testing.T) {
 			},
 		},
 		"alias_name_source_serviceaccount_name": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names":      "name",
 				"bound_service_account_namespaces": "namespace",
 				"policies":                         "test",
@@ -136,7 +136,7 @@ func TestPath_Create(t *testing.T) {
 			},
 		},
 		"namespace_selector": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names":              "name",
 				"bound_service_account_namespace_selector": validJSONSelector,
 				"policies":          "test",
@@ -168,7 +168,7 @@ func TestPath_Create(t *testing.T) {
 			},
 		},
 		"namespace_selector_with_namespaces": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names":              "name",
 				"bound_service_account_namespaces":         "namespace1,namespace2",
 				"bound_service_account_namespace_selector": validYAMLSelector,
@@ -201,7 +201,7 @@ func TestPath_Create(t *testing.T) {
 			},
 		},
 		"invalid_alias_name_source": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names":      "name",
 				"bound_service_account_namespaces": "namespace",
 				"policies":                         "test",
@@ -214,7 +214,7 @@ func TestPath_Create(t *testing.T) {
 			wantErr: errInvalidAliasNameSource,
 		},
 		"invalid_namespace_label_selector_in_json": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names":              "name",
 				"bound_service_account_namespace_selector": invalidJSONSelector,
 				"policies": "test",
@@ -226,7 +226,7 @@ func TestPath_Create(t *testing.T) {
 			wantErr: errors.New(`invalid "bound_service_account_namespace_selector" configured`),
 		},
 		"invalid_namespace_label_selector_in_yaml": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names":              "name",
 				"bound_service_account_namespace_selector": invalidYAMLSelector,
 				"policies": "test",
@@ -238,20 +238,20 @@ func TestPath_Create(t *testing.T) {
 			wantErr: errors.New(`invalid "bound_service_account_namespace_selector" configured`),
 		},
 		"no_service_account_names": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"policies": "test",
 			},
 			wantErr: errors.New(`"bound_service_account_names" can not be empty`),
 		},
 		"no_service_account_namespaces": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names": "name",
 				"policies":                    "test",
 			},
 			wantErr: errors.New(`"bound_service_account_namespaces" can not be empty if "bound_service_account_namespace_selector" is not set`),
 		},
 		"mixed_splat_values_names": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names":      "*, test",
 				"bound_service_account_namespaces": "*",
 				"policies":                         "test",
@@ -259,7 +259,7 @@ func TestPath_Create(t *testing.T) {
 			wantErr: errors.New(`can not mix "*" with values`),
 		},
 		"mixed_splat_values_namespaces": {
-			data: map[string]interface{}{
+			data: map[string]any{
 				"bound_service_account_names":      "*, test",
 				"bound_service_account_namespaces": "*",
 				"policies":                         "test",
@@ -315,7 +315,7 @@ func TestPath_Create(t *testing.T) {
 func TestPath_Read(t *testing.T) {
 	b, storage := getBackend(t)
 
-	configData := map[string]interface{}{
+	configData := map[string]any{
 		"bound_service_account_names":              "name",
 		"bound_service_account_namespaces":         "namespace",
 		"bound_service_account_namespace_selector": validJSONSelector,
@@ -326,7 +326,7 @@ func TestPath_Read(t *testing.T) {
 		"max_ttl":  "5s",
 	}
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"bound_service_account_names":              []string{"name"},
 		"bound_service_account_namespaces":         []string{"namespace"},
 		"bound_service_account_namespace_selector": validJSONSelector,
@@ -380,7 +380,7 @@ func TestPath_Read(t *testing.T) {
 func TestPath_Delete(t *testing.T) {
 	b, storage := getBackend(t)
 
-	configData := map[string]interface{}{
+	configData := map[string]any{
 		"bound_service_account_names":      "name",
 		"bound_service_account_namespaces": "namespace",
 		"policies":                         "test",
@@ -437,13 +437,13 @@ func TestPath_Delete(t *testing.T) {
 
 func TestPath_Update(t *testing.T) {
 	testCases := map[string]struct {
-		storageData map[string]interface{}
-		requestData map[string]interface{}
+		storageData map[string]any
+		requestData map[string]any
 		expected    *roleStorageEntry
 		wantErr     error
 	}{
 		"default": {
-			storageData: map[string]interface{}{
+			storageData: map[string]any{
 				"bound_service_account_names":      []string{"name"},
 				"bound_service_account_namespaces": []string{"namespace"},
 				"policies":                         []string{"test"},
@@ -453,7 +453,7 @@ func TestPath_Update(t *testing.T) {
 				"max_ttl":                          5 * time.Second,
 				"alias_name_source":                aliasNameSourceDefault,
 			},
-			requestData: map[string]interface{}{
+			requestData: map[string]any{
 				"alias_name_source": aliasNameSourceDefault,
 				"policies":          []string{"bar", "foo"},
 				"period":            "3s",
@@ -480,7 +480,7 @@ func TestPath_Update(t *testing.T) {
 			wantErr: nil,
 		},
 		"migrate-alias-name-source": {
-			storageData: map[string]interface{}{
+			storageData: map[string]any{
 				"bound_service_account_names":      []string{"name"},
 				"bound_service_account_namespaces": []string{"namespace"},
 				"policies":                         []string{"test"},
@@ -489,7 +489,7 @@ func TestPath_Update(t *testing.T) {
 				"num_uses":                         12,
 				"max_ttl":                          5 * time.Second,
 			},
-			requestData: map[string]interface{}{
+			requestData: map[string]any{
 				"alias_name_source": aliasNameSourceUnset,
 			},
 			expected: &roleStorageEntry{
@@ -514,32 +514,32 @@ func TestPath_Update(t *testing.T) {
 			wantErr: nil,
 		},
 		"invalid-alias-name-source": {
-			storageData: map[string]interface{}{
+			storageData: map[string]any{
 				"bound_service_account_names":      []string{"name"},
 				"bound_service_account_namespaces": []string{"namespace"},
 				"alias_name_source":                aliasNameSourceDefault,
 			},
-			requestData: map[string]interface{}{
+			requestData: map[string]any{
 				"alias_name_source": "_invalid_",
 			},
 			wantErr: errInvalidAliasNameSource,
 		},
 		"invalid-alias-name-source-in-storage": {
-			storageData: map[string]interface{}{
+			storageData: map[string]any{
 				"bound_service_account_names":      []string{"name"},
 				"bound_service_account_namespaces": []string{"namespace"},
 				"alias_name_source":                "_invalid_",
 			},
-			requestData: map[string]interface{}{},
+			requestData: map[string]any{},
 			wantErr:     errInvalidAliasNameSource,
 		},
 		"invalid-alias-name-source-migration": {
-			storageData: map[string]interface{}{
+			storageData: map[string]any{
 				"bound_service_account_names":      []string{"name"},
 				"bound_service_account_namespaces": []string{"namespace"},
 				"alias_name_source":                aliasNameSourceUnset,
 			},
-			requestData: map[string]interface{}{
+			requestData: map[string]any{
 				"alias_name_source": "_invalid_",
 			},
 			wantErr: errInvalidAliasNameSource,

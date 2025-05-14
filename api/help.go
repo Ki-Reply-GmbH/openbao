@@ -36,5 +36,5 @@ func (c *Client) HelpWithContext(ctx context.Context, path string) (*Help, error
 type Help struct {
 	Help    string                 `json:"help"`
 	SeeAlso []string               `json:"see_also"`
-	OpenAPI map[string]interface{} `json:"openapi"`
+	OpenAPI map[string]any `json:"openapi"`
 }

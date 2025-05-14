@@ -107,7 +107,7 @@ func SubtestACMECaddy(configTemplate string, enableEAB bool) func(*testing.T, *V
 		// Conditionally enable EAB and retrieve the key.
 		var eabID, eabKey string
 		if enableEAB {
-			err = pki.UpdateAcmeConfig(true, map[string]interface{}{
+			err = pki.UpdateAcmeConfig(true, map[string]any{
 				"eab_policy": "new-account-required",
 			})
 			require.NoError(t, err, "failed to configure EAB policy in PKI mount")
@@ -437,7 +437,7 @@ func SubtestACMECertbotEab(t *testing.T, cluster *VaultPkiCluster) {
 	pki, err := cluster.CreateAcmeMount(mountName)
 	require.NoError(t, err, "failed setting up acme mount")
 
-	err = pki.UpdateAcmeConfig(true, map[string]interface{}{
+	err = pki.UpdateAcmeConfig(true, map[string]any{
 		"eab_policy": "new-account-required",
 	})
 	require.NoError(t, err)
@@ -611,7 +611,7 @@ func SubtestACMEIPAndDNS(t *testing.T, cluster *VaultPkiCluster) {
 	require.NoError(t, err, "failed to update vault host files")
 
 	// Perform an ACME lifecycle with an order that contains both an IP and a DNS name identifier
-	err = pki.UpdateRole("ip-dns-sans", map[string]interface{}{
+	err = pki.UpdateRole("ip-dns-sans", map[string]any{
 		"key_type":                    "any",
 		"allowed_domains":             "dadgarcorp.com",
 		"allow_subdomains":            true,
@@ -674,7 +674,7 @@ func SubtestACMEIPAndDNS(t *testing.T, cluster *VaultPkiCluster) {
 	require.Equal(t, hostname, acmeCert.Subject.CommonName)
 
 	// Perform an ACME lifecycle with an order that contains just an IP identifier
-	err = pki.UpdateRole("ip-sans", map[string]interface{}{
+	err = pki.UpdateRole("ip-sans", map[string]any{
 		"key_type":            "any",
 		"use_csr_common_name": false,
 		"require_cn":          false,
@@ -832,7 +832,7 @@ func SubtestACMEWildcardDNS(t *testing.T, cluster *VaultPkiCluster) {
 	pki.RemoveDNSRecordsForDomain(hostname)
 
 	// Redo validation with a role this time.
-	err = pki.UpdateRole("wildcard", map[string]interface{}{
+	err = pki.UpdateRole("wildcard", map[string]any{
 		"key_type":                    "any",
 		"allowed_domains":             "go-lang-wildcard-client.dadgarcorp.com",
 		"allow_subdomains":            true,
@@ -910,7 +910,7 @@ func SubtestACMEPreventsICADNS(t *testing.T, cluster *VaultPkiCluster) {
 	pki.RemoveDNSRecordsForDomain(hostname)
 
 	// Redo validation with a role this time.
-	err = pki.UpdateRole("ica", map[string]interface{}{
+	err = pki.UpdateRole("ica", map[string]any{
 		"key_type":                    "any",
 		"allowed_domains":             "go-lang-intermediate-ca-cert.dadgarcorp.com",
 		"allow_subdomains":            true,
@@ -942,7 +942,7 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 	nonActiveNode := nonActiveNodes[0]
 
 	basePath := fmt.Sprintf("https://%s/v1/%s", nonActiveNode.HostPort, pki.mount)
-	err = pki.UpdateClusterConfig(map[string]interface{}{
+	err = pki.UpdateClusterConfig(map[string]any{
 		"path": basePath,
 	})
 

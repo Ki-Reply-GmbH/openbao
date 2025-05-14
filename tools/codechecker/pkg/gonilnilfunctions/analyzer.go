@@ -18,7 +18,7 @@ var Analyzer = &analysis.Analyzer{
 	Name:       "gonilnilfunctions",
 	Doc:        "Verifies that every go function with error as one of its two return types cannot return nil, nil",
 	Run:        run,
-	ResultType: reflect.TypeOf((interface{})(nil)),
+	ResultType: reflect.TypeOf((any)(nil)),
 	Requires:   []*analysis.Analyzer{inspect.Analyzer},
 }
 
@@ -73,7 +73,7 @@ func getNestedReturnStatements(s ast.Stmt, returns []*ast.ReturnStmt) []*ast.Ret
 
 // run runs the analysis, failing for functions whose signatures contain two results including one error
 // (e.g. (something, error)), that contain multiple nil returns
-func run(pass *analysis.Pass) (interface{}, error) {
+func run(pass *analysis.Pass) (any, error) {
 	inspector := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
 	nodeFilter := []ast.Node{
@@ -166,6 +166,6 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 	})
 
-	var success interface{}
+	var success any
 	return success, nil
 }

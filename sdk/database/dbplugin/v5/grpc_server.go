@@ -31,7 +31,7 @@ type gRPCServer struct {
 
 	// instances holds the multiplexed Databases
 	instances   map[string]Database
-	factoryFunc func() (interface{}, error)
+	factoryFunc func() (any, error)
 
 	sync.RWMutex
 }

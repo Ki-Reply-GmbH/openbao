@@ -24,7 +24,7 @@ func TestBackend_RoleCreate_DefaultUsernameTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	configData := map[string]interface{}{
+	configData := map[string]any{
 		"connection_uri":    connectionURI,
 		"username":          "guest",
 		"password":          "guest",
@@ -44,7 +44,7 @@ func TestBackend_RoleCreate_DefaultUsernameTemplate(t *testing.T) {
 		t.Fatal("expected a nil response")
 	}
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"name": "foo",
 		"tags": "bar",
 	}
@@ -100,7 +100,7 @@ func TestBackend_RoleCreate_CustomUsernameTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	configData := map[string]interface{}{
+	configData := map[string]any{
 		"connection_uri":    connectionURI,
 		"username":          "guest",
 		"password":          "guest",
@@ -120,7 +120,7 @@ func TestBackend_RoleCreate_CustomUsernameTemplate(t *testing.T) {
 		t.Fatal("expected a nil response")
 	}
 
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"name": "foo",
 		"tags": "bar",
 	}

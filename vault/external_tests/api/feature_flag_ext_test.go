@@ -41,7 +41,7 @@ func TestFeatureFlags(t *testing.T) {
 		Transport: transport,
 	}
 
-	callApi := func() map[string]interface{} {
+	callApi := func() map[string]any {
 		// Use the normal API client to construct the URL
 		req := client.NewRequest("GET", "/v1/sys/internal/ui/feature-flags")
 		httpReq, err := req.ToHTTP()
@@ -59,7 +59,7 @@ func TestFeatureFlags(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		httpResp := make(map[string]interface{})
+		httpResp := make(map[string]any)
 		err = json.Unmarshal(httpRespBody, &httpResp)
 		if err != nil {
 			t.Fatal(err)
@@ -87,7 +87,7 @@ func TestFeatureFlags(t *testing.T) {
 	if !ok {
 		t.Fatal("Missing 'feature_flags' in response")
 	}
-	flagList := featureFlags.([]interface{})
+	flagList := featureFlags.([]any)
 	if len(flagList) != 1 {
 		t.Fatalf("Bad length for 'feature_flags': %v", flagList)
 	}

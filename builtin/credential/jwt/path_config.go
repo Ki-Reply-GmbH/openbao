@@ -271,7 +271,7 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 	}
 
 	// Omit sensitive keys from provider-specific config
-	providerConfig := make(map[string]interface{})
+	providerConfig := make(map[string]any)
 	if provider != nil {
 		for k, v := range config.ProviderConfig {
 			providerConfig[k] = v
@@ -283,7 +283,7 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"oidc_discovery_url":     config.OIDCDiscoveryURL,
 			"oidc_discovery_ca_pem":  config.OIDCDiscoveryCAPEM,
 			"oidc_client_id":         config.OIDCClientID,
@@ -326,7 +326,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		JWTValidationPubKeys: d.Get("jwt_validation_pubkeys").([]string),
 		JWTSupportedAlgs:     d.Get("jwt_supported_algs").([]string),
 		BoundIssuer:          d.Get("bound_issuer").(string),
-		ProviderConfig:       d.Get("provider_config").(map[string]interface{}),
+		ProviderConfig:       d.Get("provider_config").(map[string]any),
 	}
 
 	skipJwksValidation := d.Get("skip_jwks_validation").(bool)
@@ -543,7 +543,7 @@ type jwtConfig struct {
 	JWTSupportedAlgs     []string               `json:"jwt_supported_algs"`
 	BoundIssuer          string                 `json:"bound_issuer"`
 	DefaultRole          string                 `json:"default_role"`
-	ProviderConfig       map[string]interface{} `json:"provider_config"`
+	ProviderConfig       map[string]any `json:"provider_config"`
 	NamespaceInState     bool                   `json:"namespace_in_state"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`

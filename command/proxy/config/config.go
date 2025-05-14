@@ -74,7 +74,7 @@ type Vault struct {
 	CACert           string      `hcl:"ca_cert"`
 	CAPath           string      `hcl:"ca_path"`
 	TLSSkipVerify    bool        `hcl:"-"`
-	TLSSkipVerifyRaw interface{} `hcl:"tls_skip_verify"`
+	TLSSkipVerifyRaw any `hcl:"tls_skip_verify"`
 	ClientCert       string      `hcl:"client_cert"`
 	ClientKey        string      `hcl:"client_key"`
 	TLSServerName    string      `hcl:"tls_server_name"`
@@ -93,7 +93,7 @@ type transportDialer interface {
 
 // APIProxy contains any configuration needed for proxy mode
 type APIProxy struct {
-	UseAutoAuthTokenRaw interface{} `hcl:"use_auto_auth_token"`
+	UseAutoAuthTokenRaw any `hcl:"use_auto_auth_token"`
 	UseAutoAuthToken    bool        `hcl:"-"`
 	ForceAutoAuthToken  bool        `hcl:"-"`
 }
@@ -118,28 +118,28 @@ type AutoAuth struct {
 type Method struct {
 	Type          string
 	MountPath     string        `hcl:"mount_path"`
-	WrapTTLRaw    interface{}   `hcl:"wrap_ttl"`
+	WrapTTLRaw    any   `hcl:"wrap_ttl"`
 	WrapTTL       time.Duration `hcl:"-"`
-	MinBackoffRaw interface{}   `hcl:"min_backoff"`
+	MinBackoffRaw any   `hcl:"min_backoff"`
 	MinBackoff    time.Duration `hcl:"-"`
-	MaxBackoffRaw interface{}   `hcl:"max_backoff"`
+	MaxBackoffRaw any   `hcl:"max_backoff"`
 	MaxBackoff    time.Duration `hcl:"-"`
 	Namespace     string        `hcl:"namespace"`
 	ExitOnError   bool          `hcl:"exit_on_err"`
-	Config        map[string]interface{}
+	Config        map[string]any
 }
 
 // Sink defines a location to write the authenticated token
 type Sink struct {
 	Type       string
-	WrapTTLRaw interface{}   `hcl:"wrap_ttl"`
+	WrapTTLRaw any   `hcl:"wrap_ttl"`
 	WrapTTL    time.Duration `hcl:"-"`
 	DHType     string        `hcl:"dh_type"`
 	DeriveKey  bool          `hcl:"derive_key"`
 	DHPath     string        `hcl:"dh_path"`
 	AAD        string        `hcl:"aad"`
 	AADEnvVar  string        `hcl:"aad_env_var"`
-	Config     map[string]interface{}
+	Config     map[string]any
 }
 
 func NewConfig() *Config {

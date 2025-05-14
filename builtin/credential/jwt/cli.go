@@ -208,7 +208,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	}
 
 	if callbackMode != "client" {
-		data := map[string]interface{}{
+		data := map[string]any{
 			"state":        state,
 			"client_nonce": clientNonce,
 		}
@@ -304,7 +304,7 @@ func fetchAuthURL(c *api.Client, role, mount, callbackPort string, callbackMetho
 	}
 
 	redirectURI := fmt.Sprintf("%s://%s:%s/oidc/callback", callbackMethod, callbackHost, callbackPort)
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role":         role,
 		"redirect_uri": redirectURI,
 		"client_nonce": clientNonce,

@@ -38,7 +38,7 @@ func TestDynamicCredsRead_failures(t *testing.T) {
 			Storage:     storage,
 			DisplayName: "token-dispname",
 		}
-		data := dynamicRoleFieldData(map[string]interface{}{
+		data := dynamicRoleFieldData(map[string]any{
 			"name": roleName,
 		})
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -78,7 +78,7 @@ func TestDynamicCredsRead_failures(t *testing.T) {
 			Storage:     storage,
 			DisplayName: "token-dispname",
 		}
-		data := dynamicRoleFieldData(map[string]interface{}{
+		data := dynamicRoleFieldData(map[string]any{
 			"name": roleName,
 		})
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -118,7 +118,7 @@ func TestDynamicCredsRead_failures(t *testing.T) {
 			Storage:     storage,
 			DisplayName: "token-dispname",
 		}
-		data := dynamicRoleFieldData(map[string]interface{}{
+		data := dynamicRoleFieldData(map[string]any{
 			"name": roleName,
 		})
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -164,7 +164,7 @@ func TestDynamicCredsRead_failures(t *testing.T) {
 			Storage:     storage,
 			DisplayName: "token-dispname",
 		}
-		data := dynamicRoleFieldData(map[string]interface{}{
+		data := dynamicRoleFieldData(map[string]any{
 			"name": roleName,
 		})
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -195,7 +195,7 @@ func TestDynamicCredsRead_missing_role(t *testing.T) {
 		Storage:     storage,
 		DisplayName: "token-dispname",
 	}
-	data := dynamicRoleFieldData(map[string]interface{}{
+	data := dynamicRoleFieldData(map[string]any{
 		"name": roleName,
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -346,7 +346,7 @@ func TestDynamicCredsRead_success(t *testing.T) {
 				Storage:     storage,
 				DisplayName: test.reqDisplayName,
 			}
-			data := dynamicRoleFieldData(map[string]interface{}{
+			data := dynamicRoleFieldData(map[string]any{
 				"name": roleName,
 			})
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -386,7 +386,7 @@ func TestSecretCredsRenew(t *testing.T) {
 		"error getting role": {
 			req: &logical.Request{
 				Secret: &logical.Secret{
-					InternalData: map[string]interface{}{
+					InternalData: map[string]any{
 						"name":          roleName,
 						"deletion_ldif": ldifDeleteTemplate,
 					},
@@ -401,7 +401,7 @@ func TestSecretCredsRenew(t *testing.T) {
 		"no role found": {
 			req: &logical.Request{
 				Secret: &logical.Secret{
-					InternalData: map[string]interface{}{
+					InternalData: map[string]any{
 						"name":          roleName,
 						"deletion_ldif": ldifDeleteTemplate,
 					},
@@ -416,7 +416,7 @@ func TestSecretCredsRenew(t *testing.T) {
 		"happy path": {
 			req: &logical.Request{
 				Secret: &logical.Secret{
-					InternalData: map[string]interface{}{
+					InternalData: map[string]any{
 						"name":          roleName,
 						"deletion_ldif": ldifDeleteTemplate,
 						"template_data": dynamicTemplateData{
@@ -443,7 +443,7 @@ func TestSecretCredsRenew(t *testing.T) {
 			storageErr: nil,
 			expectedResp: &logical.Response{
 				Secret: &logical.Secret{
-					InternalData: map[string]interface{}{
+					InternalData: map[string]any{
 						"name":          roleName,
 						"deletion_ldif": ldifDeleteTemplate,
 						"template_data": dynamicTemplateData{
@@ -479,7 +479,7 @@ func TestSecretCredsRenew(t *testing.T) {
 			b := Backend(client)
 
 			test.req.Storage = storage
-			data := dynamicRoleFieldData(map[string]interface{}{
+			data := dynamicRoleFieldData(map[string]any{
 				"name": roleName,
 			})
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -516,7 +516,7 @@ func TestSecretCredsRevoke(t *testing.T) {
 		req := &logical.Request{
 			Storage: storage,
 			Secret: &logical.Secret{
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"deletion_ldif": ldifDeleteTemplate,
 				},
 			},
@@ -545,7 +545,7 @@ func TestSecretCredsRevoke(t *testing.T) {
 		req := &logical.Request{
 			Storage: storage,
 			Secret: &logical.Secret{
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"deletion_ldif": ldifDeleteTemplate,
 				},
 			},
@@ -578,7 +578,7 @@ func TestSecretCredsRevoke(t *testing.T) {
 		req := &logical.Request{
 			Storage: storage,
 			Secret: &logical.Secret{
-				InternalData: map[string]interface{}{},
+				InternalData: map[string]any{},
 			},
 		}
 		var data *framework.FieldData
@@ -609,7 +609,7 @@ func TestSecretCredsRevoke(t *testing.T) {
 		req := &logical.Request{
 			Storage: storage,
 			Secret: &logical.Secret{
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"deletion_ldif": "foo bar",
 				},
 			},
@@ -647,7 +647,7 @@ func TestSecretCredsRevoke(t *testing.T) {
 		req := &logical.Request{
 			Storage: storage,
 			Secret: &logical.Secret{
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"name":          "testrole",
 					"deletion_ldif": ldifDeleteTemplate,
 					"template_data": dynamicTemplateData{
@@ -696,7 +696,7 @@ func TestSecretCredsRevoke(t *testing.T) {
 		req := &logical.Request{
 			Storage: storage,
 			Secret: &logical.Secret{
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"name":          "testrole",
 					"deletion_ldif": ldifDeleteTemplate,
 					"template_data": dynamicTemplateData{
@@ -885,7 +885,7 @@ expirationTimeSeconds: ` + expSecondsStr,
 	}
 }
 
-func getStringT(t *testing.T, m map[string]interface{}, key string) string {
+func getStringT(t *testing.T, m map[string]any, key string) string {
 	t.Helper()
 
 	str, err := getString(m, key)
@@ -895,7 +895,7 @@ func getStringT(t *testing.T, m map[string]interface{}, key string) string {
 	return str
 }
 
-func getStringSlice(t *testing.T, m map[string]interface{}, key string) []string {
+func getStringSlice(t *testing.T, m map[string]any, key string) []string {
 	t.Helper()
 
 	rawSlice, ok := m[key]
@@ -908,7 +908,7 @@ func getStringSlice(t *testing.T, m map[string]interface{}, key string) []string
 		return strSlice
 	}
 
-	iSlice, ok := rawSlice.([]interface{})
+	iSlice, ok := rawSlice.([]any)
 	if !ok {
 		t.Fatalf("Unable to coerce key %s to a string slice: is a %T", key, rawSlice)
 	}

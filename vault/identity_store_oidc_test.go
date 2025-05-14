@@ -37,7 +37,7 @@ func TestOIDC_Path_OIDC_RoleNoKeyParameter(t *testing.T) {
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"the key parameter is required": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -54,14 +54,14 @@ func TestOIDC_Path_OIDC_RoleNilKeyEntry(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"cannot find key \"test-key\"": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -78,7 +78,7 @@ func TestOIDC_Path_OIDCRole_UpdateNoKey(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 			"rotation_period":  "2m",
 		},
@@ -89,7 +89,7 @@ func TestOIDC_Path_OIDCRole_UpdateNoKey(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 			"ttl": "1m",
 		},
@@ -101,7 +101,7 @@ func TestOIDC_Path_OIDCRole_UpdateNoKey(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role1",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"ttl": "2m",
 		},
 		Storage: storage,
@@ -115,7 +115,7 @@ func TestOIDC_Path_OIDCRole_UpdateNoKey(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"key":       "test-key",
 		"ttl":       int64(120),
 		"template":  "",
@@ -144,7 +144,7 @@ func TestOIDC_Path_OIDCRole_UpdateEmptyKey(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -155,7 +155,7 @@ func TestOIDC_Path_OIDCRole_UpdateEmptyKey(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role1",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "",
 		},
 		Storage: storage,
@@ -169,7 +169,7 @@ func TestOIDC_Path_OIDCRole_UpdateEmptyKey(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"key":       "test-key",
 		"ttl":       int64(86400),
 		"template":  "",
@@ -197,7 +197,7 @@ func TestOIDC_Path_OIDCRoleRole(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -211,7 +211,7 @@ func TestOIDC_Path_OIDCRoleRole(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"key":       "test-key",
 		"ttl":       int64(86400),
 		"template":  "",
@@ -225,7 +225,7 @@ func TestOIDC_Path_OIDCRoleRole(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role1",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"template":  "{\"some-key\":\"some-value\"}",
 			"ttl":       "2h",
 			"client_id": "my_custom_id",
@@ -241,7 +241,7 @@ func TestOIDC_Path_OIDCRoleRole(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"key":       "test-key",
 		"ttl":       int64(7200),
 		"template":  "{\"some-key\":\"some-value\"}",
@@ -285,7 +285,7 @@ func TestOIDC_Path_OIDCRole_InvalidTokenTTL(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": int64(60),
 		},
 		Storage: storage,
@@ -296,7 +296,7 @@ func TestOIDC_Path_OIDCRole_InvalidTokenTTL(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 			"ttl": int64(3600),
 		},
@@ -328,7 +328,7 @@ func TestOIDC_Path_OIDCRole(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_client_ids": "test-role1,test-role2",
 		},
 		Storage: storage,
@@ -338,7 +338,7 @@ func TestOIDC_Path_OIDCRole(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role1",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -348,7 +348,7 @@ func TestOIDC_Path_OIDCRole(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role2",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -363,7 +363,7 @@ func TestOIDC_Path_OIDCRole(t *testing.T) {
 	expectSuccess(t, respListRole, listErr)
 
 	// validate list response
-	expectedStrings := map[string]interface{}{"test-role1": true, "test-role2": true}
+	expectedStrings := map[string]any{"test-role1": true, "test-role2": true}
 	expectStrings(t, respListRole.Data["keys"].([]string), expectedStrings)
 
 	// delete test-role2
@@ -407,7 +407,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"rotation_period":    int64(86400),
 		"verification_ttl":   int64(86400),
 		"algorithm":          "RS256",
@@ -421,7 +421,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"rotation_period":    "10m",
 			"verification_ttl":   "1h",
 			"allowed_client_ids": "allowed-test-role",
@@ -437,7 +437,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 		Storage:   storage,
 	})
 	expectSuccess(t, resp, err)
-	expected = map[string]interface{}{
+	expected = map[string]any{
 		"rotation_period":    int64(600),
 		"verification_ttl":   int64(3600),
 		"algorithm":          "RS256",
@@ -451,7 +451,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/allowed-test-role",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -467,7 +467,7 @@ func TestOIDC_Path_OIDCKeyKey(t *testing.T) {
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"unable to delete key \"test-key\" because it is currently referenced by these roles: allowed-test-role": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -498,7 +498,7 @@ func TestOIDC_Path_OIDCKey_InvalidTokenTTL(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "4m",
 		},
 		Storage: storage,
@@ -509,7 +509,7 @@ func TestOIDC_Path_OIDCKey_InvalidTokenTTL(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/allowed-test-role",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 			"ttl": "4m",
 		},
@@ -521,7 +521,7 @@ func TestOIDC_Path_OIDCKey_InvalidTokenTTL(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"rotation_period":    "10m",
 			"verification_ttl":   "2m",
 			"allowed_client_ids": "allowed-test-role",
@@ -534,7 +534,7 @@ func TestOIDC_Path_OIDCKey_InvalidTokenTTL(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key":          "test-key",
 			"id_token_ttl": "4m",
 		},
@@ -546,7 +546,7 @@ func TestOIDC_Path_OIDCKey_InvalidTokenTTL(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"verification_ttl": "2m",
 		},
 		Storage: storage,
@@ -582,7 +582,7 @@ func TestOIDC_Path_OIDCKey(t *testing.T) {
 	expectSuccess(t, respListKey, listErr)
 
 	// validate list response
-	expectedStrings := map[string]interface{}{"test-key1": true, "test-key2": true}
+	expectedStrings := map[string]any{"test-key1": true, "test-key2": true}
 	expectStrings(t, respListKey.Data["keys"].([]string), expectedStrings)
 
 	// delete test-key2
@@ -624,7 +624,7 @@ func TestOIDC_Path_OIDCKey_DeleteWithExistingClient(t *testing.T) {
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 	})
@@ -701,7 +701,7 @@ func TestOIDC_PublicKeys(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -740,7 +740,7 @@ func TestOIDC_PublicKeys(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role2",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key2",
 		},
 		Storage: storage,
@@ -787,7 +787,7 @@ func TestOIDC_SharedPublicKeysByRoles(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -797,7 +797,7 @@ func TestOIDC_SharedPublicKeysByRoles(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role2",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -807,7 +807,7 @@ func TestOIDC_SharedPublicKeysByRoles(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role3",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -843,7 +843,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_client_ids": "*",
 		},
 		Storage: storage,
@@ -853,7 +853,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 		},
 		Storage: storage,
@@ -867,7 +867,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role",
 		Operation: logical.ReadOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_client_ids": "",
 		},
 		Storage: storage,
@@ -879,7 +879,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_client_ids": "",
 		},
 		Storage: storage,
@@ -894,7 +894,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"the key \"test-key\" does not list the client ID of the role \"test-role\" as an allowed client ID": true,
 	}
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
@@ -903,7 +903,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 	c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/key/test-key",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allowed_client_ids": clientID,
 		},
 		Storage: storage,
@@ -996,7 +996,7 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/role/test-role",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"key": "test-key",
 			"ttl": "1m",
 		},
@@ -1016,7 +1016,7 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 	})
 	expectError(t, resp, err)
 	// validate error message
-	expectedStrings := map[string]interface{}{
+	expectedStrings := map[string]any{
 		"error signing OIDC token: signing key is nil; rotate the key and try again": true,
 	}
 	expectStrings(t, []string{err.Error()}, expectedStrings)
@@ -1175,7 +1175,7 @@ func TestOIDC_Config(t *testing.T) {
 		Path:      "oidc/config",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuer": testIssuer,
 		},
 	})
@@ -1199,7 +1199,7 @@ func TestOIDC_Config(t *testing.T) {
 			Path:      "oidc/config",
 			Operation: logical.UpdateOperation,
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"issuer": iss,
 			},
 		})
@@ -1228,7 +1228,7 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": keyName},
+			Raw: map[string]any{"name": keyName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -1257,7 +1257,7 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": keyName},
+			Raw: map[string]any{"name": keyName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -1288,7 +1288,7 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": roleName},
+			Raw: map[string]any{"name": roleName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -1317,7 +1317,7 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 			Storage: storage,
 		},
 		&framework.FieldData{
-			Raw: map[string]interface{}{"name": roleName},
+			Raw: map[string]any{"name": roleName},
 			Schema: map[string]*framework.FieldSchema{
 				"name": {
 					Type: framework.TypeString,
@@ -1360,7 +1360,7 @@ func TestOIDC_Path_OpenIDConfig(t *testing.T) {
 		Path:      "oidc/config",
 		Operation: logical.UpdateOperation,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"issuer": testIssuer,
 		},
 	})
@@ -1390,7 +1390,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/introspect/",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"token": "not-a-valid-token",
 		},
 		Storage: storage,
@@ -1434,7 +1434,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 			Path:      "oidc/key/" + key,
 			Operation: logical.CreateOperation,
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"algorithm":          alg,
 				"allowed_client_ids": "*",
 			},
@@ -1445,7 +1445,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 		resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 			Path:      "oidc/role/" + role,
 			Operation: logical.CreateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"key": key,
 			},
 			Storage: storage,
@@ -1467,7 +1467,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 		resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 			Path:      "oidc/introspect/",
 			Operation: logical.UpdateOperation,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"token": validToken,
 			},
 			Storage: storage,
@@ -1674,7 +1674,7 @@ func expectError(t *testing.T, resp *logical.Response, err error) {
 
 // expectString fails unless every string in actualStrings is also included in expectedStrings and
 // the length of actualStrings and expectedStrings are the same
-func expectStrings(t *testing.T, actualStrings []string, expectedStrings map[string]interface{}) {
+func expectStrings(t *testing.T, actualStrings []string, expectedStrings map[string]any) {
 	t.Helper()
 	if len(actualStrings) != len(expectedStrings) {
 		t.Fatalf("expectStrings mismatch:\nactual strings:\n%#v\nexpected strings:\n%#v\n", actualStrings, expectedStrings)

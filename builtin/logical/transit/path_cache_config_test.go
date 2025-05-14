@@ -59,7 +59,7 @@ func TestTransit_CacheConfig(t *testing.T) {
 		Storage:   storage,
 		Operation: logical.UpdateOperation,
 		Path:      "cache-config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"size": targetCacheSize,
 		},
 	}
@@ -68,7 +68,7 @@ func TestTransit_CacheConfig(t *testing.T) {
 		Storage:   storage,
 		Operation: logical.UpdateOperation,
 		Path:      "cache-config",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"size": smallCacheSize,
 		},
 	}
@@ -83,7 +83,7 @@ func TestTransit_CacheConfig(t *testing.T) {
 		Storage:   storage,
 		Operation: logical.UpdateOperation,
 		Path:      "keys/aes256",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"derived": true,
 		},
 	}

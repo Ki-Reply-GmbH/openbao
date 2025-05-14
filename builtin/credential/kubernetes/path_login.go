@@ -171,7 +171,7 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 				"service_account_secret_name": serviceAccount.SecretName,
 			},
 		},
-		InternalData: map[string]interface{}{
+		InternalData: map[string]any{
 			"role": roleName,
 		},
 		Metadata: map[string]string{
@@ -281,12 +281,12 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 
 type DontVerifySignature struct{}
 
-func (keySet DontVerifySignature) VerifySignature(_ context.Context, token string) (map[string]interface{}, error) {
+func (keySet DontVerifySignature) VerifySignature(_ context.Context, token string) (map[string]any, error) {
 	parsed, err := josejwt.ParseSigned(token)
 	if err != nil {
 		return nil, err
 	}
-	claims := map[string]interface{}{}
+	claims := map[string]any{}
 	err = parsed.UnsafeClaimsWithoutVerification(&claims)
 	if err != nil {
 		return nil, err

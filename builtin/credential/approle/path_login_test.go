@@ -22,7 +22,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 	resp = b.requestNoErr(t, &logical.Request{
 		Path:      "role/testrole",
 		Operation: logical.CreateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"bind_secret_id":    false,
 			"bound_cidr_list":   []string{"127.0.0.1/8"},
 			"token_bound_cidrs": []string{"10.0.0.0/8"},
@@ -43,7 +43,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 	resp = b.requestNoErr(t, &logical.Request{
 		Path:      "login",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id": roleID,
 		},
 		Storage:    s,
@@ -64,7 +64,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 	resp = b.requestNoErr(t, &logical.Request{
 		Path:      "role/testrole",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"bind_secret_id": true,
 		},
 		Storage: s,
@@ -74,7 +74,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "role/testrole/secret-id",
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"token_bound_cidrs": []string{"11.0.0.0/24"},
 		},
 	}
@@ -91,7 +91,7 @@ func TestAppRole_BoundCIDRLogin(t *testing.T) {
 	resp = b.requestNoErr(t, &logical.Request{
 		Path:      "login",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id":   roleID,
 			"secret_id": secretID,
 		},
@@ -134,7 +134,7 @@ func TestAppRole_RoleLogin(t *testing.T) {
 
 	secretID := resp.Data["secret_id"]
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"role_id":   roleID,
 		"secret_id": secretID,
 	}
@@ -190,7 +190,7 @@ func TestAppRole_RoleLogin(t *testing.T) {
 
 	// Create role
 	period := 600 * time.Second
-	roleData := map[string]interface{}{
+	roleData := map[string]any{
 		"policies": "a,b,c",
 		"period":   period.String(),
 	}
@@ -302,7 +302,7 @@ func TestAppRole_RoleResolve(t *testing.T) {
 
 	secretID := resp.Data["secret_id"]
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"role_id":   roleID,
 		"secret_id": secretID,
 	}
@@ -330,7 +330,7 @@ func TestAppRole_RoleDoesNotExist(t *testing.T) {
 
 	roleID := "roleDoesNotExist"
 
-	loginData := map[string]interface{}{
+	loginData := map[string]any{
 		"role_id":   roleID,
 		"secret_id": "secret",
 	}

@@ -60,7 +60,7 @@ func (b *versionedKVBackend) pathConfigRead() framework.OperationFunc {
 			return nil, err
 		}
 
-		rdata := map[string]interface{}{
+		rdata := map[string]any{
 			"max_versions": config.MaxVersions,
 			"cas_required": config.CasRequired,
 		}

@@ -39,7 +39,7 @@ func TestInspectRouter(t *testing.T) {
 				t.Fatalf("bad: resp: %#v\n err: %v", resp, err)
 			}
 			// Verify that data exists
-			data, ok := resp.Data[tag].([]map[string]interface{})
+			data, ok := resp.Data[tag].([]map[string]any)
 			if !ok {
 				t.Fatal("Router data is malformed")
 			}

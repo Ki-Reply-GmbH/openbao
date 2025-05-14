@@ -143,7 +143,7 @@ func TestDriver(t *testing.T) {
 	t.Run("TimeoutCalc", func(t *testing.T) { testComputeTimeout(t) })
 }
 
-func setupValkeyDBInitialize(t *testing.T, connectionDetails map[string]interface{}) (err error) {
+func setupValkeyDBInitialize(t *testing.T, connectionDetails map[string]any) (err error) {
 	initReq := dbplugin.InitializeRequest{
 		Config:           connectionDetails,
 		VerifyConnection: true,
@@ -173,7 +173,7 @@ func testValkeyDBInitialize_NoTLS(t *testing.T, host string, port int) {
 
 	t.Log("Testing plain text Init()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":     host,
 		"port":     port,
 		"username": adminUsername,
@@ -198,7 +198,7 @@ func testValkeyDBInitialize_TLS(t *testing.T, host string, port int) {
 
 	t.Log("Testing TLS Init()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":         host,
 		"port":         port,
 		"username":     adminUsername,
@@ -220,7 +220,7 @@ func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 
 	t.Log("Testing CreateUser()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":     address,
 		"port":     port,
 		"username": adminUsername,
@@ -292,7 +292,7 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 
 	t.Log("Testing checkCredsExist()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":     address,
 		"port":     port,
 		"username": username,
@@ -336,7 +336,7 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 
 	t.Log("Testing checkRuleAllowed()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":     address,
 		"port":     port,
 		"username": username,
@@ -382,7 +382,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 
 	t.Log("Testing RevokeUser()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":     address,
 		"port":     port,
 		"username": adminUsername,
@@ -432,7 +432,7 @@ func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) 
 
 	t.Log("Testing CreateUser_DefaultRule()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":     address,
 		"port":     port,
 		"username": adminUsername,
@@ -514,7 +514,7 @@ func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
 
 	t.Log("Testing CreateUser_plusRole()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":             address,
 		"port":             port,
 		"username":         adminUsername,
@@ -592,7 +592,7 @@ func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	}
 	t.Log("Testing CreateUser_groupOnly()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":             address,
 		"port":             port,
 		"username":         adminUsername,
@@ -669,7 +669,7 @@ func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int)
 	}
 	t.Log("Testing CreateUser_roleAndGroup()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":             address,
 		"port":             port,
 		"username":         adminUsername,
@@ -742,7 +742,7 @@ func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
 
 	t.Log("Testing RotateRootCredentials()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":     address,
 		"port":     port,
 		"username": "rotate-root",
@@ -801,7 +801,7 @@ func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
 func doValkeyDBSetCredentials(t *testing.T, username, password, address string, port int) {
 	t.Log("Testing SetCredentials()")
 
-	connectionDetails := map[string]interface{}{
+	connectionDetails := map[string]any{
 		"host":     address,
 		"port":     port,
 		"username": adminUsername,

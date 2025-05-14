@@ -43,7 +43,7 @@ func TestTransit_ConfigKeys(t *testing.T) {
 	// Ensure we can upsert.
 	req.Operation = logical.CreateOperation
 	req.Path = "encrypt/upsert-1"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"plaintext": "aGVsbG8K",
 	}
 	doReq(req)
@@ -51,7 +51,7 @@ func TestTransit_ConfigKeys(t *testing.T) {
 	// Disable upserting.
 	req.Operation = logical.UpdateOperation
 	req.Path = "config/keys"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"disable_upsert": true,
 	}
 	doReq(req)
@@ -59,7 +59,7 @@ func TestTransit_ConfigKeys(t *testing.T) {
 	// Attempt upserting again, it should fail.
 	req.Operation = logical.CreateOperation
 	req.Path = "encrypt/upsert-2"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"plaintext": "aGVsbG8K",
 	}
 	doErrReq(req)

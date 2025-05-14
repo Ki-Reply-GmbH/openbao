@@ -262,7 +262,7 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		}
 
 		var keys []string
-		keyInfo := make(map[string]interface{})
+		keyInfo := make(map[string]any)
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
@@ -286,7 +286,7 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		}
 
 		var keys []string
-		keyInfo := make(map[string]interface{})
+		keyInfo := make(map[string]any)
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
@@ -332,7 +332,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		var metadata map[string]string
 		if ok {
 			metadata = make(map[string]string)
-			for k, v := range imetadata.(map[string]interface{}) {
+			for k, v := range imetadata.(map[string]any) {
 				if metadata[k], ok = v.(string); !ok {
 					return logical.ErrorResponse("custom_metadata values must be strings"), logical.ErrInvalidRequest
 				}
@@ -352,11 +352,11 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 }
 
 // customMetadataPatchPreprocessor is passed to framework.HandlePatchOperation within the handleNamespacesPatch handler.
-func customMetadataPatchPreprocessor(input map[string]interface{}) (map[string]interface{}, error) {
+func customMetadataPatchPreprocessor(input map[string]any) (map[string]any, error) {
 	imetadata, ok := input["custom_metadata"]
-	var metadata map[string]interface{}
+	var metadata map[string]any
 	if ok {
-		metadata = imetadata.(map[string]interface{})
+		metadata = imetadata.(map[string]any)
 		for _, v := range metadata {
 			// Allow nil values in addition to strings so keys can be removed.
 			if _, ok = v.(string); !ok && v != nil {
@@ -381,7 +381,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
 
-			current := make(map[string]interface{})
+			current := make(map[string]any)
 			for k, v := range ns.CustomMetadata {
 				current[k] = v
 			}
@@ -417,7 +417,7 @@ func (b *SystemBackend) handleNamespacesLock() framework.OperationFunc {
 		}
 
 		if unlockKey != "" {
-			return &logical.Response{Data: map[string]interface{}{
+			return &logical.Response{Data: map[string]any{
 				"unlock_key": unlockKey,
 			}}, nil
 		}
@@ -473,7 +473,7 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 		}
 
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"status": status,
 			},
 		}, nil

@@ -66,7 +66,7 @@ func TestTokenStore_CountActiveTokens(t *testing.T) {
 			ClientToken: root,
 			Operation:   logical.UpdateOperation,
 			Path:        "auth/token/create",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"ttl": "1h",
 			},
 		}
@@ -91,7 +91,7 @@ func TestTokenStore_CountActiveTokens(t *testing.T) {
 			ClientToken: root,
 			Operation:   logical.UpdateOperation,
 			Path:        "auth/token/revoke",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"token": tokens[i],
 			},
 		}
@@ -129,7 +129,7 @@ func testCountActiveEntities(t *testing.T, c *Core, root string, expectedEntitie
 		t.Fatalf("bad: resp: %#v\n err: %v", resp, err)
 	}
 
-	if diff := deep.Equal(resp.Data, map[string]interface{}{
+	if diff := deep.Equal(resp.Data, map[string]any{
 		"counters": &ActiveEntities{
 			Entities: EntityCounter{
 				Total: expectedEntities,

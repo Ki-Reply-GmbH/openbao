@@ -25,7 +25,7 @@ const (
 
 var (
 	client     *api.Client
-	secretData = map[string]interface{}{
+	secretData = map[string]any{
 		"foo": "bar",
 	}
 )
@@ -169,7 +169,7 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// create a second version
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]any{
 			"foo": "baz",
 		})
 		if err != nil {
@@ -193,7 +193,7 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// create a second version
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]any{
 			"foo": "baz",
 		})
 		if err != nil {
@@ -268,7 +268,7 @@ func TestKVHelpers(t *testing.T) {
 
 		// check that KVOption works
 		// WithCheckAndSet
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]any{
 			"meow": "woof",
 		}, api.WithCheckAndSet(99))
 		// should fail
@@ -277,7 +277,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// WithOption (generic)
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]any{
 			"bow": "wow",
 		}, api.WithOption("cas", 99))
 		// should fail
@@ -291,7 +291,7 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// WithMergeMethod Patch (implicit)
-		patch, err := client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		patch, err := client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]any{
 			"dog": "cat",
 		})
 		if err != nil {
@@ -302,7 +302,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// WithMergeMethod Patch (explicit)
-		patchExp, err := client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		patchExp, err := client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]any{
 			"rat": "mouse",
 		}, api.WithMergeMethod(api.KVMergeMethodPatch))
 		if err != nil {
@@ -313,7 +313,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// WithMergeMethod RW
-		patchRW, err := client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		patchRW, err := client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]any{
 			"bird": "tweet",
 		}, api.WithMergeMethod(api.KVMergeMethodReadWrite))
 		if err != nil {
@@ -345,7 +345,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// patch an existing field
-		_, err = client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]any{
 			"dog": "pug",
 		})
 		if err != nil {
@@ -361,7 +361,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// delete a key in a secret via patch
-		_, err = client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]any{
 			"dog": nil,
 		})
 		if err != nil {
@@ -377,7 +377,7 @@ func TestKVHelpers(t *testing.T) {
 		}
 
 		// set a key to an empty string via patch
-		_, err = client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Patch(context.Background(), secretPath, map[string]any{
 			"dog": "",
 		})
 		if err != nil {
@@ -402,7 +402,7 @@ func TestKVHelpers(t *testing.T) {
 			_, err = client.KVv2(v2MountPath).Patch(
 				context.Background(),
 				"does/not/exist",
-				map[string]interface{}{"no": "nope"},
+				map[string]any{"no": "nope"},
 				method...,
 			)
 			if !errors.Is(err, api.ErrSecretNotFound) {
@@ -416,7 +416,7 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// create a second version
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]any{
 			"color": "yellow",
 		})
 		if err != nil {
@@ -465,7 +465,7 @@ func TestKVHelpers(t *testing.T) {
 		defer teardownTest(t)
 
 		// create a second version
-		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]interface{}{
+		_, err = client.KVv2(v2MountPath).Put(context.Background(), secretPath, map[string]any{
 			"color": "yellow",
 		})
 		if err != nil {
@@ -496,7 +496,7 @@ func TestKVHelpers(t *testing.T) {
 		err = client.KVv2(v2MountPath).PutMetadata(context.Background(), noDataSecretPath, api.KVMetadataPutInput{
 			DeleteVersionAfter: 5 * time.Hour,
 			MaxVersions:        5,
-			CustomMetadata:     map[string]interface{}{"ape": "gorilla"},
+			CustomMetadata:     map[string]any{"ape": "gorilla"},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -529,7 +529,7 @@ func TestKVHelpers(t *testing.T) {
 			CASRequired:        true,
 			DeleteVersionAfter: 6 * time.Hour,
 			MaxVersions:        6,
-			CustomMetadata:     map[string]interface{}{"foo": "fwah", "cat": "tabby"},
+			CustomMetadata:     map[string]any{"foo": "fwah", "cat": "tabby"},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -548,7 +548,7 @@ func TestKVHelpers(t *testing.T) {
 		maxVersions := 7
 		err = client.KVv2(v2MountPath).PatchMetadata(context.Background(), secretPath, api.KVMetadataPatchInput{
 			MaxVersions:    &maxVersions,
-			CustomMetadata: map[string]interface{}{"foo": nil, "rat": "brown"},
+			CustomMetadata: map[string]any{"foo": nil, "rat": "brown"},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -601,7 +601,7 @@ func TestKVHelpers(t *testing.T) {
 			CASRequired:        &explicitFalse,
 			MaxVersions:        &explicitZero,
 			DeleteVersionAfter: &explicitTimeZero,
-			CustomMetadata:     map[string]interface{}{},
+			CustomMetadata:     map[string]any{},
 		})
 		if err != nil {
 			t.Fatal(err)

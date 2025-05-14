@@ -27,7 +27,7 @@ type valkeyDBConnectionProducer struct {
 	CACert      string `json:"ca_cert"`
 
 	Initialized bool
-	rawConfig   map[string]interface{}
+	rawConfig   map[string]any
 	Type        string
 	client      radix.Client
 	Addr        string
@@ -41,7 +41,7 @@ func (c *valkeyDBConnectionProducer) secretValues() map[string]string {
 	}
 }
 
-func (c *valkeyDBConnectionProducer) Init(ctx context.Context, initConfig map[string]interface{}, verifyConnection bool) (saveConfig map[string]interface{}, err error) {
+func (c *valkeyDBConnectionProducer) Init(ctx context.Context, initConfig map[string]any, verifyConnection bool) (saveConfig map[string]any, err error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -94,12 +94,12 @@ func (c *valkeyDBConnectionProducer) Init(ctx context.Context, initConfig map[st
 	return initConfig, nil
 }
 
-func (c *valkeyDBConnectionProducer) Initialize(ctx context.Context, config map[string]interface{}, verifyConnection bool) error {
+func (c *valkeyDBConnectionProducer) Initialize(ctx context.Context, config map[string]any, verifyConnection bool) error {
 	_, err := c.Init(ctx, config, verifyConnection)
 	return err
 }
 
-func (c *valkeyDBConnectionProducer) Connection(ctx context.Context) (interface{}, error) {
+func (c *valkeyDBConnectionProducer) Connection(ctx context.Context) (any, error) {
 	// This is intentionally not grabbing the lock since the calling functions (e.g. CreateUser)
 	// are claiming it. (The locking patterns could be refactored to be more consistent/clear.)
 

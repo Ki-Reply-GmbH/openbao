@@ -102,7 +102,7 @@ func TestBackend_returnsErrs(t *testing.T) {
 			{
 				Operation: logical.CreateOperation,
 				Path:      fmt.Sprintf("roles/%s", roleName),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"tags":         testTags,
 					"vhosts":       `{"invalid":{"write": ".*", "read": ".*"}}`,
 					"vhost_topics": testVHostTopics,
@@ -184,7 +184,7 @@ func testAccStepConfig(t *testing.T, uri string, passwordPolicy string) logicalt
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      "config/connection",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"connection_uri":  uri,
 			"username":        username,
 			"password":        password,
@@ -197,7 +197,7 @@ func testAccStepRole(t *testing.T) logicaltest.TestStep {
 	return logicaltest.TestStep{
 		Operation: logical.UpdateOperation,
 		Path:      fmt.Sprintf("roles/%s", roleName),
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"tags":         testTags,
 			"vhosts":       testVHosts,
 			"vhost_topics": testVHostTopics,
@@ -239,7 +239,7 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, uri, name string) log
 			resp, err = b.HandleRequest(context.Background(), &logical.Request{
 				Operation: logical.RevokeOperation,
 				Secret: &logical.Secret{
-					InternalData: map[string]interface{}{
+					InternalData: map[string]any{
 						"secret_type": "creds",
 						"username":    d.Username,
 					},
@@ -376,7 +376,7 @@ func TestBackend_RoleReadCrash(t *testing.T) {
 		t.Fatalf("failed to mount: %v", err)
 	}
 
-	resp, err := client.Logical().Write("rabbitmq/config/connection", map[string]interface{}{
+	resp, err := client.Logical().Write("rabbitmq/config/connection", map[string]any{
 		"connection_uri": uri,
 		"username":       "guest",
 		"password":       "guest",
@@ -385,7 +385,7 @@ func TestBackend_RoleReadCrash(t *testing.T) {
 		t.Fatalf("bad: err: %v resp: %#v", err, resp)
 	}
 
-	resp, err = client.Logical().Write("rabbitmq/roles/newrole", map[string]interface{}{
+	resp, err = client.Logical().Write("rabbitmq/roles/newrole", map[string]any{
 		"tags": "administrator",
 		"vhosts": `
 {

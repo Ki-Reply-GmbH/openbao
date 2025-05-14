@@ -120,7 +120,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	respBody := make(map[string]interface{})
+	respBody := make(map[string]any)
 	if err := json.Unmarshal(b, &respBody); err != nil {
 		fmt.Printf("err unmarshalling json: %s\n", err)
 		os.Exit(1)
@@ -130,7 +130,7 @@ func main() {
 		fmt.Printf("auth doesn't exist in %s\n", respBody)
 		os.Exit(1)
 	}
-	auth, ok := authRaw.(map[string]interface{})
+	auth, ok := authRaw.(map[string]any)
 	if !ok {
 		fmt.Printf("couldn't convert %s, it's a %t\n", authRaw, authRaw)
 		os.Exit(1)

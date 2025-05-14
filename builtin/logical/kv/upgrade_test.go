@@ -17,7 +17,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 	b, storage := testPassthroughBackendWithStorage()
 
 	for i := 0; i < 1024*1024; i++ {
-		data := map[string]interface{}{
+		data := map[string]any{
 			"bar": i,
 		}
 
@@ -73,7 +73,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 	}
 
 	for i := 0; i < 1024*1024; i++ {
-		data := map[string]interface{}{
+		data := map[string]any{
 			"bar": float64(i),
 		}
 
@@ -88,7 +88,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 
-		if !reflect.DeepEqual(resp.Data["data"].(map[string]interface{}), data) {
+		if !reflect.DeepEqual(resp.Data["data"].(map[string]any), data) {
 			t.Fatalf("bad response %#v", resp)
 		}
 	}

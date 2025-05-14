@@ -10,8 +10,8 @@ import (
 func TestVersionedKV_Destroy_Put(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"bar": "baz",
 		},
 	}
@@ -32,11 +32,11 @@ func TestVersionedKV_Destroy_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	data = map[string]interface{}{
-		"data": map[string]interface{}{
+	data = map[string]any{
+		"data": map[string]any{
 			"bar": "baz1",
 		},
-		"options": map[string]interface{}{
+		"options": map[string]any{
 			"cas": float64(1),
 		},
 	}
@@ -57,7 +57,7 @@ func TestVersionedKV_Destroy_Put(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"versions": "1,2",
 	}
 
@@ -85,10 +85,10 @@ func TestVersionedKV_Destroy_Put(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	if resp.Data["versions"].(map[string]interface{})["1"].(map[string]interface{})["destroyed"].(bool) != true {
+	if resp.Data["versions"].(map[string]any)["1"].(map[string]any)["destroyed"].(bool) != true {
 		t.Fatalf("Bad response: %#v", resp)
 	}
-	if resp.Data["versions"].(map[string]interface{})["2"].(map[string]interface{})["destroyed"].(bool) != true {
+	if resp.Data["versions"].(map[string]any)["2"].(map[string]any)["destroyed"].(bool) != true {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 }

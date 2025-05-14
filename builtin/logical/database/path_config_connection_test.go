@@ -38,7 +38,7 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 			Operation: logical.UpdateOperation,
 			Path:      "config/plugin-test",
 			Storage:   config.StorageView,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"connection_url":    "test",
 				"plugin_name":       mdb,
 				"plugin_version":    mdbBuiltin,
@@ -144,7 +144,7 @@ func TestWriteConfig_HelpfulErrorMessageWhenBuiltinOverridden(t *testing.T) {
 	pgBuiltin := versions.GetBuiltinVersion(consts.PluginTypeDatabase, pg)
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url":    "test",
 		"plugin_name":       pg,
 		"plugin_version":    pgBuiltin,

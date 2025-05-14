@@ -30,7 +30,7 @@ func requireFieldsSetInResp(t *testing.T, resp *logical.Response, fields ...stri
 	require.Empty(t, missingFields, "The following fields were required but missing from response:\n%v", resp.Data)
 }
 
-func requireSuccessNonNilResponse(t *testing.T, resp *logical.Response, err error, msgAndArgs ...interface{}) {
+func requireSuccessNonNilResponse(t *testing.T, resp *logical.Response, err error, msgAndArgs ...any) {
 	require.NoError(t, err, msgAndArgs...)
 	if resp.IsError() {
 		errContext := fmt.Sprintf("Expected successful response but got error: %v", resp.Error())
@@ -39,7 +39,7 @@ func requireSuccessNonNilResponse(t *testing.T, resp *logical.Response, err erro
 	require.NotNil(t, resp, msgAndArgs...)
 }
 
-func requireSuccessNilResponse(t *testing.T, resp *logical.Response, err error, msgAndArgs ...interface{}) {
+func requireSuccessNilResponse(t *testing.T, resp *logical.Response, err error, msgAndArgs ...any) {
 	require.NoError(t, err, msgAndArgs...)
 	if resp.IsError() {
 		errContext := fmt.Sprintf("Expected successful response but got error: %v", resp.Error())

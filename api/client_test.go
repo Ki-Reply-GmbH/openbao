@@ -687,8 +687,8 @@ func TestSetHeadersRaceSafe(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err1)
 	}
 
-	start := make(chan interface{})
-	done := make(chan interface{})
+	start := make(chan any)
+	done := make(chan any)
 
 	testPairs := map[string]string{
 		"soda":    "rootbeer",

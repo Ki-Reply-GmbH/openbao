@@ -19,7 +19,7 @@ import (
 func TestConfig_JWT_Read(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"oidc_discovery_url":     "",
 		"oidc_discovery_ca_pem":  "",
 		"oidc_client_id":         "",
@@ -31,7 +31,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"jwks_url":               "",
 		"jwks_ca_pem":            "",
 		"bound_issuer":           "http://vault.example.com/",
-		"provider_config":        map[string]interface{}{},
+		"provider_config":        map[string]any{},
 		"namespace_in_state":     false,
 		"status":                 "valid",
 	}
@@ -69,7 +69,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 	b, storage := getBackend(t)
 
 	// Create a config with too many token verification schemes
-	data := map[string]interface{}{
+	data := map[string]any{
 		"oidc_discovery_url":     "http://fake.example.com",
 		"jwt_validation_pubkeys": []string{testJWTPubKey},
 		"jwks_url":               "http://fake.anotherexample.com",
@@ -141,7 +141,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		JWTSupportedAlgs:     []string{},
 		OIDCResponseTypes:    []string{},
 		BoundIssuer:          "http://vault.example.com/",
-		ProviderConfig:       map[string]interface{}{},
+		ProviderConfig:       map[string]any{},
 		NamespaceInState:     true,
 	}
 
@@ -166,7 +166,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"jwks_url":               s.server.URL + "/certs",
 		"jwks_ca_pem":            cert,
 		"oidc_discovery_url":     "",
@@ -178,7 +178,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		"jwt_validation_pubkeys": []string{},
 		"jwt_supported_algs":     []string{},
 		"bound_issuer":           "",
-		"provider_config":        map[string]interface{}{},
+		"provider_config":        map[string]any{},
 		"namespace_in_state":     false,
 		"status":                 "valid",
 	}
@@ -223,7 +223,7 @@ func TestConfig_JWKS_Update_Invalid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"jwks_url":               s.server.URL + "/certs_missing",
 		"jwks_ca_pem":            cert,
 		"oidc_discovery_url":     "",
@@ -289,7 +289,7 @@ func TestConfig_ResponseMode(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		data := map[string]interface{}{
+		data := map[string]any{
 			"oidc_response_mode":     test.mode,
 			"jwt_validation_pubkeys": []string{testJWTPubKey},
 		}
@@ -319,7 +319,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 
 	// First we provide an invalid CA cert to verify that it is in fact paying
 	// attention to the value we specify
-	data := map[string]interface{}{
+	data := map[string]any{
 		"oidc_discovery_url":    "https://team-vault.auth0.com/",
 		"oidc_discovery_ca_pem": oidcBadCACerts,
 		"oidc_client_id":        "abc",
@@ -354,7 +354,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 		OIDCClientID:         "abc",
 		OIDCClientSecret:     "def",
-		ProviderConfig:       map[string]interface{}{},
+		ProviderConfig:       map[string]any{},
 		NamespaceInState:     true,
 	}
 
@@ -372,11 +372,11 @@ func TestConfig_OIDC_Write(t *testing.T) {
 	//   - both oidc client and secret should be provided if either one is
 	tests := []struct {
 		id   string
-		data map[string]interface{}
+		data map[string]any
 	}{
 		{
 			"missing discovery URL",
-			map[string]interface{}{
+			map[string]any{
 				"jwt_validation_pubkeys": []string{"a"},
 				"oidc_client_id":         "abc",
 				"oidc_client_secret":     "def",
@@ -384,14 +384,14 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		},
 		{
 			"missing secret",
-			map[string]interface{}{
+			map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"oidc_client_id":     "abc",
 			},
 		},
 		{
 			"missing ID",
-			map[string]interface{}{
+			map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"oidc_client_secret": "abc",
 			},
@@ -425,9 +425,9 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 	}
 
 	t.Run("valid provider_config", func(t *testing.T) {
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
-			"provider_config": map[string]interface{}{
+			"provider_config": map[string]any{
 				"provider":     "azure",
 				"extraOptions": "abound",
 			},
@@ -443,7 +443,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			JWTSupportedAlgs:     []string{},
 			OIDCResponseTypes:    []string{},
 			OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
-			ProviderConfig: map[string]interface{}{
+			ProviderConfig: map[string]any{
 				"provider":     "azure",
 				"extraOptions": "abound",
 			},
@@ -461,9 +461,9 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 	})
 
 	t.Run("unknown provider in provider_config", func(t *testing.T) {
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
-			"provider_config": map[string]interface{}{
+			"provider_config": map[string]any{
 				"provider": "unknown",
 			},
 		}
@@ -475,9 +475,9 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 	})
 
 	t.Run("provider_config missing provider", func(t *testing.T) {
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
-			"provider_config": map[string]interface{}{
+			"provider_config": map[string]any{
 				"not-provider": "oops",
 			},
 		}
@@ -489,7 +489,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 	})
 
 	t.Run("provider_config not set", func(t *testing.T) {
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
 		}
 
@@ -503,7 +503,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			JWTSupportedAlgs:     []string{},
 			OIDCResponseTypes:    []string{},
 			OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
-			ProviderConfig:       map[string]interface{}{},
+			ProviderConfig:       map[string]any{},
 			NamespaceInState:     true,
 		}
 
@@ -520,12 +520,12 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 
 func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 	type testCase struct {
-		create   map[string]interface{}
+		create   map[string]any
 		expected jwtConfig
 	}
 	tests := map[string]testCase{
 		"namespace_in_state not specified": {
-			create: map[string]interface{}{
+			create: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 			},
 			expected: jwtConfig{
@@ -534,11 +534,11 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
+				ProviderConfig:       map[string]any{},
 			},
 		},
 		"namespace_in_state true": {
-			create: map[string]interface{}{
+			create: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": true,
 			},
@@ -548,11 +548,11 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
+				ProviderConfig:       map[string]any{},
 			},
 		},
 		"namespace_in_state false": {
-			create: map[string]interface{}{
+			create: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": false,
 			},
@@ -562,7 +562,7 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
+				ProviderConfig:       map[string]any{},
 			},
 		},
 	}
@@ -590,17 +590,17 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 
 func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 	type testCase struct {
-		existing map[string]interface{}
-		update   map[string]interface{}
+		existing map[string]any
+		update   map[string]any
 		expected jwtConfig
 	}
 	tests := map[string]testCase{
 		"existing false, update to true": {
-			existing: map[string]interface{}{
+			existing: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": false,
 			},
-			update: map[string]interface{}{
+			update: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": true,
 			},
@@ -610,15 +610,15 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
+				ProviderConfig:       map[string]any{},
 			},
 		},
 		"existing false, update something else": {
-			existing: map[string]interface{}{
+			existing: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": false,
 			},
-			update: map[string]interface{}{
+			update: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"default_role":       "ui",
 			},
@@ -629,15 +629,15 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
+				ProviderConfig:       map[string]any{},
 			},
 		},
 		"existing true, update to false": {
-			existing: map[string]interface{}{
+			existing: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": true,
 			},
-			update: map[string]interface{}{
+			update: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": false,
 			},
@@ -647,15 +647,15 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
+				ProviderConfig:       map[string]any{},
 			},
 		},
 		"existing true, update something else": {
-			existing: map[string]interface{}{
+			existing: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"namespace_in_state": true,
 			},
-			update: map[string]interface{}{
+			update: map[string]any{
 				"oidc_discovery_url": "https://team-vault.auth0.com/",
 				"default_role":       "ui",
 			},
@@ -666,7 +666,7 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 				OIDCResponseTypes:    []string{},
 				JWTSupportedAlgs:     []string{},
 				JWTValidationPubKeys: []string{},
-				ProviderConfig:       map[string]interface{}{},
+				ProviderConfig:       map[string]any{},
 			},
 		},
 	}
@@ -704,7 +704,7 @@ func TestConfig_OIDC_Ignore(t *testing.T) {
 	b, storage := getBackend(t)
 	// Provide an invalid CA cert to verify that it is in fact paying
 	// attention to the value we specified, but set skip_jwks_validation=true
-	data := map[string]interface{}{
+	data := map[string]any{
 		"oidc_discovery_url":    "https://team-vault.auth0.com/",
 		"oidc_discovery_ca_pem": oidcBadCACerts,
 		"skip_jwks_validation":  true,

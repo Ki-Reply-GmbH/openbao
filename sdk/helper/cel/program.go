@@ -41,7 +41,7 @@ func CelVarsToEvalData(env *cel.Env, program CelProgram) (map[string]any, error)
 }
 
 // ParseCompileAndEvaluateVariable evaluates a variable expression
-func ParseCompileAndEvaluateVariable(env *cel.Env, variable CelVariable, evaluationData map[string]interface{}) (ref.Val, error) {
+func ParseCompileAndEvaluateVariable(env *cel.Env, variable CelVariable, evaluationData map[string]any) (ref.Val, error) {
 	val, err := ParseCompileAndEvaluateExpression(env, variable.Expression, evaluationData)
 	if err != nil {
 		return nil, fmt.Errorf("Error processing variable '%s': %w", variable.Name, err)
@@ -50,7 +50,7 @@ func ParseCompileAndEvaluateVariable(env *cel.Env, variable CelVariable, evaluat
 }
 
 // ParseCompileAndEvaluateExpression parses, compiles, and evaluates a CEL expression
-func ParseCompileAndEvaluateExpression(env *cel.Env, expression string, evaluationData map[string]interface{}) (ref.Val, error) {
+func ParseCompileAndEvaluateExpression(env *cel.Env, expression string, evaluationData map[string]any) (ref.Val, error) {
 	// Parse the expression
 	ast, issues := env.Parse(expression)
 	if issues != nil && issues.Err() != nil {

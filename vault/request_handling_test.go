@@ -38,7 +38,7 @@ func TestRequestHandling_Wrapping(t *testing.T) {
 		Path:        "wraptest/foo",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"zip": "zap",
 		},
 	}
@@ -84,7 +84,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		Path:        "sys/auth/userpass",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "userpass",
 		},
 		Connection: &logical.Connection{},
@@ -98,7 +98,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 	}
 
 	req.Path = "auth/userpass/users/test"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"password": "foo",
 		"policies": "default",
 	}
@@ -113,7 +113,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 	req = &logical.Request{
 		Path:      "auth/userpass/login/test",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "foo",
 		},
 		Connection: &logical.Connection{},
@@ -135,7 +135,7 @@ func TestRequestHandling_LoginWrapping(t *testing.T) {
 		WrapInfo: &logical.RequestWrapInfo{
 			TTL: time.Duration(15 * time.Second),
 		},
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "foo",
 		},
 		Connection: &logical.Connection{},
@@ -166,7 +166,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		Path:        "sys/auth/approle",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "approle",
 		},
 		Connection: &logical.Connection{},
@@ -181,7 +181,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 
 	// Create role
 	req.Path = "auth/approle/role/role-period"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"period": "5s",
 	}
 	_, err = core.HandleRequest(namespace.RootContext(nil), req)
@@ -219,7 +219,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 	req = &logical.Request{
 		Path:      "auth/approle/login",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_id":   roleID,
 			"secret_id": secretID,
 		},
@@ -241,7 +241,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		Path:        "auth/token/lookup",
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"token": loginToken,
 		},
 		Connection: &logical.Connection{},
@@ -267,7 +267,7 @@ func TestRequestHandling_Login_PeriodicToken(t *testing.T) {
 		resp.Data["ttl"] = int64(5)
 	}
 
-	exp := map[string]interface{}{
+	exp := map[string]any{
 		"accessor":         accessor,
 		"creation_time":    resp.Data["creation_time"].(int64),
 		"creation_ttl":     int64(5),
@@ -363,7 +363,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 		Path:        "sys/auth/userpass",
 		ClientToken: root,
 		Operation:   logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type": "userpass",
 		},
 		Connection: &logical.Connection{},
@@ -378,7 +378,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 
 	// Create user
 	req.Path = "auth/userpass/users/test"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"password": "foo",
 		"policies": "default",
 	}
@@ -394,7 +394,7 @@ func TestRequestHandling_LoginMetric(t *testing.T) {
 	req = &logical.Request{
 		Path:      "auth/userpass/login/test",
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"password": "foo",
 		},
 		WrapInfo: &logical.RequestWrapInfo{

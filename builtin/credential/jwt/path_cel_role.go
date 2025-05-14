@@ -428,7 +428,7 @@ func (b *jwtAuthBackend) celEvalProgram(program celhelper.CelProgram, jwtClaims 
 	// Initialize the evaluation context for CEL expressions with the raw request data.
 	// The "request" key allows CEL expressions to access and evaluate against input fields.
 	// Additional variables and evaluated results will be added dynamically during processing.
-	evaluationData := map[string]interface{}{
+	evaluationData := map[string]any{
 		"claims": jwtClaims,
 		"now":    time.Now(),
 	}
@@ -469,8 +469,8 @@ const (
 	pathCelRoleHelpDesc = `This path lets you manage the CEL roles that can be created with this backend.`
 )
 
-func (r *celRoleEntry) ToResponseData() map[string]interface{} {
-	return map[string]interface{}{
+func (r *celRoleEntry) ToResponseData() map[string]any {
+	return map[string]any{
 		"name":              r.Name,
 		"cel_program":       r.CelProgram,
 		"message":           r.Message,

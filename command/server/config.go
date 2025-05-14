@@ -51,17 +51,17 @@ type Config struct {
 
 	CacheSize                int         `hcl:"cache_size"`
 	DisableCache             bool        `hcl:"-"`
-	DisableCacheRaw          interface{} `hcl:"disable_cache"`
+	DisableCacheRaw          any `hcl:"disable_cache"`
 	DisablePrintableCheck    bool        `hcl:"-"`
-	DisablePrintableCheckRaw interface{} `hcl:"disable_printable_check"`
+	DisablePrintableCheckRaw any `hcl:"disable_printable_check"`
 
 	EnableUI    bool        `hcl:"-"`
-	EnableUIRaw interface{} `hcl:"ui"`
+	EnableUIRaw any `hcl:"ui"`
 
 	MaxLeaseTTL        time.Duration `hcl:"-"`
-	MaxLeaseTTLRaw     interface{}   `hcl:"max_lease_ttl,alias:MaxLeaseTTL"`
+	MaxLeaseTTLRaw     any   `hcl:"max_lease_ttl,alias:MaxLeaseTTL"`
 	DefaultLeaseTTL    time.Duration `hcl:"-"`
-	DefaultLeaseTTLRaw interface{}   `hcl:"default_lease_ttl,alias:DefaultLeaseTTL"`
+	DefaultLeaseTTLRaw any   `hcl:"default_lease_ttl,alias:DefaultLeaseTTL"`
 
 	ClusterCipherSuites string `hcl:"cluster_cipher_suites"`
 
@@ -70,43 +70,43 @@ type Config struct {
 	PluginFileUid int `hcl:"plugin_file_uid"`
 
 	PluginFilePermissions    int         `hcl:"-"`
-	PluginFilePermissionsRaw interface{} `hcl:"plugin_file_permissions,alias:PluginFilePermissions"`
+	PluginFilePermissionsRaw any `hcl:"plugin_file_permissions,alias:PluginFilePermissions"`
 
 	EnableIntrospectionEndpoint    bool        `hcl:"-"`
-	EnableIntrospectionEndpointRaw interface{} `hcl:"introspection_endpoint,alias:EnableIntrospectionEndpoint"`
+	EnableIntrospectionEndpointRaw any `hcl:"introspection_endpoint,alias:EnableIntrospectionEndpoint"`
 
 	EnableRawEndpoint    bool        `hcl:"-"`
-	EnableRawEndpointRaw interface{} `hcl:"raw_storage_endpoint,alias:EnableRawEndpoint"`
+	EnableRawEndpointRaw any `hcl:"raw_storage_endpoint,alias:EnableRawEndpoint"`
 
 	APIAddr              string      `hcl:"api_addr"`
 	ClusterAddr          string      `hcl:"cluster_addr"`
 	DisableClustering    bool        `hcl:"-"`
-	DisableClusteringRaw interface{} `hcl:"disable_clustering,alias:DisableClustering"`
+	DisableClusteringRaw any `hcl:"disable_clustering,alias:DisableClustering"`
 
 	DisablePerformanceStandby    bool        `hcl:"-"`
-	DisablePerformanceStandbyRaw interface{} `hcl:"disable_performance_standby,alias:DisablePerformanceStandby"`
+	DisablePerformanceStandbyRaw any `hcl:"disable_performance_standby,alias:DisablePerformanceStandby"`
 
 	DisableSealWrap    bool        `hcl:"-"`
-	DisableSealWrapRaw interface{} `hcl:"disable_sealwrap,alias:DisableSealWrap"`
+	DisableSealWrapRaw any `hcl:"disable_sealwrap,alias:DisableSealWrap"`
 
 	DisableIndexing    bool        `hcl:"-"`
-	DisableIndexingRaw interface{} `hcl:"disable_indexing,alias:DisableIndexing"`
+	DisableIndexingRaw any `hcl:"disable_indexing,alias:DisableIndexing"`
 
 	DisableSentinelTrace    bool        `hcl:"-"`
-	DisableSentinelTraceRaw interface{} `hcl:"disable_sentinel_trace,alias:DisableSentinelTrace"`
+	DisableSentinelTraceRaw any `hcl:"disable_sentinel_trace,alias:DisableSentinelTrace"`
 
 	EnableResponseHeaderHostname    bool        `hcl:"-"`
-	EnableResponseHeaderHostnameRaw interface{} `hcl:"enable_response_header_hostname"`
+	EnableResponseHeaderHostnameRaw any `hcl:"enable_response_header_hostname"`
 
 	LogRequestsLevel    string      `hcl:"-"`
-	LogRequestsLevelRaw interface{} `hcl:"log_requests_level"`
+	LogRequestsLevelRaw any `hcl:"log_requests_level"`
 
 	DetectDeadlocks string `hcl:"detect_deadlocks"`
 
 	ImpreciseLeaseRoleTracking bool `hcl:"imprecise_lease_role_tracking"`
 
 	EnableResponseHeaderRaftNodeID    bool        `hcl:"-"`
-	EnableResponseHeaderRaftNodeIDRaw interface{} `hcl:"enable_response_header_raft_node_id"`
+	EnableResponseHeaderRaftNodeIDRaw any `hcl:"enable_response_header_raft_node_id"`
 
 	DisableSSCTokens *bool `hcl:"-"`
 }
@@ -833,7 +833,7 @@ func ParseStorage(result *Config, list *ast.ObjectList, name string) error {
 		key = item.Keys[0].Token.Value().(string)
 	}
 
-	var config map[string]interface{}
+	var config map[string]any
 	if err := hcl.DecodeObject(&config, item.Val); err != nil {
 		return multierror.Prefix(err, fmt.Sprintf("%s.%s:", name, key))
 	}
@@ -915,7 +915,7 @@ func parseHAStorage(result *Config, list *ast.ObjectList, name string) error {
 		key = item.Keys[0].Token.Value().(string)
 	}
 
-	var config map[string]interface{}
+	var config map[string]any
 	if err := hcl.DecodeObject(&config, item.Val); err != nil {
 		return multierror.Prefix(err, fmt.Sprintf("%s.%s:", name, key))
 	}
@@ -1017,14 +1017,14 @@ func parseServiceRegistration(result *Config, list *ast.ObjectList, name string)
 // - HAStorage.Config
 // - Seals.Config
 // - Telemetry.CirconusAPIToken
-func (c *Config) Sanitized() map[string]interface{} {
+func (c *Config) Sanitized() map[string]any {
 	// Create shared config if it doesn't exist (e.g. in tests) so that map
 	// keys are actually populated
 	if c.SharedConfig == nil {
 		c.SharedConfig = new(configutil.SharedConfig)
 	}
 	sharedResult := c.SharedConfig.Sanitized()
-	result := map[string]interface{}{
+	result := map[string]any{
 		"cache_size":              c.CacheSize,
 		"disable_sentinel_trace":  c.DisableSentinelTrace,
 		"disable_cache":           c.DisableCache,
@@ -1074,7 +1074,7 @@ func (c *Config) Sanitized() map[string]interface{} {
 	// Sanitize storage stanza
 	if c.Storage != nil {
 		storageType := c.Storage.Type
-		sanitizedStorage := map[string]interface{}{
+		sanitizedStorage := map[string]any{
 			"type":               storageType,
 			"redirect_addr":      c.Storage.RedirectAddr,
 			"cluster_addr":       c.Storage.ClusterAddr,
@@ -1082,7 +1082,7 @@ func (c *Config) Sanitized() map[string]interface{} {
 		}
 
 		if storageType == "raft" {
-			sanitizedStorage["raft"] = map[string]interface{}{
+			sanitizedStorage["raft"] = map[string]any{
 				"max_entry_size": c.Storage.Config["max_entry_size"],
 			}
 		}
@@ -1093,7 +1093,7 @@ func (c *Config) Sanitized() map[string]interface{} {
 	// Sanitize HA storage stanza
 	if c.HAStorage != nil {
 		haStorageType := c.HAStorage.Type
-		sanitizedHAStorage := map[string]interface{}{
+		sanitizedHAStorage := map[string]any{
 			"type":               haStorageType,
 			"redirect_addr":      c.HAStorage.RedirectAddr,
 			"cluster_addr":       c.HAStorage.ClusterAddr,
@@ -1101,7 +1101,7 @@ func (c *Config) Sanitized() map[string]interface{} {
 		}
 
 		if haStorageType == "raft" {
-			sanitizedHAStorage["raft"] = map[string]interface{}{
+			sanitizedHAStorage["raft"] = map[string]any{
 				"max_entry_size": c.HAStorage.Config["max_entry_size"],
 			}
 		}
@@ -1111,7 +1111,7 @@ func (c *Config) Sanitized() map[string]interface{} {
 
 	// Sanitize service_registration stanza
 	if c.ServiceRegistration != nil {
-		sanitizedServiceRegistration := map[string]interface{}{
+		sanitizedServiceRegistration := map[string]any{
 			"type": c.ServiceRegistration.Type,
 		}
 		result["service_registration"] = sanitizedServiceRegistration

@@ -121,7 +121,7 @@ func (b *kubeAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reque
 	} else {
 		// Create a map of data to be returned
 		resp := &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"kubernetes_host":        config.Host,
 				"kubernetes_ca_cert":     config.CACert,
 				"pem_keys":               config.PEMKeys,
@@ -220,7 +220,7 @@ type kubeConfig struct {
 func parsePublicKeyPEM(data []byte) (crypto.PublicKey, error) {
 	block, data := pem.Decode(data)
 	if block != nil {
-		var rawKey interface{}
+		var rawKey any
 		var err error
 		if rawKey, err = x509.ParsePKIXPublicKey(block.Bytes); err != nil {
 			if cert, err := x509.ParseCertificate(block.Bytes); err == nil {

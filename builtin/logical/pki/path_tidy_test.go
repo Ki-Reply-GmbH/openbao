@@ -48,7 +48,7 @@ func TestTidyConfigs(t *testing.T) {
 	for _, operation := range operations {
 		b, s := CreateBackendWithStorage(t)
 
-		resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		resp, err := CBWrite(b, s, "config/auto-tidy", map[string]any{
 			"enabled": true,
 			operation: true,
 		})
@@ -58,7 +58,7 @@ func TestTidyConfigs(t *testing.T) {
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to read auto-tidy operation for operation "+operation)
 		require.True(t, resp.Data[operation].(bool), "expected operation to be enabled after reading auto-tidy config "+operation)
 
-		resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		resp, err = CBWrite(b, s, "config/auto-tidy", map[string]any{
 			"enabled": true,
 			operation: false,
 			lastOp:    true,
@@ -69,7 +69,7 @@ func TestTidyConfigs(t *testing.T) {
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to read auto-tidy operation for operation "+operation)
 		require.False(t, resp.Data[operation].(bool), "expected operation to be disabled after reading auto-tidy config "+operation)
 
-		resp, err = CBWrite(b, s, "tidy", map[string]interface{}{
+		resp, err = CBWrite(b, s, "tidy", map[string]any{
 			operation: true,
 		})
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to start tidy operation with "+operation)
@@ -126,7 +126,7 @@ func TestTidyConfigs(t *testing.T) {
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to read auto-tidy operation for flag "+flag.Config)
 		require.Equal(t, resp.Data[flag.Config].(int), flag.DefaultValue, "expected initial auto-tidy config to match default value for "+flag.Config)
 
-		resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		resp, err = CBWrite(b, s, "config/auto-tidy", map[string]any{
 			"enabled":         true,
 			"tidy_cert_store": true,
 			flag.Config:       flag.FirstValue,
@@ -137,7 +137,7 @@ func TestTidyConfigs(t *testing.T) {
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to read auto-tidy operation for config "+flag.Config)
 		require.Equal(t, resp.Data[flag.Config].(int), flag.FirstValue, "expected value to be set after reading auto-tidy config "+flag.Config)
 
-		resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		resp, err = CBWrite(b, s, "config/auto-tidy", map[string]any{
 			"enabled":         true,
 			"tidy_cert_store": true,
 			flag.Config:       flag.SecondValue,
@@ -148,7 +148,7 @@ func TestTidyConfigs(t *testing.T) {
 		requireSuccessNonNilResponse(t, resp, err, "expected to be able to read auto-tidy operation for config "+flag.Config)
 		require.Equal(t, resp.Data[flag.Config].(int), flag.SecondValue, "expected value to be set after reading auto-tidy config "+flag.Config)
 
-		resp, err = CBWrite(b, s, "tidy", map[string]interface{}{
+		resp, err = CBWrite(b, s, "tidy", map[string]any{
 			"tidy_cert_store": true,
 			flag.Config:       flag.FirstValue,
 		})
@@ -213,7 +213,7 @@ func TestAutoTidy(t *testing.T) {
 	require.NoError(t, err)
 
 	// Generate root.
-	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"ttl":         "40h",
 		"common_name": "Root X1",
 		"key_type":    "ec",
@@ -225,13 +225,13 @@ func TestAutoTidy(t *testing.T) {
 	issuerId := resp.Data["issuer_id"]
 
 	// Run tidy so status is not empty when we run it later...
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_revoked_certs": true,
 	})
 	require.NoError(t, err)
 
 	// Setup a testing role.
-	_, err = client.Logical().Write("pki/roles/local-testing", map[string]interface{}{
+	_, err = client.Logical().Write("pki/roles/local-testing", map[string]any{
 		"allow_any_name":    true,
 		"enforce_hostnames": false,
 		"key_type":          "ec",
@@ -239,7 +239,7 @@ func TestAutoTidy(t *testing.T) {
 	require.NoError(t, err)
 
 	// Write the auto-tidy config.
-	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":            true,
 		"interval_duration":  "1s",
 		"tidy_cert_store":    true,
@@ -249,7 +249,7 @@ func TestAutoTidy(t *testing.T) {
 	require.NoError(t, err)
 
 	// Issue a cert and revoke it.
-	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]any{
 		"common_name": "example.com",
 		"ttl":         "10s",
 	})
@@ -272,7 +272,7 @@ func TestAutoTidy(t *testing.T) {
 	require.Empty(t, resp.Data["revocation_time_rfc3339"], "revocation_time_rfc3339 was not empty")
 	require.Empty(t, resp.Data["issuer_id"], "issuer_id was not empty")
 
-	_, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+	_, err = client.Logical().Write("pki/revoke", map[string]any{
 		"serial_number": leafSerial,
 	})
 	require.NoError(t, err)
@@ -320,21 +320,21 @@ func TestTidyCancellation(t *testing.T) {
 	b, s := CreateBackendWithStorage(t)
 
 	// Create a root, a role, and a bunch of leaves.
-	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	_, err := CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "root example.com",
 		"issuer_name": "root",
 		"ttl":         "20m",
 		"key_type":    "ec",
 	})
 	require.NoError(t, err)
-	_, err = CBWrite(b, s, "roles/local-testing", map[string]interface{}{
+	_, err = CBWrite(b, s, "roles/local-testing", map[string]any{
 		"allow_any_name":    true,
 		"enforce_hostnames": false,
 		"key_type":          "ec",
 	})
 	require.NoError(t, err)
 	for i := 0; i < numLeaves; i++ {
-		_, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+		_, err = CBWrite(b, s, "issue/local-testing", map[string]any{
 			"common_name": "testing",
 			"ttl":         "1s",
 		})
@@ -343,7 +343,7 @@ func TestTidyCancellation(t *testing.T) {
 
 	// Kick off a tidy operation (which runs in the background), but with
 	// a slow-ish pause between certificates.
-	resp, err := CBWrite(b, s, "tidy", map[string]interface{}{
+	resp, err := CBWrite(b, s, "tidy", map[string]any{
 		"tidy_cert_store": true,
 		"safety_buffer":   "1s",
 		"pause_duration":  "1s",
@@ -362,7 +362,7 @@ func TestTidyCancellation(t *testing.T) {
 	require.Equal(t, resp.Data["state"], "Running")
 
 	// If we now cancel the operation, the response should say Cancelling.
-	cancelResp, err := CBWrite(b, s, "tidy-cancel", map[string]interface{}{})
+	cancelResp, err := CBWrite(b, s, "tidy-cancel", map[string]any{})
 	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("tidy-cancel"), logical.UpdateOperation), resp, true)
 	require.NoError(t, err)
 	require.NotNil(t, cancelResp)
@@ -400,7 +400,7 @@ func TestTidyIssuers(t *testing.T) {
 	b, s := CreateBackendWithStorage(t)
 
 	// Create a root that expires quickly and one valid for longer.
-	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	_, err := CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "root1 example.com",
 		"issuer_name": "root-expired",
 		"ttl":         "1s",
@@ -408,7 +408,7 @@ func TestTidyIssuers(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	_, err = CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "root2 example.com",
 		"issuer_name": "root-valid",
 		"ttl":         "60m",
@@ -420,7 +420,7 @@ func TestTidyIssuers(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// First tidy run shouldn't remove anything; too long of safety buffer.
-	_, err = CBWrite(b, s, "tidy", map[string]interface{}{
+	_, err = CBWrite(b, s, "tidy", map[string]any{
 		"tidy_expired_issuers": true,
 		"issuer_safety_buffer": "60m",
 	})
@@ -437,7 +437,7 @@ func TestTidyIssuers(t *testing.T) {
 
 	// Second tidy run with shorter safety buffer shouldn't remove the
 	// expired one, as it should be the default issuer.
-	_, err = CBWrite(b, s, "tidy", map[string]interface{}{
+	_, err = CBWrite(b, s, "tidy", map[string]any{
 		"tidy_expired_issuers": true,
 		"issuer_safety_buffer": "1s",
 	})
@@ -453,13 +453,13 @@ func TestTidyIssuers(t *testing.T) {
 	requireSuccessNonNilResponse(t, resp, err, "valid should still be present")
 
 	// Update the default issuer.
-	_, err = CBWrite(b, s, "config/issuers", map[string]interface{}{
+	_, err = CBWrite(b, s, "config/issuers", map[string]any{
 		"default": "root-valid",
 	})
 	require.NoError(t, err)
 
 	// Third tidy run should remove the expired one.
-	_, err = CBWrite(b, s, "tidy", map[string]interface{}{
+	_, err = CBWrite(b, s, "tidy", map[string]any{
 		"tidy_expired_issuers": true,
 		"issuer_safety_buffer": "1s",
 	})
@@ -476,7 +476,7 @@ func TestTidyIssuers(t *testing.T) {
 	requireSuccessNonNilResponse(t, resp, err, "valid should still be present")
 
 	// Finally, one more tidy should cause no changes.
-	_, err = CBWrite(b, s, "tidy", map[string]interface{}{
+	_, err = CBWrite(b, s, "tidy", map[string]any{
 		"tidy_expired_issuers": true,
 		"issuer_safety_buffer": "1s",
 	})
@@ -513,7 +513,7 @@ func TestTidyIssuerConfig(t *testing.T) {
 
 	jsonBlob, err := json.Marshal(&defaultTidyConfig)
 	require.NoError(t, err)
-	var defaultConfigMap map[string]interface{}
+	var defaultConfigMap map[string]any
 	err = json.Unmarshal(jsonBlob, &defaultConfigMap)
 	require.NoError(t, err)
 
@@ -529,7 +529,7 @@ func TestTidyIssuerConfig(t *testing.T) {
 	require.Equal(t, defaultConfigMap, resp.Data)
 
 	// Ensure setting issuer-tidy related fields stick.
-	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]any{
 		"tidy_expired_issuers": true,
 		"issuer_safety_buffer": "5s",
 	})
@@ -593,7 +593,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	// Generate root.
-	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"ttl":         "40h",
 		"common_name": "Root X1",
 		"key_type":    "ec",
@@ -604,7 +604,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	require.NotEmpty(t, resp.Data["issuer_id"])
 
 	// Set up a testing role.
-	_, err = client.Logical().Write("pki/roles/local-testing", map[string]interface{}{
+	_, err = client.Logical().Write("pki/roles/local-testing", map[string]any{
 		"allow_any_name":    true,
 		"enforce_hostnames": false,
 		"key_type":          "ec",
@@ -612,7 +612,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	// Run tidy so that tidy-status is not empty
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_revoked_certs": true,
 	})
 	require.NoError(t, err)
@@ -647,7 +647,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	}
 
 	// Write the auto-tidy config.
-	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":                                  true,
 		"interval_duration":                        "1s",
 		"tidy_cert_store":                          true,
@@ -710,7 +710,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	}
 
 	// Write the auto-tidy config, again, this time turning on metrics
-	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":                                  true,
 		"interval_duration":                        "1s",
 		"tidy_cert_store":                          true,
@@ -722,7 +722,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	require.NoError(t, err, "failed updating auto-tidy configuration")
 
 	// Issue a cert and revoke it.
-	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]any{
 		"common_name": "example.com",
 		"ttl":         "10s",
 	})
@@ -745,7 +745,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	require.Empty(t, resp.Data["revocation_time_rfc3339"], "revocation_time_rfc3339 was not empty")
 	require.Empty(t, resp.Data["issuer_id"], "issuer_id was not empty")
 
-	revokeResp, err := client.Logical().Write("pki/revoke", map[string]interface{}{
+	revokeResp, err := client.Logical().Write("pki/revoke", map[string]any{
 		"serial_number": leafSerial,
 	})
 	require.NoError(t, err, "failed revoking serial number: %s", leafSerial)
@@ -909,7 +909,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 	require.NotEmpty(t, listResp.Data["keys"], "expected non-empty list response")
 
 	// Run Tidy
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_acme": true,
 	})
 	require.NoError(t, err)
@@ -926,7 +926,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 	listResp, err = client.Logical().ListWithContext(testCtx, acmeThumbprintsPath)
 	require.NoError(t, err)
 	require.NotNil(t, listResp)
-	thumbprintEntries := listResp.Data["keys"].([]interface{})
+	thumbprintEntries := listResp.Data["keys"].([]any)
 	require.Equal(t, len(thumbprintEntries), 1)
 	thumbprint := thumbprintEntries[0].(string)
 
@@ -937,7 +937,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 	backDateAcmeOrderSys(t, testCtx, client, string(accountId), orderId, duration, pkiMount)
 
 	// Run Tidy -> clean up order
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_acme": true,
 	})
 	require.NoError(t, err)
@@ -965,7 +965,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 	backDateAcmeAccountSys(t, testCtx, client, thumbprint, duration, pkiMount)
 
 	// Run Tidy -> mark account revoked
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_acme": true,
 	})
 	require.NoError(t, err)
@@ -988,7 +988,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 	backDateAcmeAccountSys(t, testCtx, client, thumbprint, duration, pkiMount)
 
 	// Run Tidy -> remove account
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_acme": true,
 	})
 	require.NoError(t, err)
@@ -1000,7 +1000,7 @@ func TestTidyAcmeWithBackdate(t *testing.T) {
 	listResp, err = client.Logical().ListWithContext(testCtx, acmeThumbprintsPath)
 	require.NoError(t, err)
 	if listResp != nil {
-		thumbprintEntries = listResp.Data["keys"].([]interface{})
+		thumbprintEntries = listResp.Data["keys"].([]any)
 		require.Equal(t, 0, len(thumbprintEntries))
 	}
 
@@ -1044,14 +1044,14 @@ func TestTidyAcmeWithSafetyBuffer(t *testing.T) {
 	listResp, err := client.Logical().ListWithContext(testCtx, acmeThumbprintsPath)
 	require.NoError(t, err, "failed listing ACME thumbprints")
 	require.NotEmpty(t, listResp.Data["keys"], "expected non-empty list response")
-	thumbprintEntries := listResp.Data["keys"].([]interface{})
+	thumbprintEntries := listResp.Data["keys"].([]any)
 	require.Equal(t, len(thumbprintEntries), 1)
 
 	// Wait for the account to expire.
 	time.Sleep(2 * time.Second)
 
 	// Run Tidy -> mark account revoked
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_acme":                  true,
 		"acme_account_safety_buffer": "1s",
 	})
@@ -1065,7 +1065,7 @@ func TestTidyAcmeWithSafetyBuffer(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Run Tidy -> remove account
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_acme":                  true,
 		"acme_account_safety_buffer": "1s",
 	})
@@ -1078,7 +1078,7 @@ func TestTidyAcmeWithSafetyBuffer(t *testing.T) {
 	listResp, err = client.Logical().ListWithContext(testCtx, acmeThumbprintsPath)
 	require.NoError(t, err)
 	if listResp != nil {
-		thumbprintEntries = listResp.Data["keys"].([]interface{})
+		thumbprintEntries = listResp.Data["keys"].([]any)
 		require.Equal(t, 0, len(thumbprintEntries))
 	}
 
@@ -1126,7 +1126,7 @@ func backDateAcmeAccountSys(t *testing.T, testContext context.Context, client *a
 	t.Logf("got account after update: %v", account)
 
 	encodeJSON, err := jsonutil.EncodeJSON(account)
-	_, err = client.Logical().WriteWithContext(context.Background(), accountPath, map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(context.Background(), accountPath, map[string]any{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
 	})
@@ -1148,7 +1148,7 @@ func backDateAcmeAccountSys(t *testing.T, testContext context.Context, client *a
 
 	orders := ordersRaw.Data
 
-	for _, orderId := range orders["keys"].([]interface{}) {
+	for _, orderId := range orders["keys"].([]any) {
 		backDateAcmeOrderSys(t, testContext, client, thumbprint.Kid, orderId.(string), backdateAmount, mount)
 	}
 
@@ -1172,7 +1172,7 @@ func backDateAcmeOrderSys(t *testing.T, testContext context.Context, client *api
 	order.CertificateExpiry = backDate(order.CertificateExpiry, backdateAmount)
 
 	encodeJSON, err := jsonutil.EncodeJSON(order)
-	_, err = client.Logical().WriteWithContext(context.Background(), rawOrderPath, map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(context.Background(), rawOrderPath, map[string]any{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
 	})
@@ -1207,7 +1207,7 @@ func backDateAcmeAuthorizationSys(t *testing.T, testContext context.Context, cli
 	auth.Expires = time.Time.Format(newExpiry, time.RFC3339)
 
 	encodeJSON, err := jsonutil.EncodeJSON(auth)
-	_, err = client.Logical().WriteWithContext(context.Background(), rawAuthPath, map[string]interface{}{
+	_, err = client.Logical().WriteWithContext(context.Background(), rawAuthPath, map[string]any{
 		"value":    base64.StdEncoding.EncodeToString(encodeJSON),
 		"encoding": "base64",
 	})
@@ -1294,7 +1294,7 @@ func waitForAutoTidyToFinish(t *testing.T, client *api.Client) {
 	}
 }
 
-func waitForManualTidy(t *testing.T, client *api.Client, tidyConfig map[string]interface{}) {
+func waitForManualTidy(t *testing.T, client *api.Client, tidyConfig map[string]any) {
 	status, err := client.Logical().Read("pki/tidy-status")
 	require.NoError(t, err, "got error reading initial tidy status")
 
@@ -1356,25 +1356,25 @@ NZA=`
 	require.NoError(t, err, "failed to decode base64 certificate content")
 
 	// Generate a root, a role, and both short (1s) and long (5s) TTL certs
-	_, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	_, err = CBWrite(b, s, "root/generate/internal", map[string]any{
 		"common_name": "root example.com",
 		"issuer_name": "root",
 		"ttl":         "20m",
 		"key_type":    "ec",
 	})
 	require.NoError(t, err)
-	_, err = CBWrite(b, s, "roles/local-testing", map[string]interface{}{
+	_, err = CBWrite(b, s, "roles/local-testing", map[string]any{
 		"allow_any_name":    true,
 		"enforce_hostnames": false,
 		"key_type":          "ec",
 	})
 	require.NoError(t, err)
-	_, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+	_, err = CBWrite(b, s, "issue/local-testing", map[string]any{
 		"common_name": "long-lived",
 		"ttl":         "5s",
 	})
 	require.NoError(t, err)
-	resp, err := CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+	resp, err := CBWrite(b, s, "issue/local-testing", map[string]any{
 		"common_name": "short-lived",
 		"ttl":         "1s",
 	})
@@ -1504,14 +1504,14 @@ func TestRevokedSafetyBufferConfig(t *testing.T) {
 	b, s := CreateBackendWithStorage(t)
 
 	// Verify that the default of revoked_safety_buffer is the default of safety_buffer when neither are set
-	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]any{})
 	resp, err = CBRead(b, s, "config/auto-tidy")
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, resp.Data["safety_buffer"].(int), resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
 
 	// Verify that revoked_safety_buffer defaults to safety_buffer when safety_buffer is explicitly set
 	safetyBuffer := 3600
-	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]any{
 		"safety_buffer": safetyBuffer,
 	})
 	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set safety_buffer")
@@ -1524,7 +1524,7 @@ func TestRevokedSafetyBufferConfig(t *testing.T) {
 	// Verify that revoked_safety_buffer defaults to safety_buffer when safety_buffer is explicitly set multiple times,
 	// and revoked_safety_buffer is not set explicitly.
 	safetyBuffer2 := 200
-	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]any{
 		"safety_buffer": safetyBuffer2,
 	})
 	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set safety_buffer")
@@ -1536,7 +1536,7 @@ func TestRevokedSafetyBufferConfig(t *testing.T) {
 
 	// Verify that revoked_safety_buffer can be explicitly set
 	revokedSafetyBuffer := 400
-	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]any{
 		"safety_buffer":         safetyBuffer,
 		"revoked_safety_buffer": revokedSafetyBuffer,
 	})
@@ -1580,7 +1580,7 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	require.NoError(t, err)
 
 	// Generate a root certificate
-	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"ttl":         "40h",
 		"common_name": "Root X1",
 		"key_type":    "ec",
@@ -1590,13 +1590,13 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	require.NotEmpty(t, resp.Data)
 
 	// Run tidy so status is not empty when we run it later
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_revoked_certs": true,
 	})
 	require.NoError(t, err)
 
 	// Set up a role for testing
-	_, err = client.Logical().Write("pki/roles/local-testing", map[string]interface{}{
+	_, err = client.Logical().Write("pki/roles/local-testing", map[string]any{
 		"allow_any_name":    true,
 		"enforce_hostnames": false,
 		"key_type":          "ec",
@@ -1604,7 +1604,7 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure auto-tidy with different safety buffers
-	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":               true,
 		"interval_duration":     "1s",
 		"tidy_cert_store":       true,
@@ -1615,7 +1615,7 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	require.NoError(t, err)
 
 	// Issue a certificate that expires soon
-	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]any{
 		"common_name": "example.com",
 		"ttl":         "5s",
 	})
@@ -1624,7 +1624,7 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	leafCert := parseCert(t, resp.Data["certificate"].(string))
 
 	// Issue and revoke another certificate
-	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]any{
 		"common_name": "revoked-example.com",
 		"ttl":         "10s",
 	})
@@ -1632,7 +1632,7 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	revokedSerial := resp.Data["serial_number"].(string)
 	revokedCert := parseCert(t, resp.Data["certificate"].(string))
 
-	_, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+	_, err = client.Logical().Write("pki/revoke", map[string]any{
 		"serial_number": revokedSerial,
 	})
 	require.NoError(t, err)
@@ -1640,7 +1640,7 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	// Issue a certificate that expires after the revoked
 	// certificate. This expiration needs to be longer than
 	// revoked_safety_buffer+revoked.ttl.
-	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]any{
 		"common_name": "example.com",
 		"ttl":         "35s",
 	})
@@ -1699,14 +1699,14 @@ func TestTidyPaginationConfig(t *testing.T) {
 	b, s := CreateBackendWithStorage(t)
 
 	// Verify that the default of page_size is 1000
-	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]any{})
 	resp, err = CBRead(b, s, "config/auto-tidy")
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, 1000, resp.Data["page_size"].(int), "expected page_size to be defaulted to 1000")
 
 	// Verify that page_size can be explicitly set
 	pageSize := 75
-	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]any{
 		"page_size": pageSize,
 	})
 	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set page_size")
@@ -1717,7 +1717,7 @@ func TestTidyPaginationConfig(t *testing.T) {
 
 	// Expect an error when setting page_size to less than 5
 	pageSizeInvalid := 4
-	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]any{
 		"page_size": pageSizeInvalid,
 	})
 	require.Error(t, err, "expected error when setting page_size less than 5")
@@ -1761,7 +1761,7 @@ func TestTidyPagination(t *testing.T) {
 	require.NoError(t, err)
 
 	// Generate a root certificate
-	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]any{
 		"ttl":         "40h",
 		"common_name": "Root X1",
 		"key_type":    "ec",
@@ -1772,13 +1772,13 @@ func TestTidyPagination(t *testing.T) {
 	rootSerial := resp.Data["serial_number"].(string)
 
 	// Run tidy so status is not empty when we run it later
-	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/tidy", map[string]any{
 		"tidy_revoked_certs": true,
 	})
 	require.NoError(t, err)
 
 	// Set up a role for testing
-	_, err = client.Logical().Write("pki/roles/local-testing", map[string]interface{}{
+	_, err = client.Logical().Write("pki/roles/local-testing", map[string]any{
 		"allow_any_name":    true,
 		"enforce_hostnames": false,
 		"key_type":          "ec",
@@ -1786,7 +1786,7 @@ func TestTidyPagination(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure auto-tidy
-	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]any{
 		"enabled":               true,
 		"interval_duration":     "1s",
 		"tidy_cert_store":       true,
@@ -1801,14 +1801,14 @@ func TestTidyPagination(t *testing.T) {
 	// This number is chosen to ensure that the tidy operation can process multiple pages,
 	// even when the page size limit is set below the total number of certificates.
 	for i := 0; i < 26; i++ {
-		_, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+		_, err = client.Logical().Write("pki/issue/local-testing", map[string]any{
 			"common_name": "example.com",
 			"ttl":         "1s",
 		})
 		require.NoError(t, err)
 	}
 	// the last leaf cert being issued
-	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]any{
 		"common_name": "last.com",
 		"ttl":         "1s",
 	})
@@ -1818,14 +1818,14 @@ func TestTidyPagination(t *testing.T) {
 	// Issue another 4 leaf certificates then revoke them. This is done to ensure that
 	// the tidy operation can process certificates less than its the page size.
 	for i := 0; i < 4; i++ {
-		resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+		resp, err = client.Logical().Write("pki/issue/local-testing", map[string]any{
 			"common_name": fmt.Sprintf("revoked.com"),
 			"ttl":         "1s",
 		})
 		require.NoError(t, err)
 		revokedSerial := resp.Data["serial_number"].(string)
 
-		_, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+		_, err = client.Logical().Write("pki/revoke", map[string]any{
 			"serial_number": revokedSerial,
 		})
 		require.NoError(t, err)
@@ -1842,7 +1842,7 @@ func TestTidyPagination(t *testing.T) {
 	require.NoError(t, err, "unable to list certificates in store")
 
 	// Check that only the root certificate remains
-	certKeys := resp.Data["keys"].([]interface{})
+	certKeys := resp.Data["keys"].([]any)
 	require.Len(t, certKeys, 1, "expected only root cert to remain in the store")
 	require.Contains(t, certKeys, rootSerial, "expected only root cert to remain in the store")
 }

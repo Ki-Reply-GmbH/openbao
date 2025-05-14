@@ -98,10 +98,10 @@ func (r *Router) reset() {
 	r.mountAccessorCache = radix.New()
 }
 
-func (r *Router) GetRecords(tag string) ([]map[string]interface{}, error) {
+func (r *Router) GetRecords(tag string) ([]map[string]any, error) {
 	r.l.RLock()
 	defer r.l.RUnlock()
-	var data []map[string]interface{}
+	var data []map[string]any
 	var tree *radix.Tree
 	switch tag {
 	case "root":
@@ -122,10 +122,10 @@ func (r *Router) GetRecords(tag string) ([]map[string]interface{}, error) {
 	return data, nil
 }
 
-func (entry *routeEntry) Deserialize() map[string]interface{} {
+func (entry *routeEntry) Deserialize() map[string]any {
 	entry.l.RLock()
 	defer entry.l.RUnlock()
-	ret := map[string]interface{}{
+	ret := map[string]any{
 		"tainted":        entry.tainted,
 		"storage_prefix": entry.storagePrefix,
 	}
@@ -386,7 +386,7 @@ func (r *Router) matchingPrefixInternal(ctx context.Context, path string) string
 	path = ns.Path + path
 
 	var existing string
-	fn := func(existingPath string, v interface{}) bool {
+	fn := func(existingPath string, v any) bool {
 		if strings.HasPrefix(existingPath, path) {
 			existing = existingPath
 			return true
@@ -412,7 +412,7 @@ func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) str
 	// This allows us to avoid calling into the namespace store, which may be
 	// locked as we're trying to mount required mounts for a new namespace.
 	var existing string
-	fn := func(existingPath string, v interface{}) bool {
+	fn := func(existingPath string, v any) bool {
 		if !strings.HasSuffix(existingPath, "sys/") {
 			return false
 		}
@@ -463,7 +463,7 @@ func (r *Router) matchingStorage(ctx context.Context, path string, apiPath bool)
 	}
 	path = ns.Path + path
 
-	var raw interface{}
+	var raw any
 	var ok bool
 	r.l.RLock()
 	if apiPath {
@@ -571,7 +571,7 @@ func (r *Router) MatchingAPIPrefixByStoragePath(ctx context.Context, path string
 }
 
 func (r *Router) matchingMountEntryByPath(ctx context.Context, path string, apiPath bool) (*MountEntry, string, bool) {
-	var raw interface{}
+	var raw any
 	var ok bool
 	r.l.RLock()
 	if apiPath {

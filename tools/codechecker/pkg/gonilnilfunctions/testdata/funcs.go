@@ -4,12 +4,12 @@
 package testdata
 
 func ReturnReturnOkay() (any, error) {
-	var i interface{}
+	var i any
 	return i, nil
 }
 
 func OneGoodOneBad() (any, error) { // want "Function OneGoodOneBad can return an error, and has a statement that returns only nils"
-	var i interface{}
+	var i any
 	if true {
 		return i, nil
 	}
@@ -17,7 +17,7 @@ func OneGoodOneBad() (any, error) { // want "Function OneGoodOneBad can return a
 }
 
 func OneBadOneGood() (any, error) { // want "Function OneBadOneGood can return an error, and has a statement that returns only nils"
-	var i interface{}
+	var i any
 	if true {
 		return nil, nil
 	}

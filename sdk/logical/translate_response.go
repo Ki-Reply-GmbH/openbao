@@ -94,7 +94,7 @@ type HTTPResponse struct {
 	LeaseID       string                 `json:"lease_id"`
 	Renewable     bool                   `json:"renewable"`
 	LeaseDuration int                    `json:"lease_duration"`
-	Data          map[string]interface{} `json:"data"`
+	Data          map[string]any `json:"data"`
 	WrapInfo      *HTTPWrapInfo          `json:"wrap_info"`
 	Warnings      []string               `json:"warnings"`
 	Headers       map[string][]string    `json:"-"`

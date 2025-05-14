@@ -203,7 +203,7 @@ func file_helper_storagepacker_types_proto_rawDescGZIP() []byte {
 }
 
 var file_helper_storagepacker_types_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_helper_storagepacker_types_proto_goTypes = []interface{}{
+var file_helper_storagepacker_types_proto_goTypes = []any{
 	(*Item)(nil),      // 0: storagepacker.Item
 	(*Bucket)(nil),    // 1: storagepacker.Bucket
 	nil,               // 2: storagepacker.Bucket.ItemMapEntry
@@ -227,7 +227,7 @@ func file_helper_storagepacker_types_proto_init() {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_helper_storagepacker_types_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_helper_storagepacker_types_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*Item); i {
 			case 0:
 				return &v.state
@@ -239,7 +239,7 @@ func file_helper_storagepacker_types_proto_init() {
 				return nil
 			}
 		}
-		file_helper_storagepacker_types_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_helper_storagepacker_types_proto_msgTypes[1].Exporter = func(v any, i int) any {
 			switch v := v.(*Bucket); i {
 			case 0:
 				return &v.state

@@ -204,13 +204,13 @@ func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config
 
 	elideListResponseData := config.ElideListResponses && req.Operation == logical.ListOperation
 
-	var respData map[string]interface{}
+	var respData map[string]any
 	if config.Raw {
 		// In the non-raw case, elision of list response data occurs inside HashResponse, to avoid redundant deep
 		// copies and hashing of data only to elide it later. In the raw case, we need to do it here.
 		if elideListResponseData && resp.Data != nil {
 			// Copy the data map before making changes, but we only need to go one level deep in this case
-			respData = make(map[string]interface{}, len(resp.Data))
+			respData = make(map[string]any, len(resp.Data))
 			for k, v := range resp.Data {
 				respData[k] = v
 			}
@@ -429,7 +429,7 @@ type AuditRequest struct {
 	ClientTokenAccessor           string                 `json:"client_token_accessor,omitempty"`
 	Namespace                     *AuditNamespace        `json:"namespace,omitempty"`
 	Path                          string                 `json:"path,omitempty"`
-	Data                          map[string]interface{} `json:"data,omitempty"`
+	Data                          map[string]any `json:"data,omitempty"`
 	PolicyOverride                bool                   `json:"policy_override,omitempty"`
 	RemoteAddr                    string                 `json:"remote_address,omitempty"`
 	RemotePort                    int                    `json:"remote_port,omitempty"`
@@ -448,7 +448,7 @@ type AuditResponse struct {
 	MountClass            string                 `json:"mount_class,omitempty"`
 	MountIsExternalPlugin bool                   `json:"mount_is_external_plugin,omitempty"`
 	Secret                *AuditSecret           `json:"secret,omitempty"`
-	Data                  map[string]interface{} `json:"data,omitempty"`
+	Data                  map[string]any `json:"data,omitempty"`
 	Warnings              []string               `json:"warnings,omitempty"`
 	Redirect              string                 `json:"redirect,omitempty"`
 	WrapInfo              *AuditResponseWrapInfo `json:"wrap_info,omitempty"`
@@ -576,18 +576,18 @@ func NewTemporaryFormatter(format, prefix string) *AuditFormatter {
 // modify in place, but need not be a full recursive deep copy, as only top-level keys are changed.
 //
 // See the documentation of the controlling option in FormatterConfig for more information on the purpose.
-func doElideListResponseData(data map[string]interface{}) {
+func doElideListResponseData(data map[string]any) {
 	doElideListResponseDataWithCopy(data, data)
 }
 
-func doElideListResponseDataWithCopy(inputData map[string]interface{}, outputData map[string]interface{}) {
+func doElideListResponseDataWithCopy(inputData map[string]any, outputData map[string]any) {
 	for k, v := range inputData {
 		if k == "keys" {
 			if vSlice, ok := v.([]string); ok {
 				outputData[k] = len(vSlice)
 			}
 		} else if k == "key_info" {
-			if vMap, ok := v.(map[string]interface{}); ok {
+			if vMap, ok := v.(map[string]any); ok {
 				outputData[k] = len(vMap)
 			}
 		}

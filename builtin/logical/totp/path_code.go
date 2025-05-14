@@ -78,7 +78,7 @@ func (b *backend) pathReadCode(ctx context.Context, req *logical.Request, data *
 
 	// Return the secret
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"code": totpToken,
 		},
 	}, nil
@@ -130,7 +130,7 @@ func (b *backend) pathValidateCode(ctx context.Context, req *logical.Request, da
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"valid": valid,
 		},
 	}, nil

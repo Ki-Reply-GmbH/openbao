@@ -61,7 +61,7 @@ func (c *Sys) generateRootInitCommonWithContext(ctx context.Context, path, otp, 
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"otp":     otp,
 		"pgp_key": pgpKey,
 	}
@@ -131,7 +131,7 @@ func (c *Sys) generateRootUpdateCommonWithContext(ctx context.Context, path, sha
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"key":   shard,
 		"nonce": nonce,
 	}

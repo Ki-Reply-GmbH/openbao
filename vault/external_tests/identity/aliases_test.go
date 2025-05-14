@@ -72,7 +72,7 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 	entityID := resp.Data["id"].(string)
 
 	// Create an alias
-	resp, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
+	resp, err = client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "testaliasname",
 		"mount_accessor": approleAccessor,
 	})
@@ -82,7 +82,7 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 	testAliasCanonicalID := resp.Data["canonical_id"].(string)
 	testAliasAliasID := resp.Data["id"].(string)
 
-	resp, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
+	resp, err = client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "entityalias",
 		"mount_accessor": approleAccessor,
 		"canonical_id":   entityID,
@@ -97,7 +97,7 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	keys := resp.Data["keys"].([]interface{})
+	keys := resp.Data["keys"].([]any)
 	if len(keys) != 2 {
 		t.Fatalf("bad: length of alias IDs listed; expected: 2, actual: %d", len(keys))
 	}
@@ -107,14 +107,14 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 	if !ok {
 		t.Fatal("expected key_info map in response")
 	}
-	aliasInfo := aliasInfoRaw.(map[string]interface{})
+	aliasInfo := aliasInfoRaw.(map[string]any)
 	for _, keyRaw := range keys {
 		key := keyRaw.(string)
 		infoRaw, ok := aliasInfo[key]
 		if !ok {
 			t.Fatal("expected key info")
 		}
-		info := infoRaw.(map[string]interface{})
+		info := infoRaw.(map[string]any)
 		currName := "entityalias"
 		if info["canonical_id"].(string) == testAliasCanonicalID {
 			currName = "testaliasname"
@@ -134,7 +134,7 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	keys = resp.Data["keys"].([]interface{})
+	keys = resp.Data["keys"].([]any)
 	if len(keys) != 2 {
 		t.Fatalf("bad: length of entity IDs listed; expected: 2, actual: %d", len(keys))
 	}
@@ -147,25 +147,25 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 	// This is basically verifying that the entity has the alias in key_info
 	// that we expect to be tied to it, plus tests a value further down in it
 	// for fun
-	entityInfo := entityInfoRaw.(map[string]interface{})
+	entityInfo := entityInfoRaw.(map[string]any)
 	for _, keyRaw := range keys {
 		key := keyRaw.(string)
 		infoRaw, ok := entityInfo[key]
 		if !ok {
 			t.Fatal("expected key info")
 		}
-		info := infoRaw.(map[string]interface{})
+		info := infoRaw.(map[string]any)
 		t.Logf("entity info: %#v", info)
 		currAliasID := entityAliasAliasID
 		if key == testAliasCanonicalID {
 			currAliasID = testAliasAliasID
 		}
-		currAliases := info["aliases"].([]interface{})
+		currAliases := info["aliases"].([]any)
 		if len(currAliases) != 1 {
 			t.Fatal("bad aliases length")
 		}
 		for _, v := range currAliases {
-			curr := v.(map[string]interface{})
+			curr := v.(map[string]any)
 			switch {
 			case curr["id"].(string) != currAliasID:
 				t.Fatalf("bad alias id: %v", curr["id"])
@@ -204,13 +204,13 @@ func TestIdentityStore_RenameAlias_CannotMergeEntity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bsmith", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bsmith", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/login/bsmith", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
@@ -234,7 +234,7 @@ func TestIdentityStore_RenameAlias_CannotMergeEntity(t *testing.T) {
 	}
 
 	// Now create a new unrelated entity and alias
-	entityResp, err := client.Logical().Write("identity/entity", map[string]interface{}{
+	entityResp, err := client.Logical().Write("identity/entity", map[string]any{
 		"name": "bob-smith",
 	})
 	if err != nil {
@@ -244,7 +244,7 @@ func TestIdentityStore_RenameAlias_CannotMergeEntity(t *testing.T) {
 		t.Fatal("expected a non-nil response")
 	}
 
-	aliasResp, err := client.Logical().Write("identity/entity-alias", map[string]interface{}{
+	aliasResp, err := client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "bob",
 		"mount_accessor": mountAccessor,
 	})
@@ -254,7 +254,7 @@ func TestIdentityStore_RenameAlias_CannotMergeEntity(t *testing.T) {
 	aliasID2 := aliasResp.Data["id"].(string)
 
 	// Rename this new alias to have the same name as the one implicitly created by our login as bsmith
-	_, err = client.Logical().Write("identity/entity-alias/id/"+aliasID2, map[string]interface{}{
+	_, err = client.Logical().Write("identity/entity-alias/id/"+aliasID2, map[string]any{
 		"name": "bsmith",
 	})
 	if err == nil {
@@ -283,7 +283,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
@@ -309,7 +309,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClash(t *testing.T) {
 	_, entityIdBob, aliasIdBob := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "bob-smith", "bob")
 
 	// Create userpass login for alice
-	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
@@ -319,7 +319,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClash(t *testing.T) {
 	_, entityIdAlice, aliasIdAlice := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "alice-smith", "alice")
 
 	// Perform entity merge
-	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]interface{}{
+	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]any{
 		"to_entity_id":    entityIdBob,
 		"from_entity_ids": entityIdAlice,
 	})
@@ -376,7 +376,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities(t *testing.T)
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
@@ -415,7 +415,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities(t *testing.T)
 	_, entityIdClara, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessorAppRole, "clara-smith", "clara")
 
 	// Perform entity merge
-	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]interface{}{
+	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]any{
 		"to_entity_id":    entityIdBob,
 		"from_entity_ids": []string{entityIdAlice, entityIdClara},
 	})
@@ -456,14 +456,14 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob-approle", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob-approle", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
@@ -499,7 +499,7 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 
 	_, entityIdBob, aliasIdBob := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "bob-smith", "bob")
 
-	aliasResp, err := client.Logical().Write("identity/entity-alias", map[string]interface{}{
+	aliasResp, err := client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "bob-approle",
 		"canonical_id":   entityIdBob,
 		"mount_accessor": mountAccessorAppRole,
@@ -514,7 +514,7 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 	}
 
 	// Create userpass login for alice
-	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
@@ -525,7 +525,7 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 	_, entityIdClara, aliasIdClara := testhelpers.CreateEntityAndAlias(t, client, mountAccessorAppRole, "clara-smith", "clara")
 
 	// Perform entity merge
-	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]interface{}{
+	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]any{
 		"to_entity_id":    entityIdBob,
 		"from_entity_ids": []string{entityIdAlice, entityIdClara},
 	})
@@ -585,7 +585,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawReque
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
@@ -611,7 +611,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawReque
 	_, entityIdBob, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "bob-smith", "bob")
 
 	// Create userpass login for alice
-	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]any{
 		"password": "training",
 	})
 	if err != nil {
@@ -622,7 +622,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawReque
 
 	// Perform entity merge as a Raw Request so we can investigate the response body
 	req := client.NewRequest("POST", "/v1/identity/entity/merge")
-	req.SetJSONBody(map[string]interface{}{
+	req.SetJSONBody(map[string]any{
 		"to_entity_id":    entityIdBob,
 		"from_entity_ids": []string{entityIdAlice},
 	})
@@ -643,12 +643,12 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawReque
 		t.Fatal("Incorrect status code for response")
 	}
 
-	var mapOutput map[string]interface{}
+	var mapOutput map[string]any
 	if err = json.Unmarshal([]byte(bodyString), &mapOutput); err != nil {
 		t.Fatal(err)
 	}
 
-	errorStrings, ok := mapOutput["errors"].([]interface{})
+	errorStrings, ok := mapOutput["errors"].([]any)
 	if !ok {
 		t.Fatalf("error not present in response - full response: %s", bodyString)
 	}
@@ -666,7 +666,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawReque
 		t.Fatalf("Error was not due to conflicting alias mount accessors. Error: %s", errorString)
 	}
 
-	dataArray, ok := mapOutput["data"].([]interface{})
+	dataArray, ok := mapOutput["data"].([]any)
 	if !ok {
 		t.Fatalf("data not present in response - full response: %s", bodyString)
 	}
@@ -676,7 +676,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawReque
 	}
 
 	for _, data := range dataArray {
-		dataMap, ok := data.(map[string]interface{})
+		dataMap, ok := data.(map[string]any)
 		if !ok {
 			t.Fatalf("data could not be understood - full response: %s", bodyString)
 		}
@@ -749,13 +749,13 @@ func TestIdentityStore_MergeEntities_SameMountAccessor_ThenUseAlias(t *testing.T
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]any{
 		"password": "testpassword",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.Logical().Write("auth/userpass/login/bob", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/login/bob", map[string]any{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -781,13 +781,13 @@ func TestIdentityStore_MergeEntities_SameMountAccessor_ThenUseAlias(t *testing.T
 	_, entityIdBob, aliasIdBob := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "bob-smith", "bob")
 
 	// Create userpass login for alice
-	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]any{
 		"password": "testpassword",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.Logical().Write("auth/userpass/login/alice", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/login/alice", map[string]any{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -801,7 +801,7 @@ func TestIdentityStore_MergeEntities_SameMountAccessor_ThenUseAlias(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	loginResp, err := client.Logical().Write("auth/userpass/login/alice", map[string]interface{}{
+	loginResp, err := client.Logical().Write("auth/userpass/login/alice", map[string]any{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -816,7 +816,7 @@ func TestIdentityStore_MergeEntities_SameMountAccessor_ThenUseAlias(t *testing.T
 	}
 
 	// Perform entity merge
-	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]interface{}{
+	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]any{
 		"to_entity_id":                  entityIdBob,
 		"from_entity_ids":               entityIdAlice,
 		"conflicting_alias_ids_to_keep": aliasIdBob,
@@ -875,14 +875,14 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob", map[string]any{
 		"password": "testpassword",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob-approle", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob-approle", map[string]any{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -917,7 +917,7 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 	}
 
 	_, entityIdBob, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "bob-smith", "bob")
-	aliasResp, err := client.Logical().Write("identity/entity-alias", map[string]interface{}{
+	aliasResp, err := client.Logical().Write("identity/entity-alias", map[string]any{
 		"name":           "bob-approle",
 		"canonical_id":   entityIdBob,
 		"mount_accessor": mountAccessorAppRole,
@@ -932,7 +932,7 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 	}
 
 	// Create userpass login for alice
-	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/alice", map[string]any{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -943,7 +943,7 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 	_, entityIdClara, aliasIdClara := testhelpers.CreateEntityAndAlias(t, client, mountAccessorAppRole, "clara-smith", "alice")
 
 	// Perform entity merge
-	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]interface{}{
+	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]any{
 		"to_entity_id":                  entityIdBob,
 		"from_entity_ids":               []string{entityIdAlice, entityIdClara},
 		"conflicting_alias_ids_to_keep": []string{aliasIdAlice, aliasIdClara},

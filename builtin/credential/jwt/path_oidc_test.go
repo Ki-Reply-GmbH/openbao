@@ -34,7 +34,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 	b, storage := getBackend(t)
 
 	// Configure backend
-	data := map[string]interface{}{
+	data := map[string]any{
 		"oidc_discovery_url":    "https://team-vault.auth0.com/",
 		"oidc_discovery_ca_pem": "",
 		"oidc_client_id":        "abc",
@@ -57,7 +57,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 	}
 
 	// set up test role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"user_claim":            "email",
 		"bound_audiences":       "vault",
 		"allowed_redirect_uris": []string{"https://example.com"},
@@ -80,7 +80,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 
 		// normal cases, both passing the role name explicitly and relying on the default
 		for _, rolename := range []string{"test", ""} {
-			data := map[string]interface{}{
+			data := map[string]any{
 				"role":         rolename,
 				"redirect_uri": "https://example.com",
 			}
@@ -125,7 +125,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 	t.Run("missing role", func(t *testing.T) {
 		t.Parallel()
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "not_a_role",
 			"redirect_uri": "https://example.com",
 		}
@@ -151,7 +151,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "role/limited_uris",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"role_type":             "oidc",
 			"user_claim":            "email",
 			"bound_audiences":       "vault",
@@ -167,7 +167,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 	t.Run("valid redirect_uri", func(t *testing.T) {
 		t.Parallel()
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "limited_uris",
 			"redirect_uri": "https://example.com",
 		}
@@ -193,7 +193,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 	t.Run("invalid redirect_uri", func(t *testing.T) {
 		t.Parallel()
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "limited_uris",
 			"redirect_uri": "http://bitc0in-4-less.cx",
 		}
@@ -283,7 +283,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 			b, storage := getBackend(t)
 
 			// Configure backend
-			data := map[string]interface{}{
+			data := map[string]any{
 				"oidc_discovery_url":    "https://team-vault.auth0.com/",
 				"oidc_discovery_ca_pem": "",
 				"oidc_client_id":        "abc",
@@ -307,7 +307,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 			}
 
 			// set up test role
-			rolePayload := map[string]interface{}{
+			rolePayload := map[string]any{
 				"user_claim":            "email",
 				"bound_audiences":       "vault",
 				"allowed_redirect_uris": test.allowedRedirectURIs,
@@ -325,7 +325,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
 
-			authURLPayload := map[string]interface{}{
+			authURLPayload := map[string]any{
 				"role":         "test",
 				"redirect_uri": test.incomingRedirectURI,
 			}
@@ -379,7 +379,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
 			"oidc_client_id":     "abc",
 			"oidc_client_secret": "def",
@@ -434,7 +434,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      "role/test",
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"user_claim":            "email",
 					"allowed_redirect_uris": []string{"https://example.com"},
 					"max_age":               tt.maxAge,
@@ -454,7 +454,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      "oidc/auth_url",
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"role":         "test",
 					"redirect_uri": "https://example.com",
 				},
@@ -541,7 +541,7 @@ func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Update the role's user_claim config
-			data := map[string]interface{}{
+			data := map[string]any{
 				"user_claim":              tt.args.userClaim,
 				"user_claim_json_pointer": tt.args.userClaimJSONPointer,
 			}
@@ -556,7 +556,7 @@ func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
 			require.False(t, resp.IsError())
 
 			// Generate an auth URL
-			data = map[string]interface{}{
+			data = map[string]any{
 				"role":         "test",
 				"redirect_uri": "https://example.com",
 			}
@@ -585,7 +585,7 @@ func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
 				Operation: logical.ReadOperation,
 				Path:      "oidc/callback",
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"state": state,
 					"code":  "abc",
 				},
@@ -623,7 +623,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// Configure the backend
-	data := map[string]interface{}{
+	data := map[string]any{
 		"oidc_discovery_url":    s.server.URL,
 		"oidc_client_id":        s.clientID,
 		"oidc_client_secret":    s.clientSecret,
@@ -645,7 +645,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 	require.False(t, resp.IsError())
 
 	// Configure a role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"user_claim":            "email",
 		"bound_subject":         "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 		"allowed_redirect_uris": []string{"https://example.com"},
@@ -661,7 +661,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 	require.False(t, resp.IsError())
 
 	// Generate an auth URL
-	data = map[string]interface{}{
+	data = map[string]any{
 		"role":         "test",
 		"redirect_uri": "https://example.com",
 	}
@@ -696,7 +696,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "oidc/callback",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id_token": idToken,
 			"state":    state,
 		},
@@ -710,7 +710,7 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "oidc/callback",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"state": state,
 		},
 	}
@@ -744,7 +744,7 @@ func TestOIDC_Callback(t *testing.T) {
 			s.code = "abc"
 
 			// get auth_url
-			data := map[string]interface{}{
+			data := map[string]any{
 				"role":         "test",
 				"redirect_uri": "https://example.com",
 				"client_nonce": clientNonce,
@@ -783,7 +783,7 @@ func TestOIDC_Callback(t *testing.T) {
 					Operation: logical.ReadOperation,
 					Path:      "oidc/callback",
 					Storage:   storage,
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"state":        state,
 						"code":         "abc",
 						"client_nonce": clientNonce,
@@ -804,7 +804,7 @@ func TestOIDC_Callback(t *testing.T) {
 					Operation: logical.UpdateOperation,
 					Path:      "oidc/poll",
 					Storage:   storage,
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"state":        state,
 						"client_nonce": clientNonce,
 					},
@@ -821,7 +821,7 @@ func TestOIDC_Callback(t *testing.T) {
 					TTL:       3 * time.Minute,
 					MaxTTL:    5 * time.Minute,
 				},
-				InternalData: map[string]interface{}{
+				InternalData: map[string]any{
 					"role": "test",
 				},
 				DisplayName: "bob@example.com",
@@ -873,7 +873,7 @@ func TestOIDC_Callback(t *testing.T) {
 		defer s.server.Close()
 
 		// get auth_url
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "test",
 			"redirect_uri": "https://example.com",
 		}
@@ -907,7 +907,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"state": state,
 				"code":  "abc",
 			},
@@ -927,7 +927,7 @@ func TestOIDC_Callback(t *testing.T) {
 		defer s.server.Close()
 
 		// get auth_url
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "test",
 			"redirect_uri": "https://example.com",
 		}
@@ -963,7 +963,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"state": state,
 				"code":  "abc",
 			},
@@ -1005,7 +1005,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"state": "not_a_state",
 			},
 		}
@@ -1024,7 +1024,7 @@ func TestOIDC_Callback(t *testing.T) {
 		defer s.server.Close()
 
 		// get auth_url
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "test",
 			"redirect_uri": "https://example.com",
 		}
@@ -1047,7 +1047,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"state": state,
 			},
 		}
@@ -1066,7 +1066,7 @@ func TestOIDC_Callback(t *testing.T) {
 		defer s.server.Close()
 
 		// get auth_url
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "test",
 			"redirect_uri": "https://example.com",
 		}
@@ -1096,7 +1096,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"state": state,
 				"code":  "wrong_code",
 			},
@@ -1116,7 +1116,7 @@ func TestOIDC_Callback(t *testing.T) {
 		defer s.server.Close()
 
 		// get auth_url
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "test",
 			"redirect_uri": "https://example.com",
 		}
@@ -1148,7 +1148,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"state": state,
 				"code":  "abc",
 			},
@@ -1167,7 +1167,7 @@ func TestOIDC_Callback(t *testing.T) {
 		b, storage, s := getBackendAndServer(t, false, "")
 
 		// get auth_url
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "test",
 			"redirect_uri": "https://example.com",
 		}
@@ -1194,7 +1194,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"state": state,
 				"code":  "abc",
 			},
@@ -1216,7 +1216,7 @@ func TestOIDC_Callback(t *testing.T) {
 		s.code = "abc"
 
 		// get auth_url
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "test",
 			"redirect_uri": "https://example.com",
 		}
@@ -1240,7 +1240,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"state": state,
 				"code":  "abc",
 			},
@@ -1262,7 +1262,7 @@ func TestOIDC_Callback(t *testing.T) {
 		s.clientID = "not_gonna_match"
 
 		// get auth_url
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role":         "test",
 			"redirect_uri": "https://example.com",
 		}
@@ -1292,7 +1292,7 @@ func TestOIDC_Callback(t *testing.T) {
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"state": state,
 				"code":  "abc",
 			},
@@ -1346,7 +1346,7 @@ func TestOIDC_Callback(t *testing.T) {
 
 		for name, test := range tests {
 			// get auth_url
-			data := map[string]interface{}{
+			data := map[string]any{
 				"role":         "test",
 				"redirect_uri": "https://example.com",
 				"client_nonce": test.authURLNonce,
@@ -1383,7 +1383,7 @@ func TestOIDC_Callback(t *testing.T) {
 				Operation: logical.ReadOperation,
 				Path:      "oidc/callback",
 				Storage:   storage,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"state":        state,
 					"code":         "abc",
 					"client_nonce": test.callbackNonce,
@@ -1411,7 +1411,7 @@ type oidcProvider struct {
 	clientSecret  string
 	code          string
 	codeChallenge string
-	customClaims  map[string]interface{}
+	customClaims  map[string]any
 }
 
 func newOIDCProvider(t *testing.T) *oidcProvider {
@@ -1444,7 +1444,7 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/certs_invalid":
 		w.Write([]byte("It's not a keyset!"))
 	case "/device":
-		values := map[string]interface{}{
+		values := map[string]any{
 			"device_code": o.code,
 		}
 		data, err := json.Marshal(values)
@@ -1610,7 +1610,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 	}
 
 	// Configure backend
-	data := map[string]interface{}{
+	data := map[string]any{
 		"oidc_discovery_url":    s.server.URL,
 		"oidc_client_id":        "abc",
 		"oidc_client_secret":    "def",
@@ -1634,7 +1634,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 	}
 
 	// set up test role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"user_claim":            "email",
 		"allowed_redirect_uris": []string{"https://example.com"},
 		"claim_mappings": map[string]string{
@@ -1645,7 +1645,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 		"token_ttl":      "3m",
 		"token_num_uses": 10,
 		"max_ttl":        "5m",
-		"bound_claims": map[string]interface{}{
+		"bound_claims": map[string]any{
 			"password":            "foo",
 			"sk":                  "42",
 			"/nested/secret_code": "bar",
@@ -1677,14 +1677,14 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 	return b, storage, s
 }
 
-func sampleClaims(nonce string) map[string]interface{} {
-	return map[string]interface{}{
+func sampleClaims(nonce string) map[string]any {
+	return map[string]any{
 		"nonce":            nonce,
 		"email":            "bob@example.com",
 		"/nested/username": "non_nested_username",
 		"COLOR":            "green",
 		"sk":               "42",
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"Size":        "medium",
 			"Groups":      []string{"a", "b"},
 			"secret_code": "bar",

@@ -36,7 +36,7 @@ func (b *jwtAuthBackend) pathUI(ctx context.Context, req *logical.Request, d *fr
 	}
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			logical.HTTPStatusCode:  200,
 			logical.HTTPRawBody:     string(data),
 			logical.HTTPContentType: "text/html",

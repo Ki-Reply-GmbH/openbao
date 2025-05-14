@@ -108,7 +108,7 @@ var _ pluginutil.PluginClient = &fakePluginClient{}
 type fakePluginClient struct {
 	connResp grpc.ClientConnInterface
 
-	dispenseResp interface{}
+	dispenseResp any
 	dispenseErr  error
 }
 
@@ -120,7 +120,7 @@ func (f *fakePluginClient) Reload() error {
 	return nil
 }
 
-func (f *fakePluginClient) Dispense(name string) (interface{}, error) {
+func (f *fakePluginClient) Dispense(name string) (any, error) {
 	return f.dispenseResp, f.dispenseErr
 }
 
@@ -147,7 +147,7 @@ func (m *mockRunnerUtil) NewPluginClient(ctx context.Context, config pluginutil.
 	return args.Get(0).(pluginutil.PluginClient), args.Error(1)
 }
 
-func (m *mockRunnerUtil) ResponseWrapData(ctx context.Context, data map[string]interface{}, ttl time.Duration, jwt bool) (*wrapping.ResponseWrapInfo, error) {
+func (m *mockRunnerUtil) ResponseWrapData(ctx context.Context, data map[string]any, ttl time.Duration, jwt bool) (*wrapping.ResponseWrapInfo, error) {
 	args := m.Called(ctx, data, ttl, jwt)
 	return args.Get(0).(*wrapping.ResponseWrapInfo), args.Error(1)
 }

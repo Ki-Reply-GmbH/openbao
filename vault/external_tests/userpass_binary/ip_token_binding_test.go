@@ -67,7 +67,7 @@ func Test_StrictIPBinding(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = client.Logical().Write("auth/userpass/users/testing", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/testing", map[string]any{
 		"password":               "password",
 		"token_policies":         "admin",
 		"token_strictly_bind_ip": true,
@@ -143,11 +143,11 @@ func Test_StrictIPBinding(t *testing.T) {
 	require.NoError(t, err, "got error running cURL command")
 	require.Equal(t, 0, retcode, "unexpected failure retcode cURL command result")
 
-	var data map[string]interface{}
+	var data map[string]any
 	err = json.Unmarshal(stdout, &data)
 	require.NoError(t, err)
 
-	auth := data["auth"].(map[string]interface{})
+	auth := data["auth"].(map[string]any)
 	remoteToken := auth["client_token"].(string)
 
 	// Using the remote token locally should fail...

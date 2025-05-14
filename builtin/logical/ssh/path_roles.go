@@ -177,7 +177,7 @@ func pathRoles(b *backend) *framework.Path {
 				[Required for all types]
 				Type of key used to login to hosts. It can be either 'otp' or 'ca'.
 				'otp' type requires agent to be installed in remote hosts.`,
-				AllowedValues: []interface{}{"otp", "ca"},
+				AllowedValues: []any{"otp", "ca"},
 				DisplayAttrs: &framework.DisplayAttributes{
 					Value: "ca",
 				},
@@ -363,7 +363,7 @@ func pathRoles(b *backend) *framework.Path {
 				When supplied, this value specifies a signing algorithm for the key. Possible values:
 				ssh-rsa, rsa-sha2-256, rsa-sha2-512, default, or the empty string.
 				`,
-				AllowedValues: []interface{}{"", DefaultAlgorithmSigner, ssh.SigAlgoRSA, ssh.SigAlgoRSASHA2256, ssh.SigAlgoRSASHA2512},
+				AllowedValues: []any{"", DefaultAlgorithmSigner, ssh.SigAlgoRSA, ssh.SigAlgoRSASHA2256, ssh.SigAlgoRSASHA2512},
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name: "Signing Algorithm",
 				},
@@ -550,9 +550,9 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 		return nil, logical.ErrorResponse("Either 'allow_user_certificates' or 'allow_host_certificates' must be set to 'true'")
 	}
 
-	defaultCriticalOptions := convertMapToStringValue(data.Get("default_critical_options").(map[string]interface{}))
-	defaultExtensions := convertMapToStringValue(data.Get("default_extensions").(map[string]interface{}))
-	allowedUserKeyLengths, err := convertMapToIntSlice(data.Get("allowed_user_key_lengths").(map[string]interface{}))
+	defaultCriticalOptions := convertMapToStringValue(data.Get("default_critical_options").(map[string]any))
+	defaultExtensions := convertMapToStringValue(data.Get("default_extensions").(map[string]any))
+	allowedUserKeyLengths, err := convertMapToIntSlice(data.Get("allowed_user_key_lengths").(map[string]any))
 	if err != nil {
 		return nil, logical.ErrorResponse(fmt.Sprintf("error processing allowed_user_key_lengths: %s", err.Error()))
 	}
@@ -702,12 +702,12 @@ func (b *backend) checkUpgrade(ctx context.Context, s logical.Storage, n string,
 // parseRole converts a sshRole object into its map[string]interface representation,
 // with appropriate values for each KeyType. If the KeyType is invalid, it will return
 // an error.
-func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
-	var result map[string]interface{}
+func (b *backend) parseRole(role *sshRole) (map[string]any, error) {
+	var result map[string]any
 
 	switch role.KeyType {
 	case KeyTypeOTP:
-		result = map[string]interface{}{
+		result = map[string]any{
 			"default_user":      role.DefaultUser,
 			"cidr_list":         role.CIDRList,
 			"exclude_cidr_list": role.ExcludeCIDRList,
@@ -725,7 +725,7 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 			return nil, err
 		}
 
-		result = map[string]interface{}{
+		result = map[string]any{
 			"allowed_users":               role.AllowedUsers,
 			"allowed_users_template":      role.AllowedUsersTemplate,
 			"allowed_domains":             role.AllowedDomains,
@@ -779,7 +779,7 @@ func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *
 		return nil, err
 	}
 
-	keyInfo := map[string]interface{}{}
+	keyInfo := map[string]any{}
 	for _, entry := range entries {
 		role, err := b.getRole(ctx, req.Storage, entry)
 		if err != nil {
@@ -805,7 +805,7 @@ func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *
 			continue
 		}
 
-		entryInfo := map[string]interface{}{}
+		entryInfo := map[string]any{}
 		if keyType, ok := roleInfo["key_type"]; ok {
 			entryInfo["key_type"] = keyType
 		}

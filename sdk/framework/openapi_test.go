@@ -402,7 +402,7 @@ func TestOpenAPI_Paths(t *testing.T) {
 				"age": {
 					Type:          TypeInt,
 					Description:   "the age",
-					AllowedValues: []interface{}{1, 2, 3},
+					AllowedValues: []any{1, 2, 3},
 					Required:      true,
 					DisplayAttrs: &DisplayAttributes{
 						Name:      "Age",
@@ -414,7 +414,7 @@ func TestOpenAPI_Paths(t *testing.T) {
 				"x-abc-token": {
 					Type:          TypeHeader,
 					Description:   "a header value",
-					AllowedValues: []interface{}{"a", "b", "c"},
+					AllowedValues: []any{"a", "b", "c"},
 				},
 				"maximum": {
 					Type:        TypeInt64,
@@ -481,7 +481,7 @@ func TestOpenAPI_Paths(t *testing.T) {
 				"age": {
 					Type:          TypeInt,
 					Description:   "the age",
-					AllowedValues: []interface{}{1, 2, 3},
+					AllowedValues: []any{1, 2, 3},
 					Required:      true,
 					DisplayAttrs: &DisplayAttributes{
 						Name:      "Age",
@@ -493,7 +493,7 @@ func TestOpenAPI_Paths(t *testing.T) {
 				"x-abc-token": {
 					Type:          TypeHeader,
 					Description:   "a header value",
-					AllowedValues: []interface{}{"a", "b", "c"},
+					AllowedValues: []any{"a", "b", "c"},
 				},
 				"format": {
 					Type:        TypeString,
@@ -533,7 +533,7 @@ func TestOpenAPI_Paths(t *testing.T) {
 						202: {{
 							Description: "Amazing",
 							Example: &logical.Response{
-								Data: map[string]interface{}{
+								Data: map[string]any{
 									"amount": 42,
 								},
 							},
@@ -575,7 +575,7 @@ func TestOpenAPI_CustomDecoder(t *testing.T) {
 					100: {{
 						Description: "OK",
 						Example: &logical.Response{
-							Data: map[string]interface{}{
+							Data: map[string]any{
 								"foo": 42,
 							},
 						},
@@ -600,7 +600,7 @@ func TestOpenAPI_CustomDecoder(t *testing.T) {
 
 	docJSON := mustJSONMarshal(t, docOrig)
 
-	var intermediate map[string]interface{}
+	var intermediate map[string]any
 	if err := jsonutil.DecodeJSON(docJSON, &intermediate); err != nil {
 		t.Fatal(err)
 	}
@@ -635,7 +635,7 @@ func TestOpenAPI_CleanResponse(t *testing.T) {
 	orig = &logical.Response{
 		Secret:   new(logical.Secret),
 		Auth:     new(logical.Auth),
-		Data:     map[string]interface{}{"foo": 42},
+		Data:     map[string]any{"foo": 42},
 		Redirect: "foo",
 		Warnings: []string{"foo"},
 		WrapInfo: &wrapping.ResponseWrapInfo{Token: "foo"},
@@ -877,7 +877,7 @@ func testPath(t *testing.T, path *Path, sp *logical.Paths, expectedJSON string) 
 	}
 
 	// Compare json by first decoding, then comparing with a deep equality check.
-	var expected, actual interface{}
+	var expected, actual any
 	if err := jsonutil.DecodeJSON(docJSON, &actual); err != nil {
 		t.Fatal(err)
 	}
@@ -916,7 +916,7 @@ func expected(name string) string {
 	return content
 }
 
-func mustJSONMarshal(t *testing.T, data interface{}) []byte {
+func mustJSONMarshal(t *testing.T, data any) []byte {
 	j, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		t.Fatal(err)

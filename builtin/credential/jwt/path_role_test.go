@@ -44,7 +44,7 @@ func TestPath_Create(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":               "jwt",
 			"bound_subject":           "testsub",
 			"bound_audiences":         "vault",
@@ -118,7 +118,7 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("no user claim", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"policies": "test",
 		}
 
@@ -143,7 +143,7 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("no binding", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":  "jwt",
 			"user_claim": "user",
 			"policies":   "test",
@@ -170,7 +170,7 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("has bound subject", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":     "jwt",
 			"user_claim":    "user",
 			"policies":      "test",
@@ -196,7 +196,7 @@ func TestPath_Create(t *testing.T) {
 	t.Run("has audience", func(t *testing.T) {
 		b, storage := getBackend(t)
 		// Test has audience
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":       "jwt",
 			"user_claim":      "user",
 			"policies":        "test",
@@ -222,7 +222,7 @@ func TestPath_Create(t *testing.T) {
 	t.Run("has cidr", func(t *testing.T) {
 		b, storage := getBackend(t)
 		// Test has cidr
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":   "jwt",
 			"user_claim":  "user",
 			"policies":    "test",
@@ -247,11 +247,11 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("has bound claims", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":  "jwt",
 			"user_claim": "user",
 			"policies":   "test",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"foo": 10,
 				"bar": "baz",
 			},
@@ -275,14 +275,14 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("has expiration, not before custom leeways", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":         "jwt",
 			"user_claim":        "user",
 			"policies":          "test",
 			"expiration_leeway": "5s",
 			"not_before_leeway": "5s",
 			"clock_skew_leeway": "5s",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"foo": 10,
 				"bar": "baz",
 			},
@@ -324,14 +324,14 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("storing zero leeways", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":         "jwt",
 			"user_claim":        "user",
 			"policies":          "test",
 			"clock_skew_leeway": "0",
 			"expiration_leeway": "0",
 			"not_before_leeway": "0",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"foo": 10,
 				"bar": "baz",
 			},
@@ -370,14 +370,14 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("storing negative leeways", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":         "jwt",
 			"user_claim":        "user",
 			"policies":          "test",
 			"clock_skew_leeway": "-1",
 			"expiration_leeway": "-1",
 			"not_before_leeway": "-1",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"foo": 10,
 				"bar": "baz",
 			},
@@ -416,7 +416,7 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("storing an invalid bound_claim_type", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":         "jwt",
 			"user_claim":        "user",
 			"policies":          "test",
@@ -424,7 +424,7 @@ func TestPath_Create(t *testing.T) {
 			"expiration_leeway": "-1",
 			"not_before_leeway": "-1",
 			"bound_claims_type": "invalid",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"foo": 10,
 				"bar": "baz",
 			},
@@ -451,7 +451,7 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("role with invalid glob in claim", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":         "jwt",
 			"user_claim":        "user",
 			"policies":          "test",
@@ -459,7 +459,7 @@ func TestPath_Create(t *testing.T) {
 			"expiration_leeway": "-1",
 			"not_before_leeway": "-1",
 			"bound_claims_type": "glob",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"bar": "baz",
 				"foo": 25,
 			},
@@ -486,7 +486,7 @@ func TestPath_Create(t *testing.T) {
 
 	t.Run("role with invalid glob in claim array", func(t *testing.T) {
 		b, storage := getBackend(t)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"role_type":         "jwt",
 			"user_claim":        "user",
 			"policies":          "test",
@@ -494,8 +494,8 @@ func TestPath_Create(t *testing.T) {
 			"expiration_leeway": "-1",
 			"not_before_leeway": "-1",
 			"bound_claims_type": "glob",
-			"bound_claims": map[string]interface{}{
-				"foo": []interface{}{"baz", 10},
+			"bound_claims": map[string]any{
+				"foo": []any{"baz", 10},
 			},
 		}
 
@@ -523,9 +523,9 @@ func TestPath_OIDCCreate(t *testing.T) {
 	t.Run("both explicit and default role_type", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"bound_audiences": "vault",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"foo": 10,
 				"bar": "baz",
 			},
@@ -560,7 +560,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			Period:          3 * time.Second,
 			BoundAudiences:  []string{"vault"},
 			BoundClaimsType: "string",
-			BoundClaims: map[string]interface{}{
+			BoundClaims: map[string]any{
 				"foo": json.Number("10"),
 				"bar": "baz",
 			},
@@ -608,9 +608,9 @@ func TestPath_OIDCCreate(t *testing.T) {
 	t.Run("invalid reserved metadata key role", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"bound_audiences": "vault",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"foo": 10,
 				"bar": "baz",
 			},
@@ -654,9 +654,9 @@ func TestPath_OIDCCreate(t *testing.T) {
 	t.Run("invalid duplicate metadata destination", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"bound_audiences": "vault",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"foo": 10,
 				"bar": "baz",
 			},
@@ -700,11 +700,11 @@ func TestPath_OIDCCreate(t *testing.T) {
 	t.Run("custom expiration_leeway and not_before_leeway values", func(t *testing.T) {
 		b, storage := getBackend(t)
 
-		data := map[string]interface{}{
+		data := map[string]any{
 			"user_claim":        "user",
 			"expiration_leeway": "5s",
 			"not_before_leeway": "5s",
-			"bound_claims": map[string]interface{}{
+			"bound_claims": map[string]any{
 				"foo": "a",
 				"bar": "b",
 			},
@@ -745,7 +745,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 func TestPath_Read(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role_type":             "jwt",
 		"bound_subject":         "testsub",
 		"bound_audiences":       "vault",
@@ -764,10 +764,10 @@ func TestPath_Read(t *testing.T) {
 		"clock_skew_leeway":     "100s",
 	}
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"role_type":                      "jwt",
 		"bound_claims_type":              "string",
-		"bound_claims":                   map[string]interface{}(nil),
+		"bound_claims":                   map[string]any(nil),
 		"claim_mappings":                 map[string]string(nil),
 		"oauth2_metadata":                []string(nil),
 		"bound_subject":                  "testsub",
@@ -844,7 +844,7 @@ func TestPath_Read(t *testing.T) {
 	rolePath := rolePrefix + "plugin-test"
 	raw, err := storage.Get(context.Background(), rolePath)
 
-	var role map[string]interface{}
+	var role map[string]any
 	if err := raw.DecodeJSON(&role); err != nil {
 		t.Fatal(err)
 	}
@@ -886,7 +886,7 @@ func TestPath_Read(t *testing.T) {
 func TestPath_Delete(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"role_type":         "jwt",
 		"bound_subject":     "testsub",
 		"bound_audiences":   "vault",

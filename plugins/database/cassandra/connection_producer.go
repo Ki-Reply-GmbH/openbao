@@ -32,8 +32,8 @@ type cassandraConnectionProducer struct {
 	InsecureTLS        bool        `json:"insecure_tls" structs:"insecure_tls" mapstructure:"insecure_tls"`
 	TLSServerName      string      `json:"tls_server_name" structs:"tls_server_name" mapstructure:"tls_server_name"`
 	ProtocolVersion    int         `json:"protocol_version" structs:"protocol_version" mapstructure:"protocol_version"`
-	ConnectTimeoutRaw  interface{} `json:"connect_timeout" structs:"connect_timeout" mapstructure:"connect_timeout"`
-	SocketKeepAliveRaw interface{} `json:"socket_keep_alive" structs:"socket_keep_alive" mapstructure:"socket_keep_alive"`
+	ConnectTimeoutRaw  any `json:"connect_timeout" structs:"connect_timeout" mapstructure:"connect_timeout"`
+	SocketKeepAliveRaw any `json:"socket_keep_alive" structs:"socket_keep_alive" mapstructure:"socket_keep_alive"`
 	TLSMinVersion      string      `json:"tls_min_version" structs:"tls_min_version" mapstructure:"tls_min_version"`
 	Consistency        string      `json:"consistency" structs:"consistency" mapstructure:"consistency"`
 	LocalDatacenter    string      `json:"local_datacenter" structs:"local_datacenter" mapstructure:"local_datacenter"`
@@ -44,7 +44,7 @@ type cassandraConnectionProducer struct {
 	connectTimeout  time.Duration
 	socketKeepAlive time.Duration
 	sslOpts         *gocql.SslOptions
-	rawConfig       map[string]interface{}
+	rawConfig       map[string]any
 
 	Initialized bool
 	Type        string
@@ -141,7 +141,7 @@ func (c *cassandraConnectionProducer) Initialize(ctx context.Context, req dbplug
 	return nil
 }
 
-func (c *cassandraConnectionProducer) Connection(ctx context.Context) (interface{}, error) {
+func (c *cassandraConnectionProducer) Connection(ctx context.Context) (any, error) {
 	if !c.Initialized {
 		return nil, connutil.ErrNotInitialized
 	}

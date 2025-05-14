@@ -14,7 +14,7 @@ import (
 	"github.com/go-jose/go-jose/v3"
 )
 
-var AllowedOuterJWSTypes = map[string]interface{}{
+var AllowedOuterJWSTypes = map[string]any{
 	"RS256":  true,
 	"RS384":  true,
 	"RS512":  true,
@@ -27,7 +27,7 @@ var AllowedOuterJWSTypes = map[string]interface{}{
 	"EdDSA2": true,
 }
 
-var AllowedEabJWSTypes = map[string]interface{}{
+var AllowedEabJWSTypes = map[string]any{
 	"HS256": true,
 	"HS384": true,
 	"HS512": true,
@@ -141,7 +141,7 @@ func hasValues(h jose.Header) bool {
 	return h.KeyID != "" || h.JSONWebKey != nil || h.Algorithm != "" || h.Nonce != "" || len(h.ExtraHeaders) > 0
 }
 
-func (c *jwsCtx) VerifyJWS(signature string) (map[string]interface{}, error) {
+func (c *jwsCtx) VerifyJWS(signature string) (map[string]any, error) {
 	// See RFC 8555 Section 6.2. Request Authentication:
 	//
 	// > The JWS Unencoded Payload Option [RFC7797] MUST NOT be used
@@ -176,7 +176,7 @@ func (c *jwsCtx) VerifyJWS(signature string) (map[string]interface{}, error) {
 		return nil, nil
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(payload, &m); err != nil {
 		return nil, fmt.Errorf("failed to json unmarshal 'payload': %s: %w", err, ErrMalformed)
 	}
@@ -184,7 +184,7 @@ func (c *jwsCtx) VerifyJWS(signature string) (map[string]interface{}, error) {
 	return m, nil
 }
 
-func verifyEabPayload(acmeState *acmeState, ac *acmeContext, outer *jwsCtx, expectedPath string, payload map[string]interface{}) (*eabType, error) {
+func verifyEabPayload(acmeState *acmeState, ac *acmeContext, outer *jwsCtx, expectedPath string, payload map[string]any) (*eabType, error) {
 	// Parse the key out.
 	rawProtectedBase64, ok := payload["protected"]
 	if !ok {

@@ -49,7 +49,7 @@ var hashFns = []string{
 
 var (
 	keysLock sync.RWMutex
-	keys     = map[string]interface{}{}
+	keys     = map[string]any{}
 )
 
 const (
@@ -76,7 +76,7 @@ func generateKeys(t *testing.T) {
 	}
 }
 
-func getKey(t *testing.T, keyType string) interface{} {
+func getKey(t *testing.T, keyType string) any {
 	t.Helper()
 
 	keysLock.RLock()
@@ -111,7 +111,7 @@ func TestTransit_ImportNSSEd25519Key(t *testing.T) {
 		Storage:   s,
 		Operation: logical.UpdateOperation,
 		Path:      "keys/nss-ed25519/import",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"ciphertext": blob,
 			"type":       "ed25519",
 		},
@@ -144,7 +144,7 @@ func TestTransit_ImportRSAPSS(t *testing.T) {
 		Storage:   s,
 		Operation: logical.UpdateOperation,
 		Path:      "keys/rsa-pss/import",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"ciphertext": blob,
 			"type":       "rsa-2048",
 		},
@@ -178,7 +178,7 @@ func TestTransit_Import(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 				},
 			}
@@ -223,7 +223,7 @@ func TestTransit_Import(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 				},
 			}
@@ -249,7 +249,7 @@ func TestTransit_Import(t *testing.T) {
 						Storage:   s,
 						Operation: logical.UpdateOperation,
 						Path:      fmt.Sprintf("keys/%s/import", keyID),
-						Data: map[string]interface{}{
+						Data: map[string]any{
 							"type":          keyType,
 							"hash_function": hashFn,
 							"ciphertext":    importBlob,
@@ -271,9 +271,9 @@ func TestTransit_Import(t *testing.T) {
 
 	failures := []struct {
 		name       string
-		ciphertext interface{}
-		keyType    interface{}
-		hashFn     interface{}
+		ciphertext any
+		keyType    any
+		hashFn     any
 	}{
 		{
 			name: "nil ciphertext",
@@ -311,7 +311,7 @@ func TestTransit_Import(t *testing.T) {
 					Storage:   s,
 					Operation: logical.UpdateOperation,
 					Path:      fmt.Sprintf("keys/%s/import", keyID),
-					Data:      map[string]interface{}{},
+					Data:      map[string]any{},
 				}
 				if tt.ciphertext != nil {
 					req.Data["ciphertext"] = tt.ciphertext
@@ -343,7 +343,7 @@ func TestTransit_Import(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"convergent_encryption": true,
 					"ciphertext":            importBlob,
 				},
@@ -370,7 +370,7 @@ func TestTransit_Import(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"allow_rotation": true,
 					"ciphertext":     importBlob,
 				},
@@ -408,7 +408,7 @@ func TestTransit_Import(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"allow_rotation": false,
 					"ciphertext":     importBlob,
 				},
@@ -452,7 +452,7 @@ func TestTransit_Import(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"public_key": publicKeyBytes,
 					"type":       keyType,
 				},
@@ -484,7 +484,7 @@ func TestTransit_Import(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"public_key": publicKeyBytes,
 					"type":       keyType,
 				},
@@ -518,7 +518,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 				},
 			}
@@ -550,7 +550,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 				},
 			}
@@ -587,7 +587,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 				},
 			}
@@ -613,7 +613,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 					"type":       "rsa-2048",
 				},
@@ -630,7 +630,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 				},
 			}
@@ -663,7 +663,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"public_key": publicKeyBytes,
 					"type":       keyType,
 				},
@@ -678,7 +678,7 @@ func TestTransit_ImportVersion(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 				},
 			}
@@ -725,7 +725,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"public_key": publicKeyBytes,
 					"type":       keyType,
 				},
@@ -740,7 +740,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 				},
 			}
@@ -789,7 +789,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob,
 					"type":       keyType,
 				},
@@ -804,7 +804,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"public_key": publicKeyBytes,
 				},
 			}
@@ -863,7 +863,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"public_key": publicKeyBytes1,
 					"type":       keyType,
 				},
@@ -878,7 +878,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"public_key": publicKeyBytes2,
 				},
 			}
@@ -907,7 +907,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob2,
 				},
 			}
@@ -921,7 +921,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 				Storage:   s,
 				Operation: logical.UpdateOperation,
 				Path:      fmt.Sprintf("keys/%s/import_version", keyID),
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"ciphertext": importBlob1,
 					"version":    1,
 				},
@@ -949,7 +949,7 @@ func TestTransit_ImportVersionWithPublicKeys(t *testing.T) {
 	)
 }
 
-func wrapTargetKeyForImport(t *testing.T, wrappingKey *rsa.PublicKey, targetKey interface{}, targetKeyType string, hashFnName string) string {
+func wrapTargetKeyForImport(t *testing.T, wrappingKey *rsa.PublicKey, targetKey any, targetKeyType string, hashFnName string) string {
 	t.Helper()
 
 	// Format target key for wrapping
@@ -1010,7 +1010,7 @@ func wrapTargetPKCS8ForImport(t *testing.T, wrappingKey *rsa.PublicKey, preppedT
 	return base64.StdEncoding.EncodeToString(wrappedKeys)
 }
 
-func generateKey(keyType string) (interface{}, error) {
+func generateKey(keyType string) (any, error) {
 	switch keyType {
 	case "aes128-gcm96":
 		return uuid.GenerateRandomBytes(16)

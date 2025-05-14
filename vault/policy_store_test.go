@@ -539,7 +539,7 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 
 	// Create and verify root policy
 	policyPath := "sys/policies/acl/test-api-policy"
-	policyData := map[string]interface{}{
+	policyData := map[string]any{
 		"policy": `path "secret/data/*" { capabilities = ["read"] }`,
 	}
 	rootResp, err := core.HandleRequest(ctx, &logical.Request{
@@ -558,7 +558,7 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
 
 	// Create and verify namespace policy
-	nsPolicyData := map[string]interface{}{
+	nsPolicyData := map[string]any{
 		"policy": `path "secret/data/*" { capabilities = ["read", "list"] }`,
 	}
 	nsResp, err := core.HandleRequest(nsCtx, &logical.Request{

@@ -187,7 +187,7 @@ func (b *jwtAuthBackend) pathCallbackPost(ctx context.Context, req *logical.Requ
 	idToken := d.Get("id_token").(string)
 
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			logical.HTTPContentType: "text/html",
 			logical.HTTPStatusCode:  http.StatusOK,
 		},
@@ -219,7 +219,7 @@ func loginFailedResponse(useHttp bool, msg string) *logical.Response {
 		return logical.ErrorResponse(errLoginFailed + " " + msg)
 	}
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			logical.HTTPContentType: "text/html",
 			logical.HTTPStatusCode:  http.StatusBadRequest,
 			logical.HTTPRawBody:     []byte(errorHTML(errLoginFailed, msg)),
@@ -354,7 +354,7 @@ func (b *jwtAuthBackend) processToken(ctx context.Context, req *logical.Request,
 	}
 
 	// Parse claims from the ID token payload.
-	var allClaims map[string]interface{}
+	var allClaims map[string]any
 	if err := token.IDToken().Claims(&allClaims); err != nil {
 		return nil, err
 	}
@@ -439,7 +439,7 @@ func (b *jwtAuthBackend) processToken(ctx context.Context, req *logical.Request,
 		NumUses:      role.NumUses,
 		Alias:        alias,
 		GroupAliases: groupAliases,
-		InternalData: map[string]interface{}{
+		InternalData: map[string]any{
 			"role": roleName,
 		},
 		Metadata: tokenMetadata,
@@ -463,7 +463,7 @@ func (b *jwtAuthBackend) processToken(ctx context.Context, req *logical.Request,
 	if useHttp {
 		oidcReq.auth = auth
 		b.setOIDCRequest(stateID, oidcReq)
-		resp.Data = map[string]interface{}{
+		resp.Data = map[string]any{
 			logical.HTTPContentType: "text/html",
 			logical.HTTPStatusCode:  http.StatusOK,
 			logical.HTTPRawBody:     []byte(successHTML),
@@ -552,7 +552,7 @@ func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *
 			return logical.ErrorResponse("authorization failed: %v", tokenOrError.Error), nil
 		}
 
-		extra := make(map[string]interface{})
+		extra := make(map[string]any)
 		err = json.Unmarshal(body, &extra)
 		if err != nil {
 			// already been unmarshalled once, unlikely
@@ -600,7 +600,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 
 	// default response for most error/invalid conditions
 	resp := &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"auth_url": "",
 		},
 	}

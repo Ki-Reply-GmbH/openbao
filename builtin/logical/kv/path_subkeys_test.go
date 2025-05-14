@@ -32,18 +32,18 @@ func TestVersionedKV_Subkeys_NotFound(t *testing.T) {
 func TestVersionedKV_Subkeys_CurrentVersion(t *testing.T) {
 	b, storage := getBackend(t)
 
-	data := map[string]interface{}{
-		"data": map[string]interface{}{
+	data := map[string]any{
+		"data": map[string]any{
 			"foo": "does-not-matter",
-			"bar": map[string]interface{}{
-				"a": map[string]interface{}{
-					"c": map[string]interface{}{
+			"bar": map[string]any{
+				"a": map[string]any{
+					"c": map[string]any{
 						"d": "does-not-matter",
 					},
 				},
-				"b": map[string]interface{}{},
+				"b": map[string]any{},
 			},
-			"baz": map[string]interface{}{
+			"baz": map[string]any{
 				"e": 3.14,
 			},
 			"quux": 123,
@@ -83,7 +83,7 @@ func TestVersionedKV_Subkeys_CurrentVersion(t *testing.T) {
 		t.Fatalf("expected top-level resp keys mismatch, diff: %#v", diff)
 	}
 
-	metadata, ok := resp.Data["metadata"].(map[string]interface{})
+	metadata, ok := resp.Data["metadata"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected metadata to be map, actual: %#v", metadata)
 	}
@@ -92,17 +92,17 @@ func TestVersionedKV_Subkeys_CurrentVersion(t *testing.T) {
 		t.Fatalf("metadata map keys mismatch, diff: %#v", diff)
 	}
 
-	expectedSubkeys := map[string]interface{}{
+	expectedSubkeys := map[string]any{
 		"foo": nil,
-		"bar": map[string]interface{}{
-			"a": map[string]interface{}{
-				"c": map[string]interface{}{
+		"bar": map[string]any{
+			"a": map[string]any{
+				"c": map[string]any{
 					"d": nil,
 				},
 			},
 			"b": nil,
 		},
-		"baz": map[string]interface{}{
+		"baz": map[string]any{
 			"e": nil,
 		},
 		"quux": nil,
@@ -123,8 +123,8 @@ func TestVersionedKV_Subkeys_VersionParam(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "data/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
-			"data": map[string]interface{}{
+		Data: map[string]any{
+			"data": map[string]any{
 				"foo": "abc",
 			},
 		},
@@ -139,8 +139,8 @@ func TestVersionedKV_Subkeys_VersionParam(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "data/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
-			"data": map[string]interface{}{
+		Data: map[string]any{
+			"data": map[string]any{
 				"foo": "abc",
 				"bar": "def",
 			},
@@ -156,7 +156,7 @@ func TestVersionedKV_Subkeys_VersionParam(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "subkeys/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"version": 1,
 		},
 	}
@@ -166,7 +166,7 @@ func TestVersionedKV_Subkeys_VersionParam(t *testing.T) {
 		t.Fatalf("subkeys ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
 
-	expectedSubkeys := map[string]interface{}{
+	expectedSubkeys := map[string]any{
 		"foo": nil,
 	}
 	if diff := deep.Equal(resp.Data["subkeys"], expectedSubkeys); len(diff) > 0 {
@@ -183,8 +183,8 @@ func TestVersionedKV_Subkeys_VersionParamDoesNotExist(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "data/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
-			"data": map[string]interface{}{
+		Data: map[string]any{
+			"data": map[string]any{
 				"foo": "abc",
 			},
 		},
@@ -199,8 +199,8 @@ func TestVersionedKV_Subkeys_VersionParamDoesNotExist(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "data/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
-			"data": map[string]interface{}{
+		Data: map[string]any{
+			"data": map[string]any{
 				"foo": "abc",
 				"bar": "def",
 			},
@@ -216,7 +216,7 @@ func TestVersionedKV_Subkeys_VersionParamDoesNotExist(t *testing.T) {
 		Operation: logical.ReadOperation,
 		Path:      "subkeys/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"version": 10,
 		},
 	}
@@ -234,8 +234,8 @@ func TestVersionedKV_Subkeys_VersionParamDoesNotExist(t *testing.T) {
 func TestVersionedKV_Subkeys_DepthParam(t *testing.T) {
 	cases := []struct {
 		name      string
-		depth     interface{}
-		expected  map[string]interface{}
+		depth     any
+		expected  map[string]any
 		expectErr bool
 	}{
 		{
@@ -247,9 +247,9 @@ func TestVersionedKV_Subkeys_DepthParam(t *testing.T) {
 		{
 			name:  "not_provided",
 			depth: nil,
-			expected: map[string]interface{}{
-				"foo": map[string]interface{}{
-					"bar": map[string]interface{}{
+			expected: map[string]any{
+				"foo": map[string]any{
+					"bar": map[string]any{
 						"baz": nil,
 					},
 				},
@@ -259,9 +259,9 @@ func TestVersionedKV_Subkeys_DepthParam(t *testing.T) {
 		{
 			name:  "zero",
 			depth: 0,
-			expected: map[string]interface{}{
-				"foo": map[string]interface{}{
-					"bar": map[string]interface{}{
+			expected: map[string]any{
+				"foo": map[string]any{
+					"bar": map[string]any{
 						"baz": nil,
 					},
 				},
@@ -271,8 +271,8 @@ func TestVersionedKV_Subkeys_DepthParam(t *testing.T) {
 		{
 			name:  "non_zero",
 			depth: 2,
-			expected: map[string]interface{}{
-				"foo": map[string]interface{}{
+			expected: map[string]any{
+				"foo": map[string]any{
 					"bar": nil,
 				},
 			},
@@ -292,10 +292,10 @@ func TestVersionedKV_Subkeys_DepthParam(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      "data/foo",
 				Storage:   storage,
-				Data: map[string]interface{}{
-					"data": map[string]interface{}{
-						"foo": map[string]interface{}{
-							"bar": map[string]interface{}{
+				Data: map[string]any{
+					"data": map[string]any{
+						"foo": map[string]any{
+							"bar": map[string]any{
 								"baz": 123,
 							},
 						},
@@ -308,7 +308,7 @@ func TestVersionedKV_Subkeys_DepthParam(t *testing.T) {
 				t.Fatalf("data CreateOperation request failed, err: %v, resp %#v", err, resp)
 			}
 
-			subkeysData := map[string]interface{}{}
+			subkeysData := map[string]any{}
 
 			if tc.depth != nil {
 				subkeysData["depth"] = tc.depth
@@ -348,8 +348,8 @@ func TestVersionedKV_Subkeys_EmptyData(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "data/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
-			"data": map[string]interface{}{},
+		Data: map[string]any{
+			"data": map[string]any{},
 		},
 	}
 
@@ -369,7 +369,7 @@ func TestVersionedKV_Subkeys_EmptyData(t *testing.T) {
 		t.Fatalf("ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
 
-	if diff := deep.Equal(resp.Data["subkeys"], map[string]interface{}{}); len(diff) > 0 {
+	if diff := deep.Equal(resp.Data["subkeys"], map[string]any{}); len(diff) > 0 {
 		t.Fatalf("resp and expected data mismatch, diff: %#v", diff)
 	}
 }
@@ -383,8 +383,8 @@ func TestVersionedKV_Subkeys_VersionDeleted(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "data/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
-			"data": map[string]interface{}{
+		Data: map[string]any{
+			"data": map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -406,7 +406,7 @@ func TestVersionedKV_Subkeys_VersionDeleted(t *testing.T) {
 		t.Fatalf("subkeys ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
 
-	expectedSubkeys := map[string]interface{}{
+	expectedSubkeys := map[string]any{
 		"foo": nil,
 	}
 	if diff := deep.Equal(resp.Data["subkeys"], expectedSubkeys); len(diff) > 0 {
@@ -437,7 +437,7 @@ func TestVersionedKV_Subkeys_VersionDeleted(t *testing.T) {
 
 	// Use of logical.RespondWithStatusCode in handler will
 	// serialize the JSON response body as a string
-	respBody := map[string]interface{}{}
+	respBody := map[string]any{}
 
 	if resp.Data["http_status_code"] != http.StatusNotFound {
 		t.Fatalf("expected 404 response for subkeys ReadOperation: resp: %#v", resp)
@@ -452,14 +452,14 @@ func TestVersionedKV_Subkeys_VersionDeleted(t *testing.T) {
 		t.Fatalf("no data provided in subkeys response, resp: %#v\n", resp)
 	}
 
-	respData := respDataRaw.(map[string]interface{})
+	respData := respDataRaw.(map[string]any)
 
 	respMetadataRaw, ok := respData["metadata"]
 	if !ok {
 		t.Fatalf("no metadata provided in subkeys response, resp: %#v\n", resp)
 	}
 
-	respMetadata := respMetadataRaw.(map[string]interface{})
+	respMetadata := respMetadataRaw.(map[string]any)
 
 	if respMetadata["deletion_time"] == "" {
 		t.Fatalf("expected deletion_time to be set, resp: %#v\n", resp)
@@ -475,8 +475,8 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "data/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
-			"data": map[string]interface{}{
+		Data: map[string]any{
+			"data": map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -498,7 +498,7 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 		t.Fatalf("subkeys ReadOperation request failed, err: %v, resp %#v", err, resp)
 	}
 
-	expectedSubkeys := map[string]interface{}{
+	expectedSubkeys := map[string]any{
 		"foo": nil,
 	}
 	if diff := deep.Equal(resp.Data["subkeys"], expectedSubkeys); len(diff) > 0 {
@@ -509,7 +509,7 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 		Operation: logical.CreateOperation,
 		Path:      "destroy/foo",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"versions": []int{1},
 		},
 	}
@@ -532,7 +532,7 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 
 	// Use of logical.RespondWithStatusCode in handler will
 	// serialize the JSON response body as a string
-	respBody := map[string]interface{}{}
+	respBody := map[string]any{}
 
 	if resp.Data["http_status_code"] != http.StatusNotFound {
 		t.Fatalf("expected 404 response for subkeys ReadOperation: resp:%#v", resp)
@@ -547,14 +547,14 @@ func TestVersionedKV_Subkeys_VersionDestroyed(t *testing.T) {
 		t.Fatalf("no data provided in subkeys response, resp: %#v\n", resp)
 	}
 
-	respData := respDataRaw.(map[string]interface{})
+	respData := respDataRaw.(map[string]any)
 
 	respMetadataRaw, ok := respData["metadata"]
 	if !ok {
 		t.Fatalf("no metadata provided in subkeys response, resp: %#v\n", resp)
 	}
 
-	respMetadata := respMetadataRaw.(map[string]interface{})
+	respMetadata := respMetadataRaw.(map[string]any)
 
 	if respMetadata["destroyed"] == nil || !respMetadata["destroyed"].(bool) {
 		t.Fatalf("expected version to be destroyed, resp: %#v\n", resp)

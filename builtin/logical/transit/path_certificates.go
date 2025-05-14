@@ -135,7 +135,7 @@ func (b *backend) pathCreateCSRWrite(ctx context.Context, req *logical.Request, 
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name": policy.Name,
 			"type": policy.Type.String(),
 			"csr":  string(csr),
@@ -219,7 +219,7 @@ func (b *backend) pathImportCertChainWrite(ctx context.Context, req *logical.Req
 	}
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"name":              policy.Name,
 			"type":              policy.Type.String(),
 			"certificate_chain": pemCertChain,

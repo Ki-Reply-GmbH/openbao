@@ -52,7 +52,7 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 	roleReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "roles/" + roleName,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"allow_user_certificates": true,
 			"allowed_users":           "*",
 			"key_type":                "ca",
@@ -86,7 +86,7 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 	signReq := &logical.Request{
 		Path:      "sign/" + roleName,
 		Operation: logical.UpdateOperation,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"public_key":       testKeyToSignPublic,
 			"valid_principals": testUserName,
 		},
@@ -138,7 +138,7 @@ func TestSSH_ConfigCAKeyTypes(t *testing.T) {
 	}
 
 	// Create a role for ssh signing.
-	roleOptions := map[string]interface{}{
+	roleOptions := map[string]any{
 		"allow_user_certificates": true,
 		"allowed_users":           "*",
 		"key_type":                "ca",
@@ -177,7 +177,7 @@ func TestSSH_ConfigCAPurgeIssuers(t *testing.T) {
 		defaultCaReq := &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"key_type":             opts.keyType,
 				"key_bits":             opts.keyBits,
 				"generate_signing_key": true,
@@ -228,7 +228,7 @@ func TestSSH_ConfigCAParams(t *testing.T) {
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"generate_signing_key": false,
 			},
 		})
@@ -242,7 +242,7 @@ func TestSSH_ConfigCAParams(t *testing.T) {
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"generate_signing_key": false,
 				"public_key":           testCAPublicKey,
 			},
@@ -257,7 +257,7 @@ func TestSSH_ConfigCAParams(t *testing.T) {
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"generate_signing_key": true,
 			},
 		})
@@ -272,7 +272,7 @@ func TestSSH_ConfigCAParams(t *testing.T) {
 			Operation: logical.UpdateOperation,
 			Path:      "config/ca",
 			Storage:   s,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"generate_signing_key": true,
 				"public_key":           testCAPublicKey,
 				"private_key":          testCAPrivateKey,
@@ -304,7 +304,7 @@ func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
 	createCaIssuerReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "issuers/import",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"set_as_default": true,
 		},
 		Storage: s,
@@ -317,7 +317,7 @@ func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
 	configDefaultCARequest := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/ca",
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"private_key": testCAPrivateKey,
 			"public_key":  testCAPublicKey,
 		},
@@ -348,7 +348,7 @@ func createDeleteHelper(t *testing.T, b logical.Backend, s logical.Storage, inde
 		Operation: logical.UpdateOperation,
 		Storage:   s,
 	}
-	caReq.Data = map[string]interface{}{
+	caReq.Data = map[string]any{
 		"generate_signing_key": true,
 		"key_type":             keyType,
 		"key_bits":             keyBits,
@@ -358,7 +358,7 @@ func createDeleteHelper(t *testing.T, b logical.Backend, s logical.Storage, inde
 	require.False(t, resp != nil && resp.IsError(), "bad case %v", index)
 	require.Contains(t, resp.Data["public_key"].(string), caReq.Data["key_type"].(string), "bad case %v: expected public key of type %v but was %v", index, caReq.Data["key_type"], resp.Data["public_key"])
 
-	issueOptions := map[string]interface{}{
+	issueOptions := map[string]any{
 		"public_key":       testCAPublicKeyEd25519,
 		"valid_principals": "toor",
 	}

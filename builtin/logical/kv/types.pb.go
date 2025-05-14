@@ -527,7 +527,7 @@ func file_builtin_logical_kv_types_proto_rawDescGZIP() []byte {
 }
 
 var file_builtin_logical_kv_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-var file_builtin_logical_kv_types_proto_goTypes = []interface{}{
+var file_builtin_logical_kv_types_proto_goTypes = []any{
 	(*Configuration)(nil),         // 0: kv.Configuration
 	(*VersionMetadata)(nil),       // 1: kv.VersionMetadata
 	(*KeyMetadata)(nil),           // 2: kv.KeyMetadata
@@ -564,7 +564,7 @@ func file_builtin_logical_kv_types_proto_init() {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_builtin_logical_kv_types_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_builtin_logical_kv_types_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*Configuration); i {
 			case 0:
 				return &v.state
@@ -576,7 +576,7 @@ func file_builtin_logical_kv_types_proto_init() {
 				return nil
 			}
 		}
-		file_builtin_logical_kv_types_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_builtin_logical_kv_types_proto_msgTypes[1].Exporter = func(v any, i int) any {
 			switch v := v.(*VersionMetadata); i {
 			case 0:
 				return &v.state
@@ -588,7 +588,7 @@ func file_builtin_logical_kv_types_proto_init() {
 				return nil
 			}
 		}
-		file_builtin_logical_kv_types_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+		file_builtin_logical_kv_types_proto_msgTypes[2].Exporter = func(v any, i int) any {
 			switch v := v.(*KeyMetadata); i {
 			case 0:
 				return &v.state
@@ -600,7 +600,7 @@ func file_builtin_logical_kv_types_proto_init() {
 				return nil
 			}
 		}
-		file_builtin_logical_kv_types_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+		file_builtin_logical_kv_types_proto_msgTypes[3].Exporter = func(v any, i int) any {
 			switch v := v.(*Version); i {
 			case 0:
 				return &v.state
@@ -612,7 +612,7 @@ func file_builtin_logical_kv_types_proto_init() {
 				return nil
 			}
 		}
-		file_builtin_logical_kv_types_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+		file_builtin_logical_kv_types_proto_msgTypes[4].Exporter = func(v any, i int) any {
 			switch v := v.(*UpgradeInfo); i {
 			case 0:
 				return &v.state

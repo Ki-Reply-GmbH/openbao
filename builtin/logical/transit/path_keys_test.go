@@ -61,21 +61,21 @@ func TestTransit_Issue_2958(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("transit/keys/foo", map[string]interface{}{
+	_, err = client.Logical().Write("transit/keys/foo", map[string]any{
 		"type": "ecdsa-p256",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("transit/keys/foobar", map[string]interface{}{
+	_, err = client.Logical().Write("transit/keys/foobar", map[string]any{
 		"type": "ecdsa-p384",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("transit/keys/bar", map[string]interface{}{
+	_, err = client.Logical().Write("transit/keys/bar", map[string]any{
 		"type": "ed25519",
 	})
 	if err != nil {
@@ -100,7 +100,7 @@ func TestTransit_Issue_2958(t *testing.T) {
 
 func TestTransit_CreateKeyWithAutorotation(t *testing.T) {
 	tests := map[string]struct {
-		autoRotatePeriod interface{}
+		autoRotatePeriod any
 		shouldError      bool
 		expectedValue    time.Duration
 	}{
@@ -164,7 +164,7 @@ func TestTransit_CreateKeyWithAutorotation(t *testing.T) {
 			}
 			keyName := hex.EncodeToString(keyNameBytes)
 
-			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s", keyName), map[string]interface{}{
+			_, err = client.Logical().Write(fmt.Sprintf("transit/keys/%s", keyName), map[string]any{
 				"auto_rotate_period": test.autoRotatePeriod,
 			})
 			switch {
@@ -219,7 +219,7 @@ func testOpsFailAfterDeletion(t *testing.T, keyType string, encrypt bool, sign b
 		Path:      "keys/test",
 		Operation: logical.UpdateOperation,
 		Storage:   s,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"type":       keyType,
 			"exportable": true,
 		},
@@ -234,7 +234,7 @@ func testOpsFailAfterDeletion(t *testing.T, keyType string, encrypt bool, sign b
 
 	// Now create a wrapping key for BYOK
 	req.Path = "keys/byok-key"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"type": "rsa-4096",
 	}
 
@@ -285,7 +285,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 	if encrypt {
 		// Encryption operations should succeed conditionally.
 		req.Path = "encrypt/test"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"plaintext": base64.StdEncoding.EncodeToString([]byte("hello world")),
 		}
 
@@ -293,7 +293,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 		if expectedFailure {
 			require.Error(t, err)
 			resp = &logical.Response{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			}
 		} else {
 			require.NoError(t, err)
@@ -303,7 +303,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 		}
 
 		req.Path = "decrypt/test"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"ciphertext": resp.Data["ciphertext"],
 		}
 
@@ -321,7 +321,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 	if sign {
 		// Signature operations should succeed conditionally.
 		req.Path = "sign/test"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"input": base64.StdEncoding.EncodeToString([]byte("hello world")),
 		}
 
@@ -329,7 +329,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 		if expectedFailure {
 			require.Error(t, err)
 			resp = &logical.Response{
-				Data: map[string]interface{}{},
+				Data: map[string]any{},
 			}
 		} else {
 			require.NoError(t, err)
@@ -339,7 +339,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 		}
 
 		req.Path = "verify/test"
-		req.Data = map[string]interface{}{
+		req.Data = map[string]any{
 			"input":     base64.StdEncoding.EncodeToString([]byte("hello world")),
 			"signature": resp.Data["signature"],
 		}
@@ -357,7 +357,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 
 	// HMAC operations should succeed conditionally.
 	req.Path = "hmac/test"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"input": base64.StdEncoding.EncodeToString([]byte("hello world")),
 	}
 
@@ -365,7 +365,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 	if expectedFailure {
 		require.Error(t, err)
 		resp = &logical.Response{
-			Data: map[string]interface{}{},
+			Data: map[string]any{},
 		}
 	} else {
 		require.NoError(t, err)
@@ -375,7 +375,7 @@ func validateOpsFail(t *testing.T, b *backend, s logical.Storage, encrypt bool, 
 	}
 
 	req.Path = "verify/test"
-	req.Data = map[string]interface{}{
+	req.Data = map[string]any{
 		"input": base64.StdEncoding.EncodeToString([]byte("hello world")),
 		"hmac":  resp.Data["hmac"],
 	}

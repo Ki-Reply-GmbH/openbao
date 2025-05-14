@@ -2354,7 +2354,7 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 	ws.Add(iter.WatchCh())
 
 	var aliasIDs []string
-	aliasInfo := map[string]interface{}{}
+	aliasInfo := map[string]any{}
 
 	type mountInfo struct {
 		MountType string
@@ -2369,7 +2369,7 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 		}
 		alias := raw.(*identity.Alias)
 		aliasIDs = append(aliasIDs, alias.ID)
-		aliasInfoEntry := map[string]interface{}{
+		aliasInfoEntry := map[string]any{
 			"name":            alias.Name,
 			"canonical_id":    alias.CanonicalID,
 			"mount_accessor":  alias.MountAccessor,

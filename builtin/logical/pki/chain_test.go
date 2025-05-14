@@ -25,7 +25,7 @@ type CBGenerateKey struct {
 }
 
 func (c CBGenerateKey) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
-	resp, err := CBWrite(b, s, "keys/generate/exported", map[string]interface{}{
+	resp, err := CBWrite(b, s, "keys/generate/exported", map[string]any{
 		"name": c.Name,
 		"algo": "ec",
 		"bits": 256,
@@ -47,7 +47,7 @@ type CBGenerateRoot struct {
 
 func (c CBGenerateRoot) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
 	url := "issuers/generate/root/"
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 
 	if c.Existing {
 		url += "existing"
@@ -126,7 +126,7 @@ type CBGenerateIntermediate struct {
 func (c CBGenerateIntermediate) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
 	// Build CSR
 	url := "issuers/generate/intermediate/"
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 
 	if c.Existing {
 		url += "existing"
@@ -151,7 +151,7 @@ func (c CBGenerateIntermediate) Run(t testing.TB, b *backend, s logical.Storage,
 
 	// Sign CSR
 	url = fmt.Sprintf("issuer/%s/sign-intermediate", c.Parent)
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	data["csr"] = csr
 	data["common_name"] = c.Name
 	if len(c.CommonName) > 0 {
@@ -185,7 +185,7 @@ func (c CBGenerateIntermediate) Run(t testing.TB, b *backend, s logical.Storage,
 
 	// Set the signed intermediate
 	url = "intermediate/set-signed"
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	data["certificate"] = knownCerts[c.Name]
 	data["issuer_name"] = c.Name
 
@@ -211,7 +211,7 @@ func (c CBGenerateIntermediate) Run(t testing.TB, b *backend, s logical.Storage,
 	}
 
 	newCertId := rawNewCerts[0]
-	_, err = CBWrite(b, s, "issuer/"+newCertId, map[string]interface{}{
+	_, err = CBWrite(b, s, "issuer/"+newCertId, map[string]any{
 		"issuer_name": c.Name,
 	})
 	if err != nil {
@@ -435,7 +435,7 @@ type CBUpdateIssuer struct {
 
 func (c CBUpdateIssuer) Run(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string) {
 	url := "issuer/" + c.Name
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	data["issuer_name"] = c.Name
 
 	resp, err := CBRead(b, s, url)
@@ -472,7 +472,7 @@ type CBIssueLeaf struct {
 func (c CBIssueLeaf) IssueLeaf(t testing.TB, b *backend, s logical.Storage, knownKeys map[string]string, knownCerts map[string]string, errorMessage string) *logical.Response {
 	// Write a role
 	url := "roles/" + c.Role
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	data["allow_localhost"] = true
 	data["ttl"] = "200s"
 	data["key_type"] = "ec"
@@ -484,7 +484,7 @@ func (c CBIssueLeaf) IssueLeaf(t testing.TB, b *backend, s logical.Storage, know
 
 	// Issue the certificate.
 	url = "issuer/" + c.Issuer + "/issue/" + c.Role
-	data = make(map[string]interface{})
+	data = make(map[string]any)
 	data["common_name"] = "localhost"
 
 	resp, err := CBWrite(b, s, url, data)
@@ -529,7 +529,7 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 
 	// Revoke the certificate.
 	url := "revoke"
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	data["serial_number"] = api_serial
 	resp, err := CBWrite(b, s, url, data)
 	if err != nil {

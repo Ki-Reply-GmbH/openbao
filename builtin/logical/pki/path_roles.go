@@ -407,7 +407,7 @@ The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 		"not_before_bound": {
 			Type:          framework.TypeString,
 			Description:   `Set how not_before can be configured.`,
-			AllowedValues: []interface{}{PermitNotBeforeBound.String(), DurationNotBeforeBound.String(), ForbidNotBeforeBound.String()},
+			AllowedValues: []any{PermitNotBeforeBound.String(), DurationNotBeforeBound.String(), ForbidNotBeforeBound.String()},
 			Default:       PermitNotBeforeBound.String(),
 		},
 		"not_after": {
@@ -418,7 +418,7 @@ The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 		"not_after_bound": {
 			Type:          framework.TypeString,
 			Description:   `Set how not_after can be configured.`,
-			AllowedValues: []interface{}{PermitNotAfterBound.String(), ForbidNotAfterBound.String(), TTLNotAfterBound.String(), "an explicit timestamp"},
+			AllowedValues: []any{PermitNotAfterBound.String(), ForbidNotAfterBound.String(), TTLNotAfterBound.String(), "an explicit timestamp"},
 			Default:       PermitNotAfterBound.String(),
 		},
 		"issuer_ref": {
@@ -624,7 +624,7 @@ protection use. Defaults to false. See also RFC 5280 Section 4.2.1.12.`,
 				Default: "rsa",
 				Description: `The type of key to use; defaults to RSA. "rsa"
 "ec", "ed25519" and "any" are the only valid values.`,
-				AllowedValues: []interface{}{"rsa", "ec", "ed25519", "any"},
+				AllowedValues: []any{"rsa", "ec", "ed25519", "any"},
 			},
 
 			"key_bits": {
@@ -844,7 +844,7 @@ The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 			"not_before_bound": {
 				Type:          framework.TypeString,
 				Description:   `Set how not_before can be configured.`,
-				AllowedValues: []interface{}{PermitNotBeforeBound.String(), DurationNotBeforeBound.String(), ForbidNotBeforeBound.String()},
+				AllowedValues: []any{PermitNotBeforeBound.String(), DurationNotBeforeBound.String(), ForbidNotBeforeBound.String()},
 				Default:       PermitNotBeforeBound.String(),
 			},
 			"not_after": {
@@ -855,7 +855,7 @@ The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 			"not_after_bound": {
 				Type:          framework.TypeString,
 				Description:   `Set how not_after can be configured.`,
-				AllowedValues: []interface{}{PermitNotAfterBound.String(), TTLNotAfterBound.String(), ForbidNotAfterBound.String(), "an explicit timestamp"},
+				AllowedValues: []any{PermitNotAfterBound.String(), TTLNotAfterBound.String(), ForbidNotAfterBound.String(), "an explicit timestamp"},
 				Default:       PermitNotAfterBound.String(),
 			},
 			"issuer_ref": {
@@ -1633,8 +1633,8 @@ type roleEntry struct {
 	Name string `json:"-"`
 }
 
-func (r *roleEntry) ToResponseData() map[string]interface{} {
-	responseData := map[string]interface{}{
+func (r *roleEntry) ToResponseData() map[string]any {
+	responseData := map[string]any{
 		"ttl":                                int64(r.TTL.Seconds()),
 		"max_ttl":                            int64(r.MaxTTL.Seconds()),
 		"allow_localhost":                    r.AllowLocalhost,

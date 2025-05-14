@@ -55,7 +55,7 @@ func TestLoadConfigFile_ProxyCache(t *testing.T) {
 			Method: &Method{
 				Type:      "aws",
 				MountPath: "auth/aws",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"role": "foobar",
 				},
 			},
@@ -65,7 +65,7 @@ func TestLoadConfigFile_ProxyCache(t *testing.T) {
 					DHType: "curve25519",
 					DHPath: "/tmp/file-foo-dhpath",
 					AAD:    "foobar",
-					Config: map[string]interface{}{
+					Config: map[string]any{
 						"path": "/tmp/file-foo",
 					},
 				},
@@ -89,7 +89,7 @@ func TestLoadConfigFile_ProxyCache(t *testing.T) {
 			Address:          "http://127.0.0.1:1111",
 			CACert:           "config_ca_cert",
 			CAPath:           "config_ca_path",
-			TLSSkipVerifyRaw: interface{}("true"),
+			TLSSkipVerifyRaw: any("true"),
 			TLSSkipVerify:    true,
 			ClientCert:       "config_client_cert",
 			ClientKey:        "config_client_key",
@@ -108,7 +108,7 @@ func TestLoadConfigFile_ProxyCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected.Vault.TLSSkipVerifyRaw = interface{}(true)
+	expected.Vault.TLSSkipVerifyRaw = any(true)
 
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {

@@ -37,7 +37,7 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 		name         string
 		args         args
 		wantErr      bool
-		expectedResp map[string]interface{}
+		expectedResp map[string]any
 	}{
 		{
 			name: "role with invalid credential type",
@@ -61,7 +61,7 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 			args: args{
 				credentialType: v5.CredentialTypePassword,
 			},
-			expectedResp: map[string]interface{}{
+			expectedResp: map[string]any{
 				"credential_type":   v5.CredentialTypePassword.String(),
 				"credential_config": nil,
 			},
@@ -74,9 +74,9 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 					"password_policy": "test-policy",
 				},
 			},
-			expectedResp: map[string]interface{}{
+			expectedResp: map[string]any{
 				"credential_type": v5.CredentialTypePassword.String(),
-				"credential_config": map[string]interface{}{
+				"credential_config": map[string]any{
 					"password_policy": "test-policy",
 				},
 			},
@@ -86,9 +86,9 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 			args: args{
 				credentialType: v5.CredentialTypeRSAPrivateKey,
 			},
-			expectedResp: map[string]interface{}{
+			expectedResp: map[string]any{
 				"credential_type": v5.CredentialTypeRSAPrivateKey.String(),
-				"credential_config": map[string]interface{}{
+				"credential_config": map[string]any{
 					"key_bits": json.Number("2048"),
 					"format":   "pkcs8",
 				},
@@ -102,9 +102,9 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 					"key_bits": "2048",
 				},
 			},
-			expectedResp: map[string]interface{}{
+			expectedResp: map[string]any{
 				"credential_type": v5.CredentialTypeRSAPrivateKey.String(),
-				"credential_config": map[string]interface{}{
+				"credential_config": map[string]any{
 					"key_bits": json.Number("2048"),
 					"format":   "pkcs8",
 				},
@@ -118,9 +118,9 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 					"key_bits": "3072",
 				},
 			},
-			expectedResp: map[string]interface{}{
+			expectedResp: map[string]any{
 				"credential_type": v5.CredentialTypeRSAPrivateKey.String(),
-				"credential_config": map[string]interface{}{
+				"credential_config": map[string]any{
 					"key_bits": json.Number("3072"),
 					"format":   "pkcs8",
 				},
@@ -134,9 +134,9 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 					"key_bits": "4096",
 				},
 			},
-			expectedResp: map[string]interface{}{
+			expectedResp: map[string]any{
 				"credential_type": v5.CredentialTypeRSAPrivateKey.String(),
-				"credential_config": map[string]interface{}{
+				"credential_config": map[string]any{
 					"key_bits": json.Number("4096"),
 					"format":   "pkcs8",
 				},
@@ -169,7 +169,7 @@ func TestBackend_Roles_CredentialTypes(t *testing.T) {
 				Operation: logical.CreateOperation,
 				Path:      "roles/test",
 				Storage:   config.StorageView,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"db_name":             "test-database",
 					"creation_statements": "CREATE USER {{name}}",
 					"credential_type":     tt.args.credentialType.String(),
@@ -229,7 +229,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 	createTestPGUser(t, connURL, dbUser, "password", testRoleStaticCreate)
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url":    connURL,
 		"plugin_name":       "postgresql-database-plugin",
 		"verify_connection": false,
@@ -250,31 +250,31 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 	// Test static role creation scenarios. Uses a map, so there is no guaranteed
 	// ordering, so each case cleans up by deleting the role
 	testCases := map[string]struct {
-		account  map[string]interface{}
+		account  map[string]any
 		path     string
-		expected map[string]interface{}
+		expected map[string]any
 		err      error
 	}{
 		"basic": {
-			account: map[string]interface{}{
+			account: map[string]any{
 				"username":        dbUser,
 				"rotation_period": "5400s",
 			},
 			path: "plugin-role-test",
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"username":        dbUser,
 				"rotation_period": float64(5400),
 			},
 		},
 		"missing rotation period": {
-			account: map[string]interface{}{
+			account: map[string]any{
 				"username": dbUser,
 			},
 			path: "plugin-role-test",
 			err:  errors.New("rotation_period is required to create static accounts"),
 		},
 		"disallowed role config": {
-			account: map[string]interface{}{
+			account: map[string]any{
 				"username":        dbUser,
 				"rotation_period": "5400s",
 			},
@@ -285,7 +285,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			data := map[string]interface{}{
+			data := map[string]any{
 				"name":                "plugin-role-test",
 				"db_name":             "plugin-test",
 				"rotation_statements": testRoleStaticUpdate,
@@ -327,7 +327,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 			}
 
 			// Read the role
-			data = map[string]interface{}{}
+			data = map[string]any{}
 			req = &logical.Request{
 				Operation: logical.ReadOperation,
 				Path:      "static-roles/plugin-role-test",
@@ -340,7 +340,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 			}
 
 			expected := tc.expected
-			actual := make(map[string]interface{})
+			actual := make(map[string]any)
 			dataKeys := []string{"username", "password", "last_vault_rotation", "rotation_period"}
 			for _, key := range dataKeys {
 				if v, ok := resp.Data[key]; ok {
@@ -413,7 +413,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 	createTestPGUser(t, connURL, dbUser, "password", testRoleStaticCreate)
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url":    connURL,
 		"plugin_name":       "postgresql-database-plugin",
 		"verify_connection": false,
@@ -432,7 +432,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	data = map[string]interface{}{
+	data = map[string]any{
 		"name":                "plugin-role-test-updates",
 		"db_name":             "plugin-test",
 		"rotation_statements": testRoleStaticUpdate,
@@ -453,7 +453,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 	}
 
 	// Read the role
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "static-roles/plugin-role-test-updates",
@@ -485,7 +485,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 	}
 
 	// update rotation_period
-	updateData := map[string]interface{}{
+	updateData := map[string]any{
 		"name":            "plugin-role-test-updates",
 		"db_name":         "plugin-test",
 		"username":        dbUser,
@@ -504,7 +504,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 	}
 
 	// re-read the role
-	data = map[string]interface{}{}
+	data = map[string]any{}
 	req = &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "static-roles/plugin-role-test-updates",
@@ -540,7 +540,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 	}
 
 	// verify that rotation_period is only required when creating
-	updateData = map[string]interface{}{
+	updateData = map[string]any{
 		"name":                "plugin-role-test-updates",
 		"db_name":             "plugin-test",
 		"username":            dbUser,
@@ -559,7 +559,7 @@ func TestBackend_StaticRole_Updates(t *testing.T) {
 	}
 
 	// verify updating static username returns an error
-	updateData = map[string]interface{}{
+	updateData = map[string]any{
 		"name":     "plugin-role-test-updates",
 		"db_name":  "plugin-test",
 		"username": "statictestmodified",
@@ -606,7 +606,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 	createTestPGUser(t, connURL, dbUser, "password", testRoleStaticCreate)
 
 	// Configure a connection
-	data := map[string]interface{}{
+	data := map[string]any{
 		"connection_url":    connURL,
 		"plugin_name":       "postgresql-database-plugin",
 		"verify_connection": false,
@@ -626,7 +626,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 	}
 
 	// non-static role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"name":                  "plugin-role-test",
 		"db_name":               "plugin-test",
 		"creation_statements":   testRoleStaticCreate,
@@ -650,7 +650,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 
 	// create a static role with the same name, and expect failure
 	// static role
-	data = map[string]interface{}{
+	data = map[string]any{
 		"name":                  "plugin-role-test",
 		"db_name":               "plugin-test",
 		"creation_statements":   testRoleStaticCreate,
@@ -674,7 +674,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 	}
 
 	// repeat, with a static role first
-	data = map[string]interface{}{
+	data = map[string]any{
 		"name":                "plugin-role-test-2",
 		"db_name":             "plugin-test",
 		"rotation_statements": testRoleStaticUpdate,
@@ -695,7 +695,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 	}
 
 	// create a non-static role with the same name, and expect failure
-	data = map[string]interface{}{
+	data = map[string]any{
 		"name":                  "plugin-role-test-2",
 		"db_name":               "plugin-test",
 		"creation_statements":   testRoleStaticCreate,
@@ -735,7 +735,7 @@ func TestWALsStillTrackedAfterUpdate(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "static-roles/hashicorp",
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"username":        "hashicorp",
 			"rotation_period": "600s",
 		},
@@ -777,7 +777,7 @@ func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
 			Operation: logical.CreateOperation,
 			Path:      "static-roles/hashicorp",
 			Storage:   storage,
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"username":        "hashicorp",
 				"db_name":         "mockv5",
 				"rotation_period": "5s",
@@ -837,7 +837,7 @@ func createRole(t *testing.T, b *databaseBackend, storage logical.Storage, mockD
 		Operation: logical.CreateOperation,
 		Path:      "static-roles/" + roleName,
 		Storage:   storage,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"username":        roleName,
 			"db_name":         "mockv5",
 			"rotation_period": "86400s",
