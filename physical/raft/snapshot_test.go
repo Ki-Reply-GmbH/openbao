@@ -65,7 +65,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		err := raft.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -166,7 +166,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		err := raft.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -205,7 +205,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		err := raft.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -240,7 +240,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -269,7 +269,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 	for i := 1000; i < 2000; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -321,7 +321,7 @@ func TestRaft_Snapshot_Restart(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -390,7 +390,7 @@ func TestRaft_Snapshot_ErrorRecovery(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -469,7 +469,7 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -488,7 +488,7 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 	for i := 100; i < 200; i++ {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
-			Value: []byte(fmt.Sprintf("value-%d", i)),
+			Value: fmt.Appendf(nil, "value-%d", i),
 		})
 		if err != nil {
 			t.Fatal(err)

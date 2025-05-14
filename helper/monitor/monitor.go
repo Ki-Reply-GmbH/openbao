@@ -126,7 +126,7 @@ func (d *monitor) Start() <-chan []byte {
 				dc := d.droppedCount.Load()
 
 				if dc > 0 {
-					logMessage = []byte(fmt.Sprintf("Monitor dropped %d logs during monitor request\n", dc))
+					logMessage = fmt.Appendf(nil, "Monitor dropped %d logs during monitor request\n", dc)
 					d.droppedCount.Swap(0)
 				}
 			case logMessage = <-d.logCh:

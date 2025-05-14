@@ -1485,14 +1485,14 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Audience:  jwt.Audience{o.clientID},
 		}
 		jwtData, _ := getTestJWT(o.t, ecdsaPrivKey, stdClaims, o.customClaims)
-		w.Write([]byte(fmt.Sprintf(`
+		fmt.Fprintf(w, `
 			{
 				"access_token":"%s",
 				"id_token":"%s"
 			}`,
 			jwtData,
 			jwtData,
-		)))
+		)
 	case "/userinfo":
 		w.Write([]byte(`
 			{
