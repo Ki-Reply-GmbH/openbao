@@ -7,6 +7,7 @@ import (
 	"go/ast"
 	"go/types"
 	"reflect"
+	"slices"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -112,15 +113,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		// one of the return values is error
-		var errorFound bool
-		for _, result := range results {
-			if isError(result) {
-				errorFound = true
-				break
-			}
-		}
-
-		if !errorFound {
+		if slices.ContainsFunc(results, isError) {
 			return
 		}
 
