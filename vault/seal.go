@@ -16,6 +16,7 @@ import (
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 
@@ -57,9 +58,9 @@ type Seal interface {
 	SealWrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
-	BarrierType() wrapping.WrapperType                  // SealAccess
-	BarrierConfig(context.Context) (*SealConfig, error) // SealAccess
-	SetBarrierConfig(context.Context, *SealConfig) error
+	BarrierType() wrapping.WrapperType                                        // SealAccess
+	BarrierConfig(context.Context, *namespace.Namespace) (*SealConfig, error) // SealAccess
+	SetBarrierConfig(context.Context, *SealConfig, *namespace.Namespace) error
 	SetCachedBarrierConfig(*SealConfig)
 	SetConfigAccess(SecurityBarrier)
 	RecoveryKeySupported() bool // SealAccess
@@ -149,7 +150,7 @@ func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
 	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access)
 }
 
-func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
+func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
 	cfg := d.config.Load()
 	if cfg != nil {
 		return cfg.Clone(), nil
@@ -200,7 +201,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	return conf.Clone(), nil
 }
 
-func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) error {
+func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, ns *namespace.Namespace) error {
 	if err := d.checkCore(); err != nil {
 		return err
 	}

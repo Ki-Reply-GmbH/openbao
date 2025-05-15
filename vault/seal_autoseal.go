@@ -20,6 +20,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 )
@@ -199,7 +200,7 @@ func (d *autoSeal) UpgradeKeys(ctx context.Context) error {
 	return nil
 }
 
-func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
+func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
 	if config := d.barrierConfig.Load(); config != nil {
 		return config.Clone(), nil
 	}
@@ -245,7 +246,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	return conf.Clone(), nil
 }
 
-func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error {
+func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig, ns *namespace.Namespace) error {
 	if err := d.checkCore(); err != nil {
 		return err
 	}

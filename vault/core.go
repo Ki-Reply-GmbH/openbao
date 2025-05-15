@@ -390,6 +390,9 @@ type Core struct {
 	// namespace Store is used to manage namespaces
 	namespaceStore *NamespaceStore
 
+	// sealManager is used to manage seals per namespace
+	sealManager *SealManager
+
 	// identityStore is used to manage client entities
 	identityStore *IdentityStore
 
@@ -1650,7 +1653,7 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 		// configuration.
 		config = raftInfo.leaderBarrierConfig
 	default:
-		config, err = seal.BarrierConfig(ctx)
+		config, err = seal.BarrierConfig(ctx, namespace.RootNamespace)
 	}
 	if err != nil {
 		return nil, err
@@ -2331,6 +2334,9 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
+	if err := c.setupSealManager(ctx); err != nil {
+		return err
+	}
 	if err := c.loadMounts(ctx); err != nil {
 		return err
 	}
@@ -2425,7 +2431,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	}
 
 	// Purge these for safety in case of a rotation
-	_ = c.seal.SetBarrierConfig(ctx, nil)
+	_ = c.seal.SetBarrierConfig(ctx, nil, namespace.RootNamespace)
 	if c.seal.RecoveryKeySupported() {
 		_ = c.seal.SetRecoveryConfig(ctx, nil)
 	}
@@ -2555,6 +2561,9 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.teardownLoginMFA(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA: %w", err))
+	}
+	if err := c.teardownSealManager(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down seal manager: %w", err))
 	}
 	if err := c.teardownNamespaceStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))
@@ -2782,7 +2791,7 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 		rc.StoredShares = 0
 	}
 
-	if err := c.seal.SetBarrierConfig(ctx, bc); err != nil {
+	if err := c.seal.SetBarrierConfig(ctx, bc, namespace.RootNamespace); err != nil {
 		return fmt.Errorf("error storing barrier config after migration: %w", err)
 	}
 
@@ -2867,7 +2876,7 @@ func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []
 		if useTestSeal {
 			testseal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
 			testseal.SetCore(c)
-			cfg, err := seal.BarrierConfig(ctx)
+			cfg, err := seal.BarrierConfig(ctx, namespace.RootNamespace)
 			if err != nil {
 				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
 			}
