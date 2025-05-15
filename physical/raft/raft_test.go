@@ -586,12 +586,14 @@ func BenchmarkDB_Puts(b *testing.B) {
 		testName := b.Name()
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		var i int
+		for b.Loop() {
 			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			err := s.Put(ctx, pe)
 			if err != nil {
 				b.Fatal(err)
 			}
+			i += 1
 		}
 	}
 
@@ -623,10 +625,11 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 	}
 
 	bench := func(b *testing.B, s *FSM) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		var i int
+		for b.Loop() {
 			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
 			s.writeTo(ctx, discardCloser{Writer: io.Discard}, discardCloser{Writer: io.Discard})
+			i += 1
 		}
 	}
 

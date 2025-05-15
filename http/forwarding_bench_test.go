@@ -96,7 +96,7 @@ func BenchmarkHTTP_Forwarding_Stress(b *testing.B) {
 	reqBuf := fmt.Appendf(nil, "{\"plaintext\": \"%s\"}", testPlaintextB64)
 
 	b.Run("doreq", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			doReq(b, "POST", keyUrl, bytes.NewReader(reqBuf))
 		}
 	})
