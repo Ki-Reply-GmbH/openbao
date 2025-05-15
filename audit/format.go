@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 	"time"
 
@@ -211,9 +212,7 @@ func (f *AuditFormatter) FormatResponse(ctx context.Context, w io.Writer, config
 		if elideListResponseData && resp.Data != nil {
 			// Copy the data map before making changes, but we only need to go one level deep in this case
 			respData = make(map[string]any, len(resp.Data))
-			for k, v := range resp.Data {
-				respData[k] = v
-			}
+			maps.Copy(respData, resp.Data)
 
 			doElideListResponseData(respData)
 		} else {
@@ -414,28 +413,28 @@ type AuditResponseEntry struct {
 }
 
 type AuditRequest struct {
-	ID                            string                 `json:"id,omitempty"`
-	ClientID                      string                 `json:"client_id,omitempty"`
-	ReplicationCluster            string                 `json:"replication_cluster,omitempty"`
-	Operation                     logical.Operation      `json:"operation,omitempty"`
-	MountPoint                    string                 `json:"mount_point,omitempty"`
-	MountType                     string                 `json:"mount_type,omitempty"`
-	MountAccessor                 string                 `json:"mount_accessor,omitempty"`
-	MountRunningVersion           string                 `json:"mount_running_version,omitempty"`
-	MountRunningSha256            string                 `json:"mount_running_sha256,omitempty"`
-	MountClass                    string                 `json:"mount_class,omitempty"`
-	MountIsExternalPlugin         bool                   `json:"mount_is_external_plugin,omitempty"`
-	ClientToken                   string                 `json:"client_token,omitempty"`
-	ClientTokenAccessor           string                 `json:"client_token_accessor,omitempty"`
-	Namespace                     *AuditNamespace        `json:"namespace,omitempty"`
-	Path                          string                 `json:"path,omitempty"`
-	Data                          map[string]any `json:"data,omitempty"`
-	PolicyOverride                bool                   `json:"policy_override,omitempty"`
-	RemoteAddr                    string                 `json:"remote_address,omitempty"`
-	RemotePort                    int                    `json:"remote_port,omitempty"`
-	WrapTTL                       int                    `json:"wrap_ttl,omitempty"`
-	Headers                       map[string][]string    `json:"headers,omitempty"`
-	ClientCertificateSerialNumber string                 `json:"client_certificate_serial_number,omitempty"`
+	ID                            string              `json:"id,omitempty"`
+	ClientID                      string              `json:"client_id,omitempty"`
+	ReplicationCluster            string              `json:"replication_cluster,omitempty"`
+	Operation                     logical.Operation   `json:"operation,omitempty"`
+	MountPoint                    string              `json:"mount_point,omitempty"`
+	MountType                     string              `json:"mount_type,omitempty"`
+	MountAccessor                 string              `json:"mount_accessor,omitempty"`
+	MountRunningVersion           string              `json:"mount_running_version,omitempty"`
+	MountRunningSha256            string              `json:"mount_running_sha256,omitempty"`
+	MountClass                    string              `json:"mount_class,omitempty"`
+	MountIsExternalPlugin         bool                `json:"mount_is_external_plugin,omitempty"`
+	ClientToken                   string              `json:"client_token,omitempty"`
+	ClientTokenAccessor           string              `json:"client_token_accessor,omitempty"`
+	Namespace                     *AuditNamespace     `json:"namespace,omitempty"`
+	Path                          string              `json:"path,omitempty"`
+	Data                          map[string]any      `json:"data,omitempty"`
+	PolicyOverride                bool                `json:"policy_override,omitempty"`
+	RemoteAddr                    string              `json:"remote_address,omitempty"`
+	RemotePort                    int                 `json:"remote_port,omitempty"`
+	WrapTTL                       int                 `json:"wrap_ttl,omitempty"`
+	Headers                       map[string][]string `json:"headers,omitempty"`
+	ClientCertificateSerialNumber string              `json:"client_certificate_serial_number,omitempty"`
 }
 
 type AuditResponse struct {
@@ -448,7 +447,7 @@ type AuditResponse struct {
 	MountClass            string                 `json:"mount_class,omitempty"`
 	MountIsExternalPlugin bool                   `json:"mount_is_external_plugin,omitempty"`
 	Secret                *AuditSecret           `json:"secret,omitempty"`
-	Data                  map[string]any `json:"data,omitempty"`
+	Data                  map[string]any         `json:"data,omitempty"`
 	Warnings              []string               `json:"warnings,omitempty"`
 	Redirect              string                 `json:"redirect,omitempty"`
 	WrapInfo              *AuditResponseWrapInfo `json:"wrap_info,omitempty"`

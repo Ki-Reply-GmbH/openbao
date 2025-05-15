@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -28,9 +29,7 @@ func getPostgreSQL(t *testing.T, options map[string]any) (*PostgreSQL, func()) {
 	connectionDetails := map[string]any{
 		"connection_url": connURL,
 	}
-	for k, v := range options {
-		connectionDetails[k] = v
-	}
+	maps.Copy(connectionDetails, options)
 
 	req := dbplugin.InitializeRequest{
 		Config:           connectionDetails,
