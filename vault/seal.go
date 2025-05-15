@@ -15,6 +15,7 @@ import (
 
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 
@@ -227,9 +228,15 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve namespace from ctx: %w", err)
+	}
+	view := NamespaceView(d.core.barrier, ns).SubView(barrierSealConfigPath)
+
 	// Store the seal configuration
 	pe := &physical.Entry{
-		Key:   barrierSealConfigPath,
+		Key:   view.Prefix(),
 		Value: buf,
 	}
 
