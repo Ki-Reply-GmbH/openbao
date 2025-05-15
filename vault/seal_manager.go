@@ -10,7 +10,6 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/vault/seal"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
@@ -31,27 +30,25 @@ type SealManager struct {
 }
 
 // NewSealManager creates a new seal manager with core reference and logger.
-func NewSealManager(core *Core, logger hclog.Logger) (*SealManager, error) {
+func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 	return &SealManager{
 		core:                 core,
 		sealsByNamespace:     make(map[string][]Seal),
 		barrierByNamespace:   radix.New(),
 		barrierByStoragePath: radix.New(),
 		logger:               logger,
-	}, nil
+	}
 }
 
 // setupSealManager is used to initialize the seal manager
 // when the vault is being unsealed.
-func (c *Core) setupSealManager() error {
-	var err error
+func (c *Core) setupSealManager() {
 	sealLogger := c.baseLogger.Named("seal")
 	c.AddLogger(sealLogger)
-	c.sealManager, err = NewSealManager(c, sealLogger)
+	c.sealManager = NewSealManager(c, sealLogger)
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("core/seal-config", nil)
-	return err
 }
 
 // teardownSealManager is used to remove seal manager
@@ -143,6 +140,7 @@ func (sm *SealManager) ParentNamespaceBarrier(ns *namespace.Namespace) SecurityB
 }
 
 func (sm *SealManager) NamespaceBarrier(ns *namespace.Namespace) SecurityBarrier {
+	// this should acquire a lock
 	_, v, _ := sm.barrierByNamespace.LongestPrefix(ns.Path)
 	barrier := v.(SecurityBarrier)
 
@@ -228,7 +226,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	}
 
 	switch nsSeal.StoredKeysSupported() {
-	case seal.StoredKeysSupportedShamirRoot:
+	case vaultseal.StoredKeysSupportedShamirRoot:
 		keysToStore := [][]byte{nsBarrierKey}
 		shamirWrapper, err := nsSeal.GetShamirWrapper()
 		if err != nil {
@@ -241,7 +239,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
 		results.SecretShares = nsSealKeyShares
-	case seal.StoredKeysSupportedGeneric:
+	case vaultseal.StoredKeysSupportedGeneric:
 		keysToStore := [][]byte{nsBarrierKey}
 		if err := nsSeal.SetStoredKeys(ctx, keysToStore); err != nil {
 			return nil, fmt.Errorf("failed to store keys: %w", err)

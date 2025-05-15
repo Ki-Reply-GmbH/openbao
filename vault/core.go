@@ -1076,10 +1076,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	// Construct a new AES-GCM barrier
 	c.barrier = NewAESGCMBarrier(c.physical, "")
-
-	if err := c.setupSealManager(); err != nil {
-		return nil, fmt.Errorf("seal manager setup failed: %w", err)
-	}
+	c.setupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -1401,6 +1398,11 @@ func (c *Core) GetContext() (context.Context, context.CancelFunc) {
 // Sealed checks if the Vault is currently sealed
 func (c *Core) Sealed() bool {
 	return c.sealed.Load()
+}
+
+// IsNSSealed checks if the namespace is current sealed
+func (c *Core) IsNSSealed(ns *namespace.Namespace) bool {
+	return c.sealManager.NamespaceBarrier(ns).Sealed()
 }
 
 // SecretProgress returns the number of keys provided so far. Lock
@@ -2338,6 +2340,9 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
+
+	c.setupSealManager()
+
 	if err := c.loadMounts(ctx); err != nil {
 		return err
 	}
@@ -2562,6 +2567,9 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.teardownLoginMFA(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA: %w", err))
+	}
+	if err := c.teardownSealManager(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down seal manager: %w", err))
 	}
 	if err := c.teardownNamespaceStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))
