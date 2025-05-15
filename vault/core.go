@@ -270,7 +270,8 @@ type Core struct {
 	sealMigrationDone *uint32
 
 	// barrier is the security barrier wrapping the physical backend
-	barrier SecurityBarrier
+	barrier        SecurityBarrier
+	barrierManager *BarrierManager
 
 	// router is responsible for managing the mount points for logical backends.
 	router *Router
@@ -2264,6 +2265,9 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 	if err := c.setupPluginCatalog(ctx); err != nil {
+		return err
+	}
+	if err := c.setupBarrierManager(ctx); err != nil {
 		return err
 	}
 	if err := c.setupNamespaceStore(ctx); err != nil {

@@ -41,6 +41,7 @@ type Namespace struct {
 	UUID    string `json:"uuid" mapstructure:"uuid"`
 	Path    string `json:"path" mapstructure:"path"`
 	Tainted bool   `json:"tainted" mapstructure:"tainted"`
+	Sealed  bool   `json:"sealed" mapstructure:"sealed"`
 	// IsDeleting tracks whether there's an ongoing deletion process of the specified namespace
 	// If tainted is true, but IsDeleting not, then namespace deletion operation has to be retried.
 	IsDeleting     bool              `json:"-"`

@@ -154,6 +154,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 
 	c, _, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
+	rootStorage := s.storageByNamespaceAccessor[namespace.RootNamespaceID]
 	ctx := namespace.RootContext(context.Background())
 
 	// create namespace
@@ -182,7 +183,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, nsList)
 
-	keys, err := s.storage.List(ctx, namespaceStoreSubPath)
+	keys, err := rootStorage.List(ctx, namespaceStoreSubPath)
 	require.NoError(t, err)
 	require.Empty(t, keys, "Expected empty namespace store on storage level")
 
@@ -224,7 +225,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 		break
 	}
 
-	keys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
+	keys, err = rootStorage.List(ctx, path.Join(namespaceBarrierPrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Empty(t, keys, "Expected empty namespace store on storage level")
 }
@@ -656,6 +657,7 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 func TestNamespaceStorage(t *testing.T) {
 	c, keys, root := TestCoreUnsealed(t)
 	s := c.namespaceStore
+	rootStorage := s.storageByNamespaceAccessor[namespace.RootNamespaceID]
 
 	namespaces := []*namespace.Namespace{
 		{Path: "ns1/"},
@@ -667,26 +669,26 @@ func TestNamespaceStorage(t *testing.T) {
 
 	ctx := namespace.RootContext(nil)
 
-	nsKeys, err := s.storage.List(ctx, namespaceStoreSubPath)
+	nsKeys, err := rootStorage.List(ctx, namespaceStoreSubPath)
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 2)
 	require.ElementsMatch(t, nsKeys, []string{namespaces[0].UUID, namespaces[1].UUID})
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[0].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = rootStorage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[0].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 1)
 	require.ElementsMatch(t, nsKeys, []string{namespaces[2].UUID})
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[1].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = rootStorage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[1].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 0)
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[2].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = rootStorage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[2].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 1)
 	require.ElementsMatch(t, nsKeys, []string{namespaces[3].UUID})
 
-	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[3].UUID, namespaceStoreSubPath)+"/")
+	nsKeys, err = rootStorage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[3].UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Len(t, nsKeys, 0)
 

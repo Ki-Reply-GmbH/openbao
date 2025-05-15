@@ -42,8 +42,8 @@ const (
 // NamespaceStore is used to provide durable storage of namespace. It is
 // a singleton store across the Core and contains all child namespaces.
 type NamespaceStore struct {
-	core    *Core
-	storage logical.Storage
+	core                       *Core
+	storageByNamespaceAccessor map[string]logical.Storage
 
 	// This lock ensures we don't concurrently modify the store while using
 	// a namespace entry. We also store an atomic to check if we need to
@@ -67,12 +67,12 @@ type NamespaceStore struct {
 // using a given view. It used used to durable store and manage named namespace.
 func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*NamespaceStore, error) {
 	ns := &NamespaceStore{
-		core:                 core,
-		storage:              core.barrier,
-		logger:               logger,
-		namespacesByPath:     newNamespaceTree(nil),
-		namespacesByUUID:     make(map[string]*namespace.Namespace),
-		namespacesByAccessor: make(map[string]*namespace.Namespace),
+		core:                       core,
+		logger:                     logger,
+		namespacesByPath:           newNamespaceTree(nil),
+		namespacesByUUID:           make(map[string]*namespace.Namespace),
+		namespacesByAccessor:       make(map[string]*namespace.Namespace),
+		storageByNamespaceAccessor: make(map[string]logical.Storage),
 	}
 
 	// Add namespaces from storage to our table. We can do this without
@@ -115,24 +115,28 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	namespacesByPath := newNamespaceTree(namespace.RootNamespace)
 	namespacesByUUID := make(map[string]*namespace.Namespace, len(ns.namespacesByUUID)+1)
 	namespacesByAccessor := make(map[string]*namespace.Namespace, len(ns.namespacesByAccessor)+1)
+	storageByNamespaceAccessor := make(map[string]logical.Storage, len(ns.storageByNamespaceAccessor)+1)
 	namespacesByUUID[namespace.RootNamespaceUUID] = namespace.RootNamespace
 	namespacesByAccessor[namespace.RootNamespaceID] = namespace.RootNamespace
+	storageByNamespaceAccessor[namespace.RootNamespaceID] = ns.core.barrier
 
-	loadingCallback := func(namespace *namespace.Namespace) error {
-		if _, ok := namespacesByUUID[namespace.UUID]; ok {
-			return fmt.Errorf("namespace with UUID %q is not unique in storage", namespace.UUID)
+	loadingCallback := func(ns *namespace.Namespace, storage logical.Storage) error {
+		if _, ok := namespacesByUUID[ns.UUID]; ok {
+			return fmt.Errorf("namespace with UUID %q is not unique in storage", ns.UUID)
 		}
-		if err := namespacesByPath.Insert(namespace); err != nil {
+		if err := namespacesByPath.Insert(ns); err != nil {
 			return err
 		}
-		namespacesByUUID[namespace.UUID] = namespace
-		namespacesByAccessor[namespace.ID] = namespace
+		storageByNamespaceAccessor[ns.ID] = storage
+		namespacesByUUID[ns.UUID] = ns
+		namespacesByAccessor[ns.ID] = ns
 		return nil
 	}
 
-	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		rootStoreView := NewBarrierView(s, namespaceStoreSubPath)
-		return ns.loadNamespacesRecursive(ctx, s, rootStoreView, loadingCallback)
+	rootStorage := storageByNamespaceAccessor[namespace.RootNamespaceID]
+	if err := logical.WithTransaction(ctx, rootStorage, func(s logical.Storage) error {
+		view := NewBarrierView(rootStorage, namespaceBarrierPrefix)
+		return ns.loadNamespacesRecursive(ctx, rootStorage, view, loadingCallback)
 	}); err != nil {
 		return err
 	}
@@ -145,6 +149,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	ns.namespacesByPath = namespacesByPath
 	ns.namespacesByUUID = namespacesByUUID
 	ns.namespacesByAccessor = namespacesByAccessor
+	ns.storageByNamespaceAccessor = storageByNamespaceAccessor
 
 	return nil
 }
@@ -154,7 +159,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 // to load an entire namespace tree.
 func (ns *NamespaceStore) loadNamespacesRecursive(
 	ctx context.Context, barrier, view logical.Storage,
-	callback func(*namespace.Namespace) error,
+	callback func(*namespace.Namespace, logical.Storage) error,
 ) error {
 	return logical.HandleListPage(view, "", 100, func(page int, index int, entry string) (bool, error) {
 		item, err := view.Get(ctx, entry)
@@ -171,7 +176,20 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, fmt.Errorf("failed to decode namespace %v (page %v / index %v): %w", entry, page, index, err)
 		}
 
-		if err := callback(&namespace); err != nil {
+		storage := barrier
+		if namespace.Sealed {
+			var nsPath string
+			storage, nsPath = ns.core.barrierManager.BarrierForNamespace(&namespace)
+			if nsPath != namespace.Path {
+				storage, err = NewNamespaceBarrier(storage, &namespace)
+				if err != nil {
+					return false, err
+				}
+				ns.core.barrierManager.AddBarrier(&namespace, storage)
+			}
+		}
+
+		if err := callback(&namespace, storage); err != nil {
 			return false, err
 		}
 
@@ -340,7 +358,20 @@ func (ns *NamespaceStore) writeNamespace(ctx context.Context, entry *namespace.N
 		return err
 	}
 
-	view := NamespaceView(ns.storage, parent).SubView(namespaceStoreSubPath)
+	nsStorage, ok := ns.storageByNamespaceAccessor[entry.ID]
+	if !ok {
+		nsStorage, ok = ns.storageByNamespaceAccessor[parent.ID]
+		if !ok {
+			return errors.New("could not find parent namespace storage")
+		}
+		if entry.Sealed {
+			nsStorage, err = NewNamespaceBarrier(nsStorage, entry)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	view := NamespaceView(nsStorage, parent).SubView(namespaceStoreSubPath)
 	if err := logical.WithTransaction(ctx, view, func(s logical.Storage) error {
 		item, err := logical.StorageEntryJSON(entry.UUID, &entry)
 		if err != nil {
@@ -355,6 +386,8 @@ func (ns *NamespaceStore) writeNamespace(ctx context.Context, entry *namespace.N
 	}); err != nil {
 		return fmt.Errorf("error writing namespace: %w", err)
 	}
+
+	ns.storageByNamespaceAccessor[entry.ID] = nsStorage
 
 	return nil
 }
@@ -747,6 +780,7 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 	}
 	delete(ns.namespacesByUUID, namespaceToDelete.UUID)
 	delete(ns.namespacesByAccessor, namespaceToDelete.ID)
+	delete(ns.storageByNamespaceAccessor, namespaceToDelete.ID)
 
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -754,7 +788,7 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 		return
 	}
 
-	view := NamespaceView(ns.storage, parent).SubView(namespaceStoreSubPath)
+	view := NamespaceView(ns.storageByNamespaceAccessor[namespace.RootNamespaceID], parent).SubView(namespaceStoreSubPath)
 	err = logical.WithTransaction(ctx, view, func(s logical.Storage) error {
 		return s.Delete(ctx, namespaceToDelete.UUID)
 	})
