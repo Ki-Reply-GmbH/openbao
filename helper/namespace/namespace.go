@@ -157,6 +157,10 @@ func (n *Namespace) Clone() *Namespace {
 	}
 }
 
+func (n *Namespace) IsRoot() bool {
+	return n.ID == RootNamespaceID
+}
+
 // ContextWithNamespace adds the given namespace to the given context
 func ContextWithNamespace(ctx context.Context, ns *Namespace) context.Context {
 	return context.WithValue(ctx, contextNamespace, ns)
