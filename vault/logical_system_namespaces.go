@@ -11,9 +11,11 @@ import (
 	"net/http"
 	"strings"
 
+	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
 func (b *SystemBackend) namespacePaths() []*framework.Path {
@@ -96,6 +98,10 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				"custom_metadata": {
 					Type:        framework.TypeMap,
 					Description: "User provided key-value pairs.",
+				},
+				"seals": {
+					Type:        framework.TypeSlice,
+					Description: "User provided seal configs.",
 				},
 			},
 
@@ -249,12 +255,44 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
+		var sealConfigs []*SealConfig
+		seals, ok := data.GetOk("seals")
+		if ok {
+			sealsArray, ok := seals.([]interface{})
+			if ok {
+				for _, seal := range sealsArray {
+					sealMap := seal.(map[string]interface{})
+					byteSeal, err := json.Marshal(sealMap)
+					if err != nil {
+						return logical.ErrorResponse("invalid seal configuration provided"), logical.ErrInvalidRequest
+					}
+
+					var sealConfig SealConfig
+					err = json.Unmarshal(byteSeal, &sealConfig)
+					if err != nil {
+						return logical.ErrorResponse("invalid seal configuration provided"), logical.ErrInvalidRequest
+					}
+					sealConfigs = append(sealConfigs, &sealConfig)
+				}
+			}
+		}
+
 		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			ns.CustomMetadata = metadata
 			return ns, nil
 		})
 		if err != nil {
 			return handleError(err)
+		}
+
+		if len(sealConfigs) > 0 {
+			ctx = namespace.ContextWithNamespace(ctx, entry)
+			defaultSeal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
+			defaultSeal.SetCore(b.Core)
+			err = defaultSeal.SetBarrierConfig(ctx, sealConfigs[0])
+			if err != nil {
+				return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+			}
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
