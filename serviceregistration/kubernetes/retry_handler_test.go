@@ -231,7 +231,7 @@ func TestRetryHandlerRacesAndDeadlocks(t *testing.T) {
 	start := make(chan struct{})
 	done := make(chan bool)
 	numRoutines := 100
-	for i := 0; i < numRoutines; i++ {
+	for range numRoutines {
 		go func() {
 			<-start
 			r.Notify(testPatch)
@@ -247,7 +247,7 @@ func TestRetryHandlerRacesAndDeadlocks(t *testing.T) {
 
 	// Allow up to 5 seconds for everything to finish.
 	timer := time.NewTimer(5 * time.Second)
-	for i := 0; i < numRoutines*2; i++ {
+	for range numRoutines * 2 {
 		select {
 		case <-timer.C:
 			t.Fatal("test took too long to complete, check for deadlock")

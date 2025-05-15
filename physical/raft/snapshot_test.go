@@ -62,7 +62,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	// Write some data
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		err := raft.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -163,7 +163,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	}
 
 	// Write some data
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := raft.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -202,7 +202,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	}
 
 	// Write some more data
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := raft.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -237,7 +237,7 @@ func TestRaft_Snapshot_Peers(t *testing.T) {
 	defer os.RemoveAll(dir3)
 
 	// Write some data
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -318,7 +318,7 @@ func TestRaft_Snapshot_Restart(t *testing.T) {
 	defer os.RemoveAll(dir2)
 
 	// Write some data
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -387,7 +387,7 @@ func TestRaft_Snapshot_ErrorRecovery(t *testing.T) {
 	addPeer(t, raft1, raft2)
 
 	// Write some data
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -466,7 +466,7 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 	addPeer(t, raft1, raft2)
 
 	// Write some data
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := raft1.Put(context.Background(), &physical.Entry{
 			Key:   fmt.Sprintf("key-%d", i),
 			Value: fmt.Appendf(nil, "value-%d", i),
@@ -780,7 +780,7 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		latestIndex, latestConfigRaw := fsm.LatestState()
 		latestConfigIndex, latestConfig := protoConfigurationToRaftConfiguration(latestConfigRaw)
 		if latestIndex.Index != 10 {

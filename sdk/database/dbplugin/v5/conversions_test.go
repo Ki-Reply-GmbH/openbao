@@ -217,7 +217,7 @@ type getter struct {
 func getAllGetterValues(value any) (values []getter) {
 	typ := reflect.TypeOf(value)
 	val := reflect.ValueOf(value)
-	for i := 0; i < typ.NumMethod(); i++ {
+	for i := range typ.NumMethod() {
 		method := typ.Method(i)
 		if !strings.HasPrefix(method.Name, "Get") {
 			continue
@@ -470,7 +470,7 @@ func assertAllFieldsSetValue(name string, rVal reflect.Value) error {
 		if rVal.Len() == 0 {
 			return fmt.Errorf("%s (slice type) is empty", name)
 		}
-		for i := 0; i < rVal.Len(); i++ {
+		for i := range rVal.Len() {
 			sliceVal := rVal.Index(i)
 			err := assertAllFieldsSetValue(fmt.Sprintf("%s[%d]", name, i), sliceVal)
 			if err != nil {
@@ -490,7 +490,7 @@ func assertAllFieldsSetStruct(name string, rVal reflect.Value) error {
 		}
 		return nil
 	default:
-		for i := 0; i < rVal.NumField(); i++ {
+		for i := range rVal.NumField() {
 			field := rVal.Field(i)
 			fieldName := rVal.Type().Field(i)
 

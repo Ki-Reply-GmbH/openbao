@@ -660,7 +660,7 @@ func TestDeleteUser(t *testing.T) {
 				REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{name}}";
 				REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM "{{name}}";
 				REVOKE USAGE ON SCHEMA public FROM "{{name}}";
-		
+
 				DROP ROLE IF EXISTS "{{name}}";`},
 			expectErr: false,
 			// Wait for a short time before failing because postgres takes a moment to finish deleting the user
@@ -671,7 +671,7 @@ func TestDeleteUser(t *testing.T) {
 				REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "{{username}}";
 				REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM "{{username}}";
 				REVOKE USAGE ON SCHEMA public FROM "{{username}}";
-		
+
 				DROP ROLE IF EXISTS "{{username}}";`},
 			expectErr: false,
 			// Wait for a short time before failing because postgres takes a moment to finish deleting the user
@@ -994,7 +994,7 @@ func TestUsernameGeneration(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			for i := 0; i < 1000; i++ {
+			for range 1000 {
 				username, err := up.Generate(test.data)
 				require.NoError(t, err)
 				require.Regexp(t, test.expectedRegex, username)

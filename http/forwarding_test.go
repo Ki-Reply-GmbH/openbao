@@ -427,7 +427,7 @@ func testHTTP_Forwarding_Stress_Common(t *testing.T, parallel bool, num uint32) 
 	atomic.StoreUint32(numWorkers, num)
 
 	// Spawn some of these workers for 10 seconds
-	for i := 0; i < int(atomic.LoadUint32(numWorkers)); i++ {
+	for i := range int(atomic.LoadUint32(numWorkers)) {
 		wg.Add(1)
 		// core.Logger().Printf("[TRACE] spawning %d", i)
 		go doFuzzy(i+1, parallel)

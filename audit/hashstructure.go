@@ -436,7 +436,7 @@ func (w *hashWalker) getValueFromCopy() any {
 	currentValue := w.UnmarshalledCopy
 	startKey := 2  // First key in w.csKey maps to w.loc[2]
 	keyFactor := 2 // Each key in w.csKey is every other entry in w.loc
-	for i := 0; i < size-1; i++ {
+	for i := range size - 1 {
 		switch w.loc[startKey+(keyFactor*i)] {
 		case reflectwalk.MapValue:
 			fallthrough
