@@ -294,9 +294,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 			respondError(w, status, err)
 			return
 		}
-		if origBody != nil {
-			r.Body = io.NopCloser(origBody)
-		}
+		r.Body = io.NopCloser(origBody)
 		input := &logical.LogInput{
 			Request: req,
 		}
@@ -734,10 +732,7 @@ func parseJSONRequest(r *http.Request, out any) (io.ReadCloser, error) {
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
 	}
-	if origBody != nil {
-		return io.NopCloser(origBody), err
-	}
-	return nil, err
+	return io.NopCloser(origBody), err
 }
 
 // parseFormRequest parses values from a form POST.
