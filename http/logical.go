@@ -150,7 +150,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 
 				data = formData
 			} else {
-				origBody, err = parseJSONRequest(r, w, &data)
+				origBody, err = parseJSONRequest(r, &data)
 				if err == io.EOF {
 					data = nil
 					err = nil
@@ -178,7 +178,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 			return nil, nil, http.StatusUnsupportedMediaType, fmt.Errorf("PATCH requires Content-Type of %s, provided %s", MergePatchContentTypeHeader, contentType)
 		}
 
-		origBody, err = parseJSONRequest(r, w, &data)
+		origBody, err = parseJSONRequest(r, &data)
 
 		if err == io.EOF {
 			data = nil
@@ -297,7 +297,7 @@ func buildLogicalPath(r *http.Request) (string, int, error) {
 	return path, 0, nil
 }
 
-func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
+func buildLogicalRequest(w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
 	req, origBody, status, err := buildLogicalRequestNoAuth(w, r)
 	if err != nil || status != 0 {
 		return nil, nil, status, err
@@ -379,7 +379,7 @@ func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.String) http.Han
 // toggles. Refer to usage on functions for possible behaviors.
 func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel bool, noForward bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req, origBody, statusCode, err := buildLogicalRequest(core, w, r)
+		req, origBody, statusCode, err := buildLogicalRequest(w, r)
 		if err != nil || statusCode != 0 {
 			respondError(w, statusCode, err)
 			return
@@ -434,7 +434,7 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 
 		// Check if this is a raw response
 		if _, ok := resp.Data[logical.HTTPStatusCode]; ok {
-			respondRaw(w, r, resp)
+			respondRaw(w, resp)
 			return
 		}
 
@@ -474,7 +474,7 @@ func respondLogical(core *vault.Core, w http.ResponseWriter, r *http.Request, re
 // respondRaw is used when the response is using HTTPContentType and HTTPRawBody
 // to change the default response handling. This is only used for specific things like
 // returning the CRL information on the PKI backends.
-func respondRaw(w http.ResponseWriter, r *http.Request, resp *logical.Response) {
+func respondRaw(w http.ResponseWriter, resp *logical.Response) {
 	retErr := func(w http.ResponseWriter, err string) {
 		w.Header().Set("X-Vault-Raw-Error", err)
 		w.WriteHeader(http.StatusInternalServerError)

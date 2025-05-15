@@ -18,7 +18,7 @@ import (
 
 func handleSysSeal(core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req, _, statusCode, err := buildLogicalRequest(core, w, r)
+		req, _, statusCode, err := buildLogicalRequest(w, r)
 		if err != nil || statusCode != 0 {
 			respondError(w, statusCode, err)
 			return
@@ -48,7 +48,7 @@ func handleSysSeal(core *vault.Core) http.Handler {
 
 func handleSysStepDown(core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req, _, statusCode, err := buildLogicalRequest(core, w, r)
+		req, _, statusCode, err := buildLogicalRequest(w, r)
 		if err != nil || statusCode != 0 {
 			respondError(w, statusCode, err)
 			return
@@ -87,7 +87,7 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 
 		// Parse the request
 		var req UnsealRequest
-		if _, err := parseJSONRequest(r, w, &req); err != nil {
+		if _, err := parseJSONRequest(r, &req); err != nil {
 			respondError(w, http.StatusBadRequest, err)
 			return
 		}
@@ -98,7 +98,7 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 				return
 			}
 			core.ResetUnsealProcess()
-			handleSysSealStatusRaw(core, w, r)
+			handleSysSealStatusRaw(core, w)
 			return
 		}
 
@@ -148,7 +148,7 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 		}
 
 		// Return the seal status
-		handleSysSealStatusRaw(core, w, r)
+		handleSysSealStatusRaw(core, w)
 	})
 }
 
@@ -159,11 +159,11 @@ func handleSysSealStatus(core *vault.Core) http.Handler {
 			return
 		}
 
-		handleSysSealStatusRaw(core, w, r)
+		handleSysSealStatusRaw(core, w)
 	})
 }
 
-func handleSysSealStatusRaw(core *vault.Core, w http.ResponseWriter, r *http.Request) {
+func handleSysSealStatusRaw(core *vault.Core, w http.ResponseWriter) {
 	ctx := context.Background()
 	status, err := core.GetSealStatus(ctx, true)
 	if err != nil {

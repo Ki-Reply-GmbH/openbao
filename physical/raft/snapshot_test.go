@@ -76,7 +76,7 @@ func TestRaft_Snapshot_Loading(t *testing.T) {
 	metaReadCloser, metaWriteCloser := io.Pipe()
 
 	go func() {
-		raft.fsm.writeTo(context.Background(), metaWriteCloser, writeCloser)
+		raft.fsm.writeTo(metaWriteCloser, writeCloser)
 	}()
 
 	// Create a CRC64 hash

@@ -4,7 +4,6 @@
 package raft
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -189,7 +188,7 @@ func (f *BoltSnapshotStore) openFromFSM() (*raft.SnapshotMeta, io.ReadCloser, er
 	readCloser, writeCloser := io.Pipe()
 	metaReadCloser, metaWriteCloser := io.Pipe()
 	go func() {
-		f.fsm.writeTo(context.Background(), metaWriteCloser, writeCloser)
+		f.fsm.writeTo(metaWriteCloser, writeCloser)
 	}()
 
 	// Compute the size

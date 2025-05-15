@@ -29,18 +29,18 @@ func handleSysRekeyInit(core *vault.Core, recovery bool) http.Handler {
 		case recovery && !core.SealAccess().RecoveryKeySupported():
 			respondError(w, http.StatusBadRequest, errors.New("recovery rekeying not supported"))
 		case r.Method == "GET":
-			handleSysRekeyInitGet(ctx, core, recovery, w, r)
+			handleSysRekeyInitGet(ctx, core, recovery, w)
 		case r.Method == "POST" || r.Method == "PUT":
 			handleSysRekeyInitPut(ctx, core, recovery, w, r)
 		case r.Method == "DELETE":
-			handleSysRekeyInitDelete(ctx, core, recovery, w, r)
+			handleSysRekeyInitDelete(core, recovery, w)
 		default:
 			respondError(w, http.StatusMethodNotAllowed, nil)
 		}
 	})
 }
 
-func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
+func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter) {
 	barrierConfig, barrierConfErr := core.SealAccess().BarrierConfig(ctx)
 	if barrierConfErr != nil {
 		respondError(w, http.StatusInternalServerError, barrierConfErr)
@@ -102,7 +102,7 @@ func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool,
 func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyRequest
-	if _, err := parseJSONRequest(r, w, &req); err != nil {
+	if _, err := parseJSONRequest(r, &req); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -131,10 +131,10 @@ func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool,
 		return
 	}
 
-	handleSysRekeyInitGet(ctx, core, recovery, w, r)
+	handleSysRekeyInitGet(ctx, core, recovery, w)
 }
 
-func handleSysRekeyInitDelete(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
+func handleSysRekeyInitDelete(core *vault.Core, recovery bool, w http.ResponseWriter) {
 	if err := core.RekeyCancel(recovery); err != nil {
 		respondError(w, err.Code(), err)
 		return
@@ -152,7 +152,7 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 
 		// Parse the request
 		var req RekeyUpdateRequest
-		if _, err := parseJSONRequest(r, w, &req); err != nil {
+		if _, err := parseJSONRequest(r, &req); err != nil {
 			respondError(w, http.StatusBadRequest, err)
 			return
 		}
@@ -210,7 +210,7 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 			resp.KeysB64 = keysB64
 			respondOk(w, resp)
 		} else {
-			handleSysRekeyInitGet(ctx, core, recovery, w, r)
+			handleSysRekeyInitGet(ctx, core, recovery, w)
 		}
 	})
 }
@@ -230,7 +230,7 @@ func handleSysRekeyVerify(core *vault.Core, recovery bool) http.Handler {
 		case recovery && !core.SealAccess().RecoveryKeySupported():
 			respondError(w, http.StatusBadRequest, errors.New("recovery rekeying not supported"))
 		case r.Method == "GET":
-			handleSysRekeyVerifyGet(ctx, core, recovery, w, r)
+			handleSysRekeyVerifyGet(ctx, core, recovery, w)
 		case r.Method == "POST" || r.Method == "PUT":
 			handleSysRekeyVerifyPut(ctx, core, recovery, w, r)
 		case r.Method == "DELETE":
@@ -241,7 +241,7 @@ func handleSysRekeyVerify(core *vault.Core, recovery bool) http.Handler {
 	})
 }
 
-func handleSysRekeyVerifyGet(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
+func handleSysRekeyVerifyGet(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter) {
 	barrierConfig, barrierConfErr := core.SealAccess().BarrierConfig(ctx)
 	if barrierConfErr != nil {
 		respondError(w, http.StatusInternalServerError, barrierConfErr)
@@ -287,13 +287,13 @@ func handleSysRekeyVerifyDelete(ctx context.Context, core *vault.Core, recovery 
 		return
 	}
 
-	handleSysRekeyVerifyGet(ctx, core, recovery, w, r)
+	handleSysRekeyVerifyGet(ctx, core, recovery, w)
 }
 
 func handleSysRekeyVerifyPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyVerificationUpdateRequest
-	if _, err := parseJSONRequest(r, w, &req); err != nil {
+	if _, err := parseJSONRequest(r, &req); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -337,7 +337,7 @@ func handleSysRekeyVerifyPut(ctx context.Context, core *vault.Core, recovery boo
 		resp.Nonce = result.Nonce
 		respondOk(w, resp)
 	} else {
-		handleSysRekeyVerifyGet(ctx, core, recovery, w, r)
+		handleSysRekeyVerifyGet(ctx, core, recovery, w)
 	}
 }
 

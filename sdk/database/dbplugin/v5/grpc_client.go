@@ -208,7 +208,7 @@ func updateUserReqToProto(req UpdateUserRequest) (*proto.UpdateUserRequest, erro
 	return rpcReq, nil
 }
 
-func updateUserRespFromProto(rpcResp *proto.UpdateUserResponse) (UpdateUserResponse, error) {
+func updateUserRespFromProto(_ *proto.UpdateUserResponse) (UpdateUserResponse, error) {
 	// Placeholder for future conversion if data is returned
 	return UpdateUserResponse{}, nil
 }
@@ -263,7 +263,7 @@ func deleteUserReqToProto(req DeleteUserRequest) (*proto.DeleteUserRequest, erro
 	return rpcReq, nil
 }
 
-func deleteUserRespFromProto(rpcResp *proto.DeleteUserResponse) (DeleteUserResponse, error) {
+func deleteUserRespFromProto(_ *proto.DeleteUserResponse) (DeleteUserResponse, error) {
 	// Placeholder for future conversion if data is returned
 	return DeleteUserResponse{}, nil
 }

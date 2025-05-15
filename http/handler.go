@@ -190,7 +190,7 @@ func handler(props *vault.HandlerProperties) http.Handler {
 		mux.Handle("/v1/sys/rekey-recovery-key/verify", handleRequestForwarding(core, handleSysRekeyVerify(core, true)))
 		mux.Handle("/v1/sys/storage/raft/bootstrap", handleSysRaftBootstrap(core))
 		mux.Handle("/v1/sys/storage/raft/join", handleSysRaftJoin(core))
-		mux.Handle("/v1/sys/internal/ui/feature-flags", handleSysInternalFeatureFlags(core))
+		mux.Handle("/v1/sys/internal/ui/feature-flags", handleSysInternalFeatureFlags())
 
 		for _, path := range injectDataIntoTopRoutes {
 			mux.Handle(path, handleRequestForwarding(core, handleLogicalWithInjector(core)))
@@ -725,7 +725,7 @@ func parseQuery(values url.Values) map[string]any {
 	return nil
 }
 
-func parseJSONRequest(r *http.Request, w http.ResponseWriter, out any) (io.ReadCloser, error) {
+func parseJSONRequest(r *http.Request, out any) (io.ReadCloser, error) {
 	// Limit the maximum number of bytes to MaxRequestSize to protect
 	// against an indefinite amount of data being read.
 	reader := r.Body

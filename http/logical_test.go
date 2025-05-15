@@ -313,12 +313,12 @@ func TestLogical_RequestSizeDisableLimit(t *testing.T) {
 }
 
 func TestLogical_ListSuffix(t *testing.T) {
-	core, _, rootToken := vault.TestCoreUnsealed(t)
+	_, _, rootToken := vault.TestCoreUnsealed(t)
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo", nil)
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, _, status, err := buildLogicalRequest(nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, _, status, err = buildLogicalRequest(nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,7 +353,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, _, status, err = buildLogicalRequest(nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,7 +366,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 }
 
 func TestLogical_ListWithQueryParameters(t *testing.T) {
-	core, _, rootToken := vault.TestCoreUnsealed(t)
+	_, _, rootToken := vault.TestCoreUnsealed(t)
 
 	tests := []struct {
 		name          string
@@ -424,7 +424,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, _, status, err := buildLogicalRequest(nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -445,12 +445,12 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 }
 
 func TestLogical_ScanSuffix(t *testing.T) {
-	core, _, rootToken := vault.TestCoreUnsealed(t)
+	_, _, rootToken := vault.TestCoreUnsealed(t)
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo", nil)
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	lreq, _, status, err := buildLogicalRequest(nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +465,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, _, status, err = buildLogicalRequest(nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -485,7 +485,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	lreq, _, status, err = buildLogicalRequest(nil, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -498,7 +498,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 }
 
 func TestLogical_ScanWithQueryParameters(t *testing.T) {
-	core, _, rootToken := vault.TestCoreUnsealed(t)
+	_, _, rootToken := vault.TestCoreUnsealed(t)
 
 	tests := []struct {
 		name          string
@@ -556,7 +556,7 @@ func TestLogical_ScanWithQueryParameters(t *testing.T) {
 			req = req.WithContext(namespace.RootContext(nil))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
-			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			lreq, _, status, err := buildLogicalRequest(nil, req)
 			if err != nil {
 				t.Fatal(err)
 			}

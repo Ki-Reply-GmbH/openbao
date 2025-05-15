@@ -560,7 +560,7 @@ func (f *FSM) List(ctx context.Context, prefix string) ([]string, error) {
 // ListPage retrieves the set of keys with the given prefix from the bolt
 // file, after the specified entry (if present), and up to the given
 // limit of entries.
-func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+func (f *FSM) ListPage(_ context.Context, prefix string, after string, limit int) ([]string, error) {
 	// TODO: Remove this outdated metric name in a future release
 	defer metrics.MeasureSince([]string{"raft", "list"}, time.Now())
 	defer metrics.MeasureSince([]string{"raft_storage", "fsm", "list"}, time.Now())
@@ -571,7 +571,7 @@ func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit i
 	var err error
 	var keys []string
 	err = f.db.View(func(tx *bolt.Tx) error {
-		keys, err = listPageInner(ctx, tx, prefix, after, limit)
+		keys, err = listPageInner(tx, prefix, after, limit)
 		if err != nil {
 			return err
 		}
@@ -582,7 +582,7 @@ func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit i
 	return keys, err
 }
 
-func listPageInner(ctx context.Context, tx *bolt.Tx, prefix string, after string, limit int) ([]string, error) {
+func listPageInner(tx *bolt.Tx, prefix string, after string, limit int) ([]string, error) {
 	var keys []string
 
 	prefixBytes := []byte(prefix)
@@ -953,7 +953,7 @@ type writeErrorCloser interface {
 // twice, once for use in determining various metadata attributes of the dataset
 // (size, checksum, etc) and a second for the sink of the data. We also use a
 // proto delimited writer so we can stream proto messages to the sink.
-func (f *FSM) writeTo(ctx context.Context, metaSink writeErrorCloser, sink writeErrorCloser) {
+func (f *FSM) writeTo(metaSink writeErrorCloser, sink writeErrorCloser) {
 	defer metrics.MeasureSince([]string{"raft_storage", "fsm", "write_snapshot"}, time.Now())
 
 	protoWriter := NewDelimitedWriter(sink)

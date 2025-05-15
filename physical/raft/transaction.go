@@ -187,7 +187,7 @@ type RaftTransaction struct {
 
 var _ physical.Transaction = &RaftTransaction{}
 
-func (b *RaftBackend) newTransaction(ctx context.Context, writable bool) (*RaftTransaction, error) {
+func (b *RaftBackend) newTransaction(_ context.Context, writable bool) (*RaftTransaction, error) {
 	// Grab a transaction permit pool entry so that we can limit the number of
 	// concurrent transactions. Also grab a read lock in the underlying FSM
 	// to prevent key changes from occurring while a transaction is ongoing.
@@ -1028,7 +1028,7 @@ func (s *fsmTxnCommitIndexApplicationState) doVerifyRead(b *bolt.Bucket, op *Log
 	return err
 }
 
-func (s *fsmTxnCommitIndexApplicationState) doVerifyList(tx *bolt.Tx, b *bolt.Bucket, op *LogOperation) error {
+func (s *fsmTxnCommitIndexApplicationState) doVerifyList(tx *bolt.Tx, _ *bolt.Bucket, op *LogOperation) error {
 	params, err := parseListVerifyParams(op.Key)
 	if err != nil {
 		return err
@@ -1043,7 +1043,7 @@ func (s *fsmTxnCommitIndexApplicationState) doVerifyList(tx *bolt.Tx, b *bolt.Bu
 	metrics.IncrCounter([]string{"raft-storage", "txn_fast_apply_miss"}, 1)
 
 	var keys []string
-	keys, err = listPageInner(context.Background(), tx, params.Prefix, params.After, params.Limit)
+	keys, err = listPageInner(tx, params.Prefix, params.After, params.Limit)
 	if err == nil {
 		err = doVerifyList(op.Key, keys, op.Value)
 	}

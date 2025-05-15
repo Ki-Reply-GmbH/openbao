@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/openbao/openbao/api/v2"
-	"github.com/openbao/openbao/vault"
 )
 
 type FeatureFlagsResponse struct {
@@ -28,7 +27,7 @@ func featureFlagIsSet(name string) bool {
 	}
 }
 
-func handleSysInternalFeatureFlags(core *vault.Core) http.Handler {
+func handleSysInternalFeatureFlags() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":

@@ -18,7 +18,7 @@ func handleSysInit(core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			handleSysInitGet(core, w, r)
+			handleSysInitGet(core, w)
 		case "PUT", "POST":
 			handleSysInitPut(core, w, r)
 		default:
@@ -27,7 +27,7 @@ func handleSysInit(core *vault.Core) http.Handler {
 	})
 }
 
-func handleSysInitGet(core *vault.Core, w http.ResponseWriter, r *http.Request) {
+func handleSysInitGet(core *vault.Core, w http.ResponseWriter) {
 	init, err := core.Initialized(context.Background())
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
@@ -44,7 +44,7 @@ func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 
 	// Parse the request
 	var req InitRequest
-	if _, err := parseJSONRequest(r, w, &req); err != nil {
+	if _, err := parseJSONRequest(r, &req); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}

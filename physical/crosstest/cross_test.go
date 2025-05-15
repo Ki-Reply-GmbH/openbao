@@ -385,7 +385,7 @@ func allTransactionalPhysical(t *testing.T) (map[string]physical.TransactionalBa
 		}
 }
 
-func allDoList(t *testing.T, backends map[string]physical.Backend, prefix string) (map[string][]string, map[string]error) {
+func allDoList(_ *testing.T, backends map[string]physical.Backend, prefix string) (map[string][]string, map[string]error) {
 	results := make(map[string][]string, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
@@ -397,7 +397,7 @@ func allDoList(t *testing.T, backends map[string]physical.Backend, prefix string
 	return results, errs
 }
 
-func allDoListPage(t *testing.T, backends map[string]physical.Backend, prefix string, after string, limit int) (map[string][]string, map[string]error) {
+func allDoListPage(_ *testing.T, backends map[string]physical.Backend, prefix string, after string, limit int) (map[string][]string, map[string]error) {
 	results := make(map[string][]string, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
@@ -409,7 +409,7 @@ func allDoListPage(t *testing.T, backends map[string]physical.Backend, prefix st
 	return results, errs
 }
 
-func allDoDelete(t *testing.T, backends map[string]physical.Backend, key string) map[string]error {
+func allDoDelete(_ *testing.T, backends map[string]physical.Backend, key string) map[string]error {
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		err := backend.Delete(context.Background(), key)
@@ -419,7 +419,7 @@ func allDoDelete(t *testing.T, backends map[string]physical.Backend, key string)
 	return errs
 }
 
-func allDoPut(t *testing.T, backends map[string]physical.Backend, key string, value []byte) map[string]error {
+func allDoPut(_ *testing.T, backends map[string]physical.Backend, key string, value []byte) map[string]error {
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		// Other entry fields are unnecessary.
@@ -433,7 +433,7 @@ func allDoPut(t *testing.T, backends map[string]physical.Backend, key string, va
 	return errs
 }
 
-func allDoGet(t *testing.T, backends map[string]physical.Backend, key string) (map[string]*physical.Entry, map[string]error) {
+func allDoGet(_ *testing.T, backends map[string]physical.Backend, key string) (map[string]*physical.Entry, map[string]error) {
 	results := make(map[string]*physical.Entry, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
@@ -446,7 +446,7 @@ func allDoGet(t *testing.T, backends map[string]physical.Backend, key string) (m
 }
 
 // Results are physical.Backend to allow for passing to above allDoX methods.
-func allDoBeginTx(t *testing.T, backends map[string]physical.TransactionalBackend) (map[string]physical.Backend, map[string]error) {
+func allDoBeginTx(_ *testing.T, backends map[string]physical.TransactionalBackend) (map[string]physical.Backend, map[string]error) {
 	results := make(map[string]physical.Backend, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
@@ -458,7 +458,7 @@ func allDoBeginTx(t *testing.T, backends map[string]physical.TransactionalBacken
 	return results, errs
 }
 
-func allDoBeginReadOnlyTx(t *testing.T, backends map[string]physical.TransactionalBackend) (map[string]physical.Backend, map[string]error) {
+func allDoBeginReadOnlyTx(_ *testing.T, backends map[string]physical.TransactionalBackend) (map[string]physical.Backend, map[string]error) {
 	results := make(map[string]physical.Backend, len(backends))
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
@@ -470,7 +470,7 @@ func allDoBeginReadOnlyTx(t *testing.T, backends map[string]physical.Transaction
 	return results, errs
 }
 
-func allDoCommit(t *testing.T, backends map[string]physical.Backend) map[string]error {
+func allDoCommit(_ *testing.T, backends map[string]physical.Backend) map[string]error {
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		tx := backend.(physical.Transaction)
@@ -481,7 +481,7 @@ func allDoCommit(t *testing.T, backends map[string]physical.Backend) map[string]
 	return errs
 }
 
-func allDoRollback(t *testing.T, backends map[string]physical.Backend) map[string]error {
+func allDoRollback(_ *testing.T, backends map[string]physical.Backend) map[string]error {
 	errs := make(map[string]error, len(backends))
 	for name, backend := range backends {
 		tx := backend.(physical.Transaction)

@@ -628,7 +628,7 @@ func BenchmarkDB_Snapshot(b *testing.B) {
 		var i int
 		for b.Loop() {
 			pe.Key = fmt.Sprintf("%x", md5.Sum(fmt.Appendf(nil, "%s-%d", testName, i)))
-			s.writeTo(ctx, discardCloser{Writer: io.Discard}, discardCloser{Writer: io.Discard})
+			s.writeTo(discardCloser{Writer: io.Discard}, discardCloser{Writer: io.Discard})
 			i += 1
 		}
 	}

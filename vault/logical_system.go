@@ -2277,18 +2277,16 @@ func (b *SystemBackend) handleRevoke(ctx context.Context, req *logical.Request, 
 
 // handleRevokePrefix is used to revoke a prefix with many LeaseIDs
 func (b *SystemBackend) handleRevokePrefix(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	return b.handleRevokePrefixCommon(ctx, req, data, false, data.Get("sync").(bool))
+	return b.handleRevokePrefixCommon(ctx, data, false, data.Get("sync").(bool))
 }
 
 // handleRevokeForce is used to revoke a prefix with many LeaseIDs, ignoring errors
 func (b *SystemBackend) handleRevokeForce(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	return b.handleRevokePrefixCommon(ctx, req, data, true, true)
+	return b.handleRevokePrefixCommon(ctx, data, true, true)
 }
 
 // handleRevokePrefixCommon is used to revoke a prefix with many LeaseIDs
-func (b *SystemBackend) handleRevokePrefixCommon(ctx context.Context,
-	req *logical.Request, data *framework.FieldData, force, sync bool,
-) (*logical.Response, error) {
+func (b *SystemBackend) handleRevokePrefixCommon(ctx context.Context, data *framework.FieldData, force, sync bool) (*logical.Response, error) {
 	// Get all the options
 	prefix := data.Get("prefix").(string)
 

@@ -15,14 +15,14 @@ func handleSysLeader(core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			handleSysLeaderGet(core, w, r)
+			handleSysLeaderGet(core, w)
 		default:
 			respondError(w, http.StatusMethodNotAllowed, nil)
 		}
 	})
 }
 
-func handleSysLeaderGet(core *vault.Core, w http.ResponseWriter, r *http.Request) {
+func handleSysLeaderGet(core *vault.Core, w http.ResponseWriter) {
 	resp, err := core.GetLeaderStatus()
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err)
