@@ -11,6 +11,11 @@ import (
 	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
+const (
+	// nsBarrierSealsConfigPath
+	nsBarrierSealsConfigPath = "core/seals"
+)
+
 // SealManager is used to provide storage for the seals.
 // It's a singleton that associates seals (configs) to the namespaces.
 type SealManager struct {

@@ -27,6 +27,9 @@ import (
 )
 
 const (
+	// TODO(wslabosz): does it make sense
+	shamirSealConfig = "/shamir-config"
+
 	// barrierSealConfigPath is the path used to store our seal configuration.
 	// This value is stored in plaintext, since we must be able to read it even
 	// with the Vault sealed. This is required so that we know how many secret
@@ -160,7 +163,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace
 		return nil, err
 	}
 
-	view := NamespaceView(d.core.barrier, ns).SubView(barrierSealConfigPath)
+	view := NamespaceView(d.core.barrier, ns).SubView(nsBarrierSealsConfigPath).SubView(shamirSealConfig)
 
 	// Fetch the core configuration
 	pe, err := d.core.physical.Get(ctx, view.Prefix())
@@ -230,7 +233,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, 
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	view := NamespaceView(d.core.barrier, ns).SubView(barrierSealConfigPath)
+	view := NamespaceView(d.core.barrier, ns).SubView(nsBarrierSealsConfigPath).SubView(shamirSealConfig)
 
 	// Store the seal configuration
 	pe := &physical.Entry{
