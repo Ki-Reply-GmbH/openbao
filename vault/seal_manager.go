@@ -11,13 +11,12 @@ import (
 	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
+// SealManager is used to provide storage for the seals.
+// It's a singleton that associates seals (configs) to the namespaces.
 type SealManager struct {
 	core    *Core
 	storage logical.Storage
 
-	// This lock ensures we don't concurrently modify the store while using
-	// a namespace entry. We also store an atomic to check if we need to
-	// reload all namespaces.
 	// lock        sync.RWMutex
 	// invalidated atomic.Bool
 
@@ -27,6 +26,7 @@ type SealManager struct {
 	logger hclog.Logger
 }
 
+// NewSealManager creates a new seal manager with core reference and logger.
 func NewSealManager(ctx context.Context, core *Core, logger hclog.Logger) (*SealManager, error) {
 	return &SealManager{
 		core:             core,
@@ -46,13 +46,20 @@ func (c *Core) setupSealManager(ctx context.Context) error {
 	return err
 }
 
-func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace) error {
-	ctx = namespace.ContextWithNamespace(ctx, ns)
+// teardownSealManager is used to remove seal manager
+// when the vault is being sealed.
+func (c *Core) teardownSealManager() error {
+	c.sealManager = nil
+	return nil
+}
 
+// TODO(wslabosz): add logs
+func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace) error {
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
+	// Seal type would depend on the provided arguments
 	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
 	defaultSeal.SetCore(sm.core)
 
@@ -61,7 +68,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	}
 
 	sm.sealsByNamespace[ns.UUID] = []*Seal{&defaultSeal}
-	err := defaultSeal.SetBarrierConfig(ctx, sealConfig)
+	err := defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
 	if err != nil {
 		return fmt.Errorf("failed to set barrier config: %w", err)
 	}
