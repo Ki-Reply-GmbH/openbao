@@ -20,6 +20,7 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 )
@@ -31,6 +32,12 @@ var (
 	sealHealthTestIntervalNominal   = 10 * time.Minute
 	sealHealthTestIntervalUnhealthy = 1 * time.Minute
 	sealHealthTestTimeout           = 1 * time.Minute
+)
+
+const (
+	// TODO(wslabosz): does it make sense to split that from shamirSealConfig
+	// in `seal.go`
+	autoSealConfig = "/recovery-config"
 )
 
 // autoSeal is a Seal implementation that contains logic for encrypting and
@@ -188,7 +195,7 @@ func (d *autoSeal) UpgradeKeys(ctx context.Context) error {
 	return nil
 }
 
-func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
+func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
 	if d.barrierConfig.Load().(*SealConfig) != nil {
 		return d.barrierConfig.Load().(*SealConfig).Clone(), nil
 	}
@@ -198,8 +205,9 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	sealType := "barrier"
+	view := NamespaceView(d.core.barrier, ns).SubView(nsBarrierSealsConfigPath).SubView(autoSealConfig)
 
-	entry, err := d.core.physical.Get(ctx, barrierSealConfigPath)
+	entry, err := d.core.physical.Get(ctx, view.Prefix())
 	if err != nil {
 		d.logger.Error("failed to read seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
@@ -235,7 +243,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	return conf.Clone(), nil
 }
 
-func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error {
+func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig, ns *namespace.Namespace) error {
 	if err := d.checkCore(); err != nil {
 		return err
 	}
@@ -253,9 +261,11 @@ func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error
 		return fmt.Errorf("failed to encode barrier seal configuration: %w", err)
 	}
 
+	view := NamespaceView(d.core.barrier, ns).SubView(nsBarrierSealsConfigPath).SubView(autoSealConfig)
+
 	// Store the seal configuration
 	pe := &physical.Entry{
-		Key:   barrierSealConfigPath,
+		Key:   view.Prefix(),
 		Value: buf,
 	}
 
