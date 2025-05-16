@@ -105,7 +105,7 @@ func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
 	}
 
 	// Verify the seal configuration
-	sealConf, err := c.seal.BarrierConfig(ctx)
+	sealConf, err := c.seal.BarrierConfig(ctx, namespace.RootNamespace)
 	if err != nil {
 		return false, err
 	}
@@ -292,7 +292,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		}
 	}()
 
-	err = c.seal.SetBarrierConfig(ctx, barrierConfig)
+	err = c.seal.SetBarrierConfig(ctx, barrierConfig, namespace.RootNamespace)
 	if err != nil {
 		c.logger.Error("failed to save barrier configuration", "error", err)
 		return nil, fmt.Errorf("barrier configuration saving failed: %w", err)

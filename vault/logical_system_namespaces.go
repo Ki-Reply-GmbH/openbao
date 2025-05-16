@@ -275,12 +275,19 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, sealConfigs, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			ns.CustomMetadata = metadata
 			return ns, nil
 		})
 		if err != nil {
 			return handleError(err)
+		}
+
+		// TODO(wslabosz): write all the provided configs
+		if len(sealConfigs) > 0 {
+			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry.Clone()); err != nil {
+				return nil, err
+			}
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
@@ -312,8 +319,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		// TODO: verify
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, []*SealConfig{}, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
