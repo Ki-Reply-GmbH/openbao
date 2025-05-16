@@ -379,6 +379,9 @@ type Core struct {
 	// namespace Store is used to manage namespaces
 	namespaceStore *NamespaceStore
 
+	// sealManager is used to manage seals per namespace
+	sealManager *SealManager
+
 	// identityStore is used to manage client entities
 	identityStore *IdentityStore
 
@@ -2267,6 +2270,9 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 	if err := c.setupNamespaceStore(ctx); err != nil {
+		return err
+	}
+	if err := c.setupSealManager(ctx); err != nil {
 		return err
 	}
 	if err := c.loadMounts(ctx); err != nil {

@@ -515,7 +515,7 @@ func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path str
 // ModifyNamespace is used to perform modifications to a namespace while
 // holding a write lock to prevent other changes to namespaces from occurring
 // at the same time.
-func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, callback func(context.Context, *namespace.Namespace) (*namespace.Namespace, error)) (*namespace.Namespace, error) {
+func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, sealConfigs []*SealConfig, callback func(context.Context, *namespace.Namespace) (*namespace.Namespace, error)) (*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "modify_namespace"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -559,6 +559,13 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 	// setNamespaceLocked will unlock ns.lock
 	if err := ns.setNamespaceLocked(ctx, entry); err != nil {
 		return nil, err
+	}
+
+	// TODO: adjust
+	if len(sealConfigs) > 0 {
+		if err := ns.core.sealManager.SetSeal(ctx, sealConfigs[0], entry.Clone()); err != nil {
+			return nil, err
+		}
 	}
 
 	return entry.Clone(), nil

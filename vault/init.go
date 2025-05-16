@@ -250,7 +250,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	barrierKey, barrierKeyShares, err := c.generateShares(barrierConfig)
+	barrierKey, deprecatedBarrierKeyShares, err := c.generateShares(barrierConfig)
 	if err != nil {
 		c.logger.Error("error generating shares", "error", err)
 		return nil, err
@@ -329,7 +329,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	default:
 		// We don't support initializing an old-style Shamir seal anymore, so
 		// this case is only reachable by tests.
-		results.SecretShares = barrierKeyShares
+		results.SecretShares = deprecatedBarrierKeyShares
 	}
 
 	// Perform initial setup

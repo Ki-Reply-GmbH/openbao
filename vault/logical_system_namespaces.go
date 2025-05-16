@@ -11,11 +11,9 @@ import (
 	"net/http"
 	"strings"
 
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
 func (b *SystemBackend) namespacePaths() []*framework.Path {
@@ -277,22 +275,12 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, sealConfigs, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			ns.CustomMetadata = metadata
 			return ns, nil
 		})
 		if err != nil {
 			return handleError(err)
-		}
-
-		if len(sealConfigs) > 0 {
-			ctx = namespace.ContextWithNamespace(ctx, entry)
-			defaultSeal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
-			defaultSeal.SetCore(b.Core)
-			err = defaultSeal.SetBarrierConfig(ctx, sealConfigs[0])
-			if err != nil {
-				return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-			}
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
@@ -324,7 +312,8 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		// TODO: verify
+		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, []*SealConfig{}, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
