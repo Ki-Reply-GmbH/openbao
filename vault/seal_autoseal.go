@@ -34,6 +34,12 @@ var (
 	sealHealthTestTimeout           = 1 * time.Minute
 )
 
+const (
+	// TODO(wslabosz): does it make sense to split that from shamirSealConfig
+	// in `seal.go`
+	autoSealConfig = "/recovery-config"
+)
+
 // autoSeal is a Seal implementation that contains logic for encrypting and
 // decrypting stored keys via an underlying AutoSealAccess implementation, as
 // well as logic related to recovery keys and barrier config.
@@ -199,7 +205,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (
 	}
 
 	sealType := "barrier"
-	view := NamespaceView(d.core.barrier, ns).SubView(barrierSealConfigPath)
+	view := NamespaceView(d.core.barrier, ns).SubView(nsBarrierSealsConfigPath).SubView(autoSealConfig)
 
 	entry, err := d.core.physical.Get(ctx, view.Prefix())
 	if err != nil {
@@ -255,7 +261,7 @@ func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig, ns *n
 		return fmt.Errorf("failed to encode barrier seal configuration: %w", err)
 	}
 
-	view := NamespaceView(d.core.barrier, ns).SubView(barrierSealConfigPath)
+	view := NamespaceView(d.core.barrier, ns).SubView(nsBarrierSealsConfigPath).SubView(autoSealConfig)
 
 	// Store the seal configuration
 	pe := &physical.Entry{
