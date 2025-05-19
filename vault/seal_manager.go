@@ -52,7 +52,8 @@ func (c *Core) setupSealManager(ctx context.Context) error {
 // when the vault is being sealed.
 func (c *Core) teardownSealManager() error {
 	// seal all namespaces
-	c.sealManager.SealNamespace(namespace.RootNamespace)
+	// TODO: this probably does not work out of the box
+	// c.sealManager.SealNamespace(namespace.RootNamespace)
 	c.sealManager = nil
 	return nil
 }
@@ -75,6 +76,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	if err != nil {
 		return fmt.Errorf("failed to construct namespace barrier: %w", err)
 	}
+	// barrier.Initialize(ctx context.Context, rootKey []byte, sealKey []byte, random io.Reader)
 	sm.barrierByNamespace.Insert(ns.Path, barrier)
 	sm.sealsByNamespace[ns.UUID] = []*Seal{&defaultSeal}
 	err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
@@ -104,6 +106,12 @@ func (sm *SealManager) SealNamespace(ns *namespace.Namespace) error {
 // NamespaceView finds the correct barrier to use for the namespace and returns
 // the a BarrierView restricted to the data of the given namespace.
 func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
+	// TODO: NamespaceView is called somewhere before sealManager is
+	// initialized. Figure out if we can fix the init sequence to make this go
+	// away
+	if c.sealManager == nil {
+		return NamespaceView(c.barrier, ns)
+	}
 	_, v, _ := c.sealManager.barrierByNamespace.LongestPrefix(ns.Path)
 	barrier := v.(SecurityBarrier)
 	return NamespaceView(barrier, ns)
