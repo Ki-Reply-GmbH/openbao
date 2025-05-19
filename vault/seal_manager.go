@@ -13,7 +13,6 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	"github.com/openbao/openbao/vault/seal"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
@@ -230,7 +229,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	}
 
 	switch nsSeal.StoredKeysSupported() {
-	case seal.StoredKeysSupportedShamirRoot:
+	case vaultseal.StoredKeysSupportedShamirRoot:
 		keysToStore := [][]byte{nsBarrierKey}
 		shamirWrapper, err := nsSeal.GetShamirWrapper()
 		if err != nil {
@@ -243,7 +242,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
 		results.SecretShares = nsSealKeyShares
-	case seal.StoredKeysSupportedGeneric:
+	case vaultseal.StoredKeysSupportedGeneric:
 		keysToStore := [][]byte{nsBarrierKey}
 		if err := nsSeal.SetStoredKeys(ctx, keysToStore); err != nil {
 			return nil, fmt.Errorf("failed to store keys: %w", err)
