@@ -7,8 +7,10 @@ import (
 
 	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/vault/seal"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
@@ -122,4 +124,78 @@ func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
 func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) error {
 	sm.barrierByNamespace.DeletePrefix(ns.Path)
 	return nil
+}
+
+func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
+	nsSeal := *sm.sealsByNamespace[ns.UUID][0]
+
+	sealConfig, err := nsSeal.BarrierConfig(ctx, ns)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve seal config")
+	}
+
+	nsBarrierKey, _, err := sm.core.generateShares(sealConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate namespace barrier key")
+	}
+
+	var nsSealKey []byte
+	var nsSealKeyShares [][]byte
+
+	if nsSeal == nil {
+		return nil, fmt.Errorf("unable to retrieve seal")
+	}
+
+	if sealConfig.StoredShares == 1 && nsSeal.BarrierType() == wrapping.WrapperTypeShamir {
+		nsSealKey, nsSealKeyShares, err = sm.core.generateShares(sealConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate namespace seal key")
+		}
+	}
+
+	var nsSecurityBarrier SecurityBarrier
+
+	if nsBarrier, found := sm.barrierByNamespace.Get(ns.Path); found {
+		nsSecurityBarrier = nsBarrier.(SecurityBarrier)
+		if err := nsSecurityBarrier.Initialize(ctx, nsBarrierKey, nsSealKey, sm.core.secureRandomReader); err != nil {
+			return nil, fmt.Errorf("failed to initialize namespace barrier")
+		}
+	} else {
+		return nil, fmt.Errorf("unable to find namespace barrier")
+	}
+
+	if err := nsSecurityBarrier.Unseal(ctx, nsBarrierKey); err != nil {
+		return nil, fmt.Errorf("failed to unseal namespace barrier")
+	}
+
+	// TODO: Seal the barrier again
+
+	results := &InitResult{
+		SecretShares: [][]byte{},
+	}
+
+	switch nsSeal.StoredKeysSupported() {
+	case seal.StoredKeysSupportedShamirRoot:
+		keysToStore := [][]byte{nsBarrierKey}
+		shamirWrapper, err := nsSeal.GetShamirWrapper()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get shamir wrapper")
+		}
+		if err := shamirWrapper.SetAesGcmKeyBytes(nsSealKey); err != nil {
+			return nil, fmt.Errorf("failed to set seal key")
+		}
+		if err := nsSeal.SetStoredKeys(ctx, keysToStore); err != nil {
+			return nil, fmt.Errorf("failed to store keys")
+		}
+		results.SecretShares = nsSealKeyShares
+	case seal.StoredKeysSupportedGeneric:
+		keysToStore := [][]byte{nsBarrierKey}
+		if err := nsSeal.SetStoredKeys(ctx, keysToStore); err != nil {
+			return nil, fmt.Errorf("failed to store keys")
+		}
+	default:
+		return nil, fmt.Errorf("unsupported stored keys type encountered")
+	}
+
+	return nsSealKeyShares, nil
 }
