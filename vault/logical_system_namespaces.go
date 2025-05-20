@@ -292,7 +292,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 
 		nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
 		if err != nil {
-			return logical.ErrorResponse("failed while initializing the namespace barrier"), err
+			return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
 		}
 
 		for i, keyShare := range nsSealKeyShares {

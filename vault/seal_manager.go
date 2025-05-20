@@ -161,7 +161,7 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 			return nil, fmt.Errorf("failed to initialize namespace barrier")
 		}
 	} else {
-		return nil, fmt.Errorf("unable to find namespace barrier")
+		return nil, fmt.Errorf("namespace barrier not found")
 	}
 
 	if err := nsSecurityBarrier.Unseal(ctx, nsBarrierKey); err != nil {
