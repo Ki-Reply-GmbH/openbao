@@ -62,6 +62,7 @@ func (c *Core) teardownSealManager() error {
 
 // TODO(wslabosz): add logs
 func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace) error {
+	sealConfig.StoredShares = 1
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
 	}
@@ -131,25 +132,25 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 
 	sealConfig, err := nsSeal.BarrierConfig(ctx, ns)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve seal config")
+		return nil, fmt.Errorf("failed to retrieve seal config: %w", err)
 	}
 
 	nsBarrierKey, _, err := sm.core.generateShares(sealConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate namespace barrier key")
+		return nil, fmt.Errorf("failed to generate namespace barrier key: %w", err)
 	}
 
 	var nsSealKey []byte
 	var nsSealKeyShares [][]byte
 
 	if nsSeal == nil {
-		return nil, fmt.Errorf("unable to retrieve seal")
+		return nil, fmt.Errorf("unable to retrieve seal: %w", err)
 	}
 
 	if sealConfig.StoredShares == 1 && nsSeal.BarrierType() == wrapping.WrapperTypeShamir {
 		nsSealKey, nsSealKeyShares, err = sm.core.generateShares(sealConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to generate namespace seal key")
+			return nil, fmt.Errorf("failed to generate namespace seal key: %w", err)
 		}
 	}
 
@@ -158,14 +159,14 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	if nsBarrier, found := sm.barrierByNamespace.Get(ns.Path); found {
 		nsSecurityBarrier = nsBarrier.(SecurityBarrier)
 		if err := nsSecurityBarrier.Initialize(ctx, nsBarrierKey, nsSealKey, sm.core.secureRandomReader); err != nil {
-			return nil, fmt.Errorf("failed to initialize namespace barrier")
+			return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
 		}
 	} else {
-		return nil, fmt.Errorf("namespace barrier not found")
+		return nil, fmt.Errorf("namespace barrier not found: %w", err)
 	}
 
 	if err := nsSecurityBarrier.Unseal(ctx, nsBarrierKey); err != nil {
-		return nil, fmt.Errorf("failed to unseal namespace barrier")
+		return nil, fmt.Errorf("failed to unseal namespace barrier: %w", err)
 	}
 
 	// TODO: Seal the barrier again
@@ -179,22 +180,22 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		keysToStore := [][]byte{nsBarrierKey}
 		shamirWrapper, err := nsSeal.GetShamirWrapper()
 		if err != nil {
-			return nil, fmt.Errorf("unable to get shamir wrapper")
+			return nil, fmt.Errorf("unable to get shamir wrapper: %w", err)
 		}
 		if err := shamirWrapper.SetAesGcmKeyBytes(nsSealKey); err != nil {
-			return nil, fmt.Errorf("failed to set seal key")
+			return nil, fmt.Errorf("failed to set seal key: %w", err)
 		}
 		if err := nsSeal.SetStoredKeys(ctx, keysToStore); err != nil {
-			return nil, fmt.Errorf("failed to store keys")
+			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
 		results.SecretShares = nsSealKeyShares
 	case seal.StoredKeysSupportedGeneric:
 		keysToStore := [][]byte{nsBarrierKey}
 		if err := nsSeal.SetStoredKeys(ctx, keysToStore); err != nil {
-			return nil, fmt.Errorf("failed to store keys")
+			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
 	default:
-		return nil, fmt.Errorf("unsupported stored keys type encountered")
+		return nil, fmt.Errorf("unsupported stored keys type encountered: %w", err)
 	}
 
 	return nsSealKeyShares, nil
