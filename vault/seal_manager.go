@@ -23,8 +23,9 @@ type SealManager struct {
 	// lock        sync.RWMutex
 	// invalidated atomic.Bool
 
-	sealsByNamespace   map[string][]*Seal
-	barrierByNamespace *radix.Tree
+	sealsByNamespace     map[string][]*Seal
+	barrierByNamespace   *radix.Tree
+	barrierByStoragePath *radix.Tree
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -33,10 +34,11 @@ type SealManager struct {
 // NewSealManager creates a new seal manager with core reference and logger.
 func NewSealManager(ctx context.Context, core *Core, logger hclog.Logger) (*SealManager, error) {
 	return &SealManager{
-		core:               core,
-		sealsByNamespace:   make(map[string][]*Seal),
-		barrierByNamespace: radix.New(),
-		logger:             logger,
+		core:                 core,
+		sealsByNamespace:     make(map[string][]*Seal),
+		barrierByNamespace:   radix.New(),
+		barrierByStoragePath: radix.New(),
+		logger:               logger,
 	}, nil
 }
 
@@ -48,6 +50,8 @@ func (c *Core) setupSealManager(ctx context.Context) error {
 	c.AddLogger(sealLogger)
 	c.sealManager, err = NewSealManager(ctx, c, sealLogger)
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
+	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
+	c.sealManager.barrierByStoragePath.Insert("core/seal-config", nil)
 	return err
 }
 
@@ -82,6 +86,11 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	}
 	// barrier.Initialize(ctx context.Context, rootKey []byte, sealKey []byte, random io.Reader)
 	sm.barrierByNamespace.Insert(ns.Path, barrier)
+	sm.barrierByStoragePath.Insert(namespaceBarrierPrefix+ns.UUID+"/", barrier)
+	parentBarrier := sm.ParentNamespaceBarrier(ns)
+	if parentBarrier != nil {
+		sm.barrierByStoragePath.Insert(namespaceBarrierPrefix+ns.UUID+"/"+barrierSealConfigPath, parentBarrier)
+	}
 	sm.sealsByNamespace[ns.UUID] = []*Seal{&defaultSeal}
 	err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
 	if err != nil {
@@ -89,6 +98,18 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	}
 
 	return nil
+}
+
+func (sm *SealManager) BarrierForStoragePath(path string) SecurityBarrier {
+	if sm == nil {
+		return nil
+	}
+	_, v, _ := sm.barrierByStoragePath.LongestPrefix(path)
+	if v == nil {
+		return nil
+	}
+	barrier := v.(SecurityBarrier)
+	return barrier
 }
 
 // SealNamespace seals the barriers of the given namespace and all of its children.
@@ -107,6 +128,24 @@ func (sm *SealManager) SealNamespace(ns *namespace.Namespace) error {
 	return errs
 }
 
+func (sm *SealManager) ParentNamespaceBarrier(ns *namespace.Namespace) SecurityBarrier {
+	parentPath, ok := ns.ParentPath()
+	if !ok {
+		return nil
+	}
+
+	_, v, _ := sm.barrierByNamespace.LongestPrefix(parentPath)
+	barrier := v.(SecurityBarrier)
+	return barrier
+}
+
+func (sm *SealManager) NamespaceBarrier(ns *namespace.Namespace) SecurityBarrier {
+	_, v, _ := sm.barrierByNamespace.LongestPrefix(ns.Path)
+	barrier := v.(SecurityBarrier)
+
+	return barrier
+}
+
 // NamespaceView finds the correct barrier to use for the namespace and returns
 // the a BarrierView restricted to the data of the given namespace.
 func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
@@ -116,8 +155,7 @@ func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
 	if c.sealManager == nil {
 		return NamespaceView(c.barrier, ns)
 	}
-	_, v, _ := c.sealManager.barrierByNamespace.LongestPrefix(ns.Path)
-	barrier := v.(SecurityBarrier)
+	barrier := c.sealManager.NamespaceBarrier(ns)
 	return NamespaceView(barrier, ns)
 }
 
