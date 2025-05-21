@@ -1,0 +1,84 @@
+name: Mirror-V1 Mirror OpenBao OpenSource into ApeiroRA
+#
+# V1: Variant with new branch for each new update (PR). Branch name includes a TIMESTAMP. 
+#
+# Mirrors the main branch of the OpenBao OpenSource repository into a new feature branch of this repository.
+# Afterwards a Pull Request into the openbao-main branch will be created.
+# This PR must be manually reviewed and merged with rebase option (to keep history clean).
+#
+# Each run of this workflow will create a new branch in the format "openbao-sync-TIMESTAMP" together with an Pull-Request into openbao-main.
+# This workflow will be executed to specific times (see cron scheduie) but can also be manually triggered.
+#
+# For authentication this workflow uses a GitHub App called "openbao-sync" that must be installed into this repository.
+# (In case of permission changes that App may need to be re-approved by repository maintainers.)
+# 
+# Credentials are stored in repository variables and secrets.
+#
+
+on:
+  workflow_dispatch:
+  schedule:
+  # see https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule
+    # run job at least two  times per week -> humans need to approve two PRs per week
+    - cron: '0 3 * * 1,4' # runs at 03:00, only on Monday and Thursday.
+    # optional: run every workday -> there will be also a new PR per day that needs review and approval!
+    - cron: '0 3 * * 2,3,5' # runs at 03:00, only on Tuesday, Wednesday and Friday. Only used for demonstration. (It should be sufficent to run this workflow only two times per week.)
+    
+jobs:
+  sync-and-create-pr:
+    name: Copy main branch of OpenBao Repo into ApeiroRA OpenBao and create pull request
+    runs-on: linux # ubuntu-latest doesn't work (no runners with that tag available -> endless queued state)
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+    - name: Determine current datetime
+      run: echo "CURRENT_DATETIME=$(TZ=Europe/Berlin date +%Y-%m-%d-T%H-%M-%S)" >> $GITHUB_ENV
+
+    - name: Generate GH App token
+      id: generate-token
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ vars.OPENBAO_SYNC_APP_ID }}
+        # Important: Private Key must be in PKCS#8 format, not in OpenSSh format!
+        private-key: ${{ secrets.OPENBAO_SYNC_APP_PRIVATE_KEY }}
+        owner: ApeiroRA # owner (user or organization) of repository  
+        github-api-url:  https://github.tools.sap/api/v3/
+    
+    - name: Clone OpenSource repo
+      run: |
+        git clone https://github.com/openbao/openbao.git
+   
+    - name: Push main branch of OpenSource repo to SAP repo via generated app token
+      run: |
+        cd openbao
+        git branch -m openbao-sync-${{ env.CURRENT_DATETIME }}
+        git remote add target https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}.git
+        git push -f --set-upstream target openbao-sync-${{ env.CURRENT_DATETIME }}
+        cd ..
+   
+    - name: Checkout ApeiroRA repository with app token
+      uses: actions/checkout@v4
+      with:
+        token: ${{ steps.generate-token.outputs.token }}
+        repository: ${{ vars.APEIRO_OPENBAO_REPO_NAME }}
+        github-server-url:  https://github.tools.sap/
+         # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
+        persist-credentials: false
+    
+    - name: Create pull request 
+      # Note: The creation will fail when there is no change (any commit) between openbao-sync-${{ env.CURRENT_DATETIME }} and current SAP main branch!
+      id: createpr
+      continue-on-error: true
+      run: |
+        echo ${{ steps.generate-token.outputs.token }} | gh auth login --with-token -p https --hostname github.tools.sap
+        gh repo set-default https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}
+        gh pr create -B openbao-main -H openbao-sync-${{ env.CURRENT_DATETIME }} --title 'Rebase OpenBao-Sync created at ${{ env.CURRENT_DATETIME }} into openbao-main branch' --body 'Please use the rebase option instead of merge to keep the history clean!'
+   
+    - name: Remove newly created branch if PR creation fails 
+      if: job.steps.createpr.status == 'failure'
+      # If there is no change (any commit) between openbao-sync-${{ env.CURRENT_DATETIME }} and current SAP openbao-main branch, then the PR creation will fail.
+      # This steps deletes the  openbao-sync-${{ env.CURRENT_DATETIME }} branch and lets the workflow getting green.
+      run: |
+        git remote add target https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}.git
+        git push target --delete openbao-sync-${{ env.CURRENT_DATETIME }}
