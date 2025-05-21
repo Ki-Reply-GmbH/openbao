@@ -74,24 +74,27 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
+	metaPrefix := namespaceBarrierPrefix + ns.UUID + "/"
+
 	// Seal type would depend on the provided arguments
 	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
 	defaultSeal.SetCore(sm.core)
+	defaultSeal.SetMetaPrefix(metaPrefix)
 
 	if err := defaultSeal.Init(ctx); err != nil {
 		return fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	barrier, err := NewAESGCMBarrier(sm.core.physical, namespaceBarrierPrefix+ns.UUID+"/")
+	barrier, err := NewAESGCMBarrier(sm.core.physical, metaPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to construct namespace barrier: %w", err)
 	}
 	// barrier.Initialize(ctx context.Context, rootKey []byte, sealKey []byte, random io.Reader)
 	sm.barrierByNamespace.Insert(ns.Path, barrier)
-	sm.barrierByStoragePath.Insert(namespaceBarrierPrefix+ns.UUID+"/", barrier)
+	sm.barrierByStoragePath.Insert(metaPrefix, barrier)
 	parentBarrier := sm.ParentNamespaceBarrier(ns)
 	if parentBarrier != nil {
-		sm.barrierByStoragePath.Insert(namespaceBarrierPrefix+ns.UUID+"/"+barrierSealConfigPath, parentBarrier)
+		sm.barrierByStoragePath.Insert(metaPrefix+barrierSealConfigPath, parentBarrier)
 	}
 	sm.sealsByNamespace[ns.UUID] = []*Seal{&defaultSeal}
 	err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
