@@ -61,6 +61,7 @@ const (
 type Seal interface {
 	SetCore(*Core)
 	Init(context.Context) error
+	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
 	SealWrapable() bool
@@ -83,9 +84,10 @@ type Seal interface {
 }
 
 type defaultSeal struct {
-	access seal.Access
-	config atomic.Value
-	core   *Core
+	access     seal.Access
+	config     atomic.Value
+	core       *Core
+	metaPrefix string
 }
 
 var _ Seal = (*defaultSeal)(nil)
@@ -125,6 +127,10 @@ func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
 }
 
+func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {
+	d.metaPrefix = metaPrefix
+}
+
 func (d *defaultSeal) Finalize(ctx context.Context) error {
 	return nil
 }
@@ -142,11 +148,11 @@ func (d *defaultSeal) RecoveryKeySupported() bool {
 }
 
 func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.access, keys)
+	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access, keys)
 }
 
 func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	keys, err := readStoredKeys(ctx, d.core.physical, d.access)
+	keys, err := readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access)
 	return keys, err
 }
 
@@ -428,7 +434,7 @@ func (e *ErrDecrypt) Is(target error) bool {
 	return ok || errors.Is(e.Err, target)
 }
 
-func writeStoredKeys(ctx context.Context, storage physical.Backend, encryptor seal.Access, keys [][]byte) error {
+func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access, keys [][]byte) error {
 	if keys == nil {
 		return errors.New("keys were nil")
 	}
@@ -454,7 +460,7 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, encryptor se
 
 	// Store the seal configuration.
 	pe := &physical.Entry{
-		Key:   StoredBarrierKeysPath, // TODO(SEALHA): will we need to store more than one set of keys?
+		Key:   metaPrefix + StoredBarrierKeysPath, // TODO(SEALHA): will we need to store more than one set of keys?
 		Value: value,
 	}
 
@@ -465,8 +471,8 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, encryptor se
 	return nil
 }
 
-func readStoredKeys(ctx context.Context, storage physical.Backend, encryptor seal.Access) ([][]byte, error) {
-	pe, err := storage.Get(ctx, StoredBarrierKeysPath)
+func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access) ([][]byte, error) {
+	pe, err := storage.Get(ctx, metaPrefix+StoredBarrierKeysPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch stored keys: %w", err)
 	}
