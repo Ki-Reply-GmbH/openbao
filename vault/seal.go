@@ -17,7 +17,6 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
@@ -162,37 +161,19 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace
 	}
 
 	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
-	barrier := d.core.sealManager.BarrierForStoragePath(view.Prefix())
+	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
 
-	var valueBytes []byte
-	if barrier != nil {
-		entry, err := barrier.Get(ctx, view.Prefix())
-		if err != nil {
-			d.core.logger.Error("failed to read seal configuration", "error", err)
-			return nil, fmt.Errorf("failed to check seal configuration: %w", err)
-		}
-		if entry == nil {
-			d.core.logger.Info("seal configuration missing, not initialized")
-			return nil, nil
-		}
+	// Fetch the core configuration
+	valueBytes, err := barrier.Get(ctx, view.Prefix())
+	if err != nil {
+		d.core.logger.Error("failed to read seal configuration", "error", err)
+		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
+	}
 
-		valueBytes = entry.Value
-	} else {
-		// not encrypted
-		// Fetch the core configuration
-		pe, err := d.core.physical.Get(ctx, view.Prefix())
-		if err != nil {
-			d.core.logger.Error("failed to read seal configuration", "error", err)
-			return nil, fmt.Errorf("failed to check seal configuration: %w", err)
-		}
-
-		// If the seal configuration is missing, we are not initialized
-		if pe == nil {
-			d.core.logger.Info("seal configuration missing, not initialized")
-			return nil, nil
-		}
-
-		valueBytes = pe.Value
+	// If the seal configuration is missing, we are not initialized
+	if valueBytes == nil {
+		d.core.logger.Info("seal configuration missing, not initialized")
+		return nil, nil
 	}
 
 	var conf SealConfig
@@ -251,29 +232,10 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, 
 	}
 
 	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
-	barrier := d.core.sealManager.BarrierForStoragePath(view.Prefix())
-
-	if barrier != nil {
-		// Store the seal configuration
-		se := &logical.StorageEntry{
-			Key:   view.Prefix(),
-			Value: buf,
-		}
-		if err := barrier.Put(ctx, se); err != nil {
-			d.core.logger.Error("failed to write seal configuration", "error", err)
-			return fmt.Errorf("failed to write seal configuration: %w", err)
-		}
-	} else {
-		// Store the seal configuration
-		pe := &physical.Entry{
-			Key:   view.Prefix(),
-			Value: buf,
-		}
-		// not encrypted
-		if err := d.core.physical.Put(ctx, pe); err != nil {
-			d.core.logger.Error("failed to write seal configuration", "error", err)
-			return fmt.Errorf("failed to write seal configuration: %w", err)
-		}
+	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
+	if err := barrier.Put(ctx, view.Prefix(), buf); err != nil {
+		d.core.logger.Error("failed to write seal configuration", "error", err)
+		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
 
 	d.SetCachedBarrierConfig(config.Clone())
