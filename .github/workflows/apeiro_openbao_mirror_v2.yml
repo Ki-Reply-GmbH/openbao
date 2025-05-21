@@ -52,8 +52,8 @@ jobs:
       run: |
         git clone https://github.com/openbao/openbao.git
 
-    - name: Delete existing openbao-main-updates branch to close last PR if it still exists
-      # continue-on-error: true
+    - name: Delete existing openbao-main-updates branch to close last PR if it already exists
+      continue-on-error: true
       run: |
         cd openbao
         git remote add target https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}.git
