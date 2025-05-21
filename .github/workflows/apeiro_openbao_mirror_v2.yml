@@ -83,3 +83,33 @@ jobs:
         echo ${{ steps.generate-token.outputs.token }} | gh auth login --with-token -p https --hostname github.tools.sap
         gh repo set-default https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}
         gh pr create -B openbao-main -H openbao-main-updates --title 'Rebase OpenBao-Sync created at ${{ env.CURRENT_DATETIME }} into openbao-main branch' --body 'PR opened by a workflow <br> IMPORTANT: Please use the **rebase** option instead of merge to keep the history clean!'
+  
+  cancel-workflow-runs:
+    name: Cancel workflow runs that were created by the open source variant
+    runs-on: linux # ubuntu-latest doesn't work (no runners with that tag available -> endless queued state)
+    needs: sync-and-create-pr
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+    - name: Generate GH App token
+      id: generate-token
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ vars.OPENBAO_SYNC_APP_ID }}
+        # Important: Private Key must be in PKCS#8 format, not in OpenSSh format!
+        private-key: ${{ secrets.OPENBAO_SYNC_APP_PRIVATE_KEY }}
+        owner: ApeiroRA # owner (user or organization) of repository  
+        github-api-url:  https://github.tools.sap/api/v3/
+
+    - name: Cancel workflow runs triggered by PR
+      # identify workflow runs by their filename
+      continue-on-error: true
+      run: |
+        echo ${{ steps.generate-token.outputs.token }} | gh auth login --with-token -p https --hostname github.tools.sap
+        gh repo set-default https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}
+        gh run cancel ci.yml
+        gh run cancel changelog-checker.yml
+        gh run cancel codeql.yml
+        gh run cancel verify-commits.yml
