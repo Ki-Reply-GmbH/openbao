@@ -119,7 +119,7 @@ jobs:
       run: |
         echo ${{ steps.generate-token.outputs.token }} | gh auth login --with-token -p https --hostname github.tools.sap
         gh repo set-default https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}
-        gh run cancel ci.yml
-        gh run cancel changelog-checker.yml
-        gh run cancel codeql.yml
-        gh run cancel verify-commits.yml
+        gh run cancel ./.github/workflows/ci.yml
+        gh run cancel ./.github/workflows/changelog-checker.yml
+        gh run cancel ./.github/workflows/codeql.yml
+        gh run cancel ./.github/workflows/verify-commits.yml
