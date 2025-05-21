@@ -71,11 +71,11 @@ jobs:
       run: |
         echo ${{ steps.generate-token.outputs.token }} | gh auth login --with-token -p https --hostname github.tools.sap
         gh repo set-default https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}
-        gh pr create -B main-openbao -H openbao-sync-${{ env.CURRENT_DATETIME }} --title 'Rebase OpenBao-Sync created at ${{ env.CURRENT_DATETIME }} into main branch' --body 'Please use the rebase option instead of merge to keep the history clean!'
+        gh pr create -B openbao-main -H openbao-sync-${{ env.CURRENT_DATETIME }} --title 'Rebase OpenBao-Sync created at ${{ env.CURRENT_DATETIME }} into openbao-main branch' --body 'Please use the rebase option instead of merge to keep the history clean!'
    
     - name: Remove newly created branch if PR creation fails 
       if: job.steps.createpr.status == 'failure'
-      # If there is no change (any commit) between openbao-sync-${{ env.CURRENT_DATETIME }} and current SAP main-openbao branch, then the PR creation will fail.
+      # If there is no change (any commit) between openbao-sync-${{ env.CURRENT_DATETIME }} and current SAP openbao-main branch, then the PR creation will fail.
       # This steps deletes the  openbao-sync-${{ env.CURRENT_DATETIME }} branch and lets the workflow getting green.
       run: |
         git remote add target https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}.git
