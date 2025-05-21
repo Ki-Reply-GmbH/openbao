@@ -75,30 +75,13 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	var valueBytes []byte
-	barrier := b.core.sealManager.BarrierForStoragePath(path)
-	if barrier != nil {
-		entry, err := barrier.Get(ctx, path)
-		if err != nil {
-			return handleErrorNoReadOnlyForward(err)
-		}
-		if entry == nil {
-			return nil, nil
-		}
-
-		valueBytes = entry.Value
-
-	} else {
-		// not encrypted
-		pe, err := b.core.physical.Get(ctx, path)
-		if err != nil {
-			return handleErrorNoReadOnlyForward(err)
-		}
-		if pe == nil {
-			return nil, nil
-		}
-
-		valueBytes = pe.Value
+	barrier := b.core.sealManager.StorageAccessForPath(path)
+	valueBytes, err := barrier.Get(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+	if valueBytes == nil {
+		return nil, nil
 	}
 
 	if compressed {
@@ -167,21 +150,21 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	barrier := b.core.sealManager.BarrierForStoragePath(path)
+	barrier := b.core.sealManager.StorageAccessForPath(path)
 
 	if req.Operation == logical.UpdateOperation {
 		// Check if this is an existing value with compression applied, if so, use the same compression (or no compression)
-		entry, err := barrier.Get(ctx, path)
+		valueBytes, err := barrier.Get(ctx, path)
 		if err != nil {
 			return handleErrorNoReadOnlyForward(err)
 		}
-		if entry == nil {
+		if valueBytes == nil {
 			err := fmt.Sprintf("cannot figure out compression type because entry does not exist")
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest
 		}
 
 		// For cases where DecompressWithCanary errored, treat entry as non-compressed data.
-		_, existingCompressionType, _, _ := compressutil.DecompressWithCanary(entry.Value)
+		_, existingCompressionType, _, _ := compressutil.DecompressWithCanary(valueBytes)
 
 		// Ensure compression_type matches existing entries' compression
 		// except allow writing non-compressed data over compressed data
@@ -231,12 +214,7 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	entry := &logical.StorageEntry{
-		Key:   path,
-		Value: value,
-	}
-
-	if err := barrier.Put(ctx, entry); err != nil {
+	if err := barrier.Put(ctx, path, value); err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 	return nil, nil
@@ -258,7 +236,7 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 		}
 	}
 
-	barrier := b.core.sealManager.BarrierForStoragePath(path)
+	barrier := b.core.sealManager.StorageAccessForPath(path)
 	if err := barrier.Delete(ctx, path); err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
@@ -290,7 +268,7 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	barrier := b.core.sealManager.BarrierForStoragePath(path)
+	barrier := b.core.sealManager.StorageAccessForPath(path)
 	keys, err := barrier.ListPage(ctx, path, after, limit)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
@@ -301,7 +279,7 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 // existenceCheck checks if entry exists, used in handleRawWrite for update or create operations
 func (b *RawBackend) existenceCheck(ctx context.Context, request *logical.Request, data *framework.FieldData) (bool, error) {
 	path := data.Get("path").(string)
-	barrier := b.core.sealManager.BarrierForStoragePath(path)
+	barrier := b.core.sealManager.StorageAccessForPath(path)
 	entry, err := barrier.Get(ctx, path)
 	if err != nil {
 		return false, err
