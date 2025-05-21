@@ -102,6 +102,16 @@ jobs:
         private-key: ${{ secrets.OPENBAO_SYNC_APP_PRIVATE_KEY }}
         owner: ApeiroRA # owner (user or organization) of repository  
         github-api-url:  https://github.tools.sap/api/v3/
+    
+    - name: Checkout SAP repository with app token
+      uses: actions/checkout@v4
+      with:
+        token: ${{ steps.generate-token.outputs.token }}
+        ref: sync
+        repository: ${{ vars.APEIRO_OPENBAO_REPO_NAME }}
+        github-server-url:  https://github.tools.sap/
+        # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
+        persist-credentials: false
 
     - name: Cancel workflow runs triggered by PR
       # identify workflow runs by their filename
