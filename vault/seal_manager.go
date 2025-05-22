@@ -147,6 +147,18 @@ func (sm *SealManager) NamespaceBarrier(ns *namespace.Namespace) SecurityBarrier
 	return barrier
 }
 
+// TODO(wslabosz): [PLACEHOLDER] UnsealNamespace unseals the barriers of the given namespace and all of its children.
+func (sm *SealManager) UnsealNamespace(ctx context.Context, path string, key []byte) error {
+	v, exists := sm.barrierByNamespace.Get(path)
+	if !exists {
+		return errors.New("barrier for the namespace doesn't exist")
+	}
+
+	sb := v.(SecurityBarrier)
+	err := sb.Unseal(ctx, key)
+	return err
+}
+
 // NamespaceView finds the correct barrier to use for the namespace and returns
 // the a BarrierView restricted to the data of the given namespace.
 func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
