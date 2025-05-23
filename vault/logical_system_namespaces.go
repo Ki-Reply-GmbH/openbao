@@ -97,6 +97,10 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					Type:        framework.TypeMap,
 					Description: "User provided key-value pairs.",
 				},
+				"seals": {
+					Type:        framework.TypeSlice,
+					Description: "User provided seal configs.",
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -249,12 +253,44 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		var sealConfigs []*SealConfig
+		seals, ok := data.GetOk("seals")
+		if ok {
+			var err error
+			sealConfigs, err = b.Core.sealManager.ExtractSealConfigs(seals)
+			if err != nil {
+				return logical.ErrorResponse("error while extracting seal configs"), err
+			}
+		}
+
+		entry, new, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			ns.CustomMetadata = metadata
 			return ns, nil
 		})
 		if err != nil {
 			return handleError(err)
+		}
+		if new {
+			// TODO(wslabosz): write all the provided configs
+			if len(sealConfigs) > 0 {
+				if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry); err != nil {
+					return handleError(err)
+				}
+
+				nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
+				if err != nil {
+					return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
+				}
+
+				// TODO Remove
+				for i, keyShare := range nsSealKeyShares {
+					fmt.Println("Key Share", i, ":", fmt.Sprintf("%x", keyShare))
+				}
+			}
+
+			if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
+				return handleError(err)
+			}
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
@@ -286,7 +322,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
