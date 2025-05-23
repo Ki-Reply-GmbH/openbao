@@ -1079,6 +1079,60 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 	return nil
 }
 
+// SealNamespace seals namespace with provided path, failing to do so if the namespace
+// doesn't exist, is a root namespace, is tainted or is actively deleting.
+func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
+	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
+
+	unlock, err := ns.lockWithInvalidation(ctx, false)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	namespaceToSeal, err := ns.getNamespaceByPathLocked(ctx, path, false)
+	if err != nil {
+		return err
+	}
+
+	if namespaceToSeal == nil {
+		return errors.New("namespace doesn't exist")
+	}
+
+	if namespaceToSeal.ID == namespace.RootNamespaceID {
+		return errors.New("unable to seal root namespace")
+	}
+
+	if namespaceToSeal.Tainted {
+		return errors.New("unable to seal tainted or actively deleting namespace")
+	}
+
+	return ns.core.sealManager.SealNamespace(namespaceToSeal)
+}
+
+// UnsealNamespace unseals namespace with a given path, using provided key
+// TODO(wslabosz): track the unsealing progress in a SealManager
+func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
+	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
+
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
+
+	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
+	if err != nil {
+		return err
+	}
+	if namespaceToUnseal == nil {
+		return nil
+	}
+
+	if namespaceToUnseal.ID == namespace.RootNamespaceID {
+		return errors.New("unable to unseal root namespace")
+	}
+
+	return ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal.Path, key)
+}
+
 // ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'
 // header combined with the request path, returning the namespace and the
 // "trimmed" request path devoid of any namespace components.
