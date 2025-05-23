@@ -100,7 +100,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					Summary:  "Seal a namespace.",
 					Callback: b.handleNamespacesSeal(),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK"}},
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
 					},
 				},
 			},
@@ -132,7 +132,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					Summary:  "Unseal a namespace.",
 					Callback: b.handleNamespacesUnseal(),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{Description: "OK"}},
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
 					},
 				},
 			},
@@ -454,7 +454,7 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	}
 }
 
-// TODO:
+// handleNamespacesSeal handles the "/sys/namespaces/seal/<path>" endpoint to seal the namespace.
 func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
@@ -464,15 +464,11 @@ func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
 			return handleError(err)
 		}
 
-		return &logical.Response{
-			Data: map[string]interface{}{
-				"keys": "TBD",
-			},
-		}, nil
+		return nil, nil
 	}
 }
 
-// TODO:
+// handleNamespacesUnseal handles the "/sys/namespaces/unseal/<path>" endpoint to unseal the namespace.
 func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))

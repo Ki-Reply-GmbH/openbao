@@ -761,12 +761,12 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return nil
 	}
 
-	if namespaceToSeal.Tainted && namespaceToSeal.IsDeleting {
-		return nil
-	}
-
 	if namespaceToSeal.ID == namespace.RootNamespaceID {
 		return errors.New("unable to seal root namespace")
+	}
+
+	if namespaceToSeal.Tainted && namespaceToSeal.IsDeleting {
+		return errors.New("unable to seal tainted or actively deleting namespace")
 	}
 
 	err = ns.core.sealManager.SealNamespace(namespaceToSeal)
@@ -796,7 +796,7 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 		return nil
 	}
 
-	// TODO: verify the namespace is actuall sealed
+	// TODO: verify the namespace is actualy sealed
 	if namespaceToUnseal.ID == namespace.RootNamespaceID {
 		return errors.New("unable to unseal root namespace")
 	}
