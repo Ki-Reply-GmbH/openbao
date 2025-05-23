@@ -81,6 +81,67 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
+			Pattern: "namespaces/seal(?:$|/(?P<path>.+))",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Path of the namespace.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Seal a namespace.",
+					Callback: b.handleNamespacesSeal(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+		},
+		{
+			Pattern: "namespaces/unseal(?:$|/(?P<path>.+))",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Path of the namespace.",
+				},
+				"key": {
+					Type:        framework.TypeNameString,
+					Description: "Specifies a single namespace unseal key share.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Unseal a namespace.",
+					Callback: b.handleNamespacesUnseal(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+		},
+
+		{
 			Pattern: "namespaces/(?P<path>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -378,5 +439,34 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 				"status": status,
 			},
 		}, nil
+	}
+}
+
+// handleNamespacesSeal handles the "/sys/namespaces/seal/<path>" endpoint to seal the namespace.
+func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+
+		err := b.Core.namespaceStore.SealNamespace(ctx, path)
+		if err != nil {
+			return handleError(err)
+		}
+
+		return nil, nil
+	}
+}
+
+// handleNamespacesUnseal handles the "/sys/namespaces/unseal/<path>" endpoint to unseal the namespace.
+func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+		key := data.Get("key").(string)
+
+		err := b.Core.namespaceStore.UnsealNamespace(ctx, path, []byte(key))
+		if err != nil {
+			return handleError(err)
+		}
+
+		return nil, nil
 	}
 }
