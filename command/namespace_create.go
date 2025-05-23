@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/cli"
@@ -69,7 +68,7 @@ func (c *NamespaceCreateCommand) Flags() *FlagSets {
 		Name:       "seals",
 		Target:     &c.flagSealsConfigPath,
 		Completion: complete.PredictFiles("*.json"),
-		Usage: "Path to a JSON file with has at least one or several SealConfigs." +
+		Usage: "Path to a JSON file with at least one or several SealConfigs." +
 			"MUST be an JSON array.",
 	})
 
@@ -112,7 +111,7 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 
 	seals, err := c.parseSeals()
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error while parsing seals: %s", err))
+		c.UI.Error(fmt.Sprintf("Error while parsing seal configs: %s", err))
 		return 2
 	}
 
@@ -155,23 +154,9 @@ func (c *NamespaceCreateCommand) parseSeals() ([]map[string]interface{}, error) 
 		return nil, err
 	}
 
-	json.Unmarshal(data, &rawSeals)
-
-	var seals []map[string]interface{}
-	for _, seal := range rawSeals {
-		sealMap := make(map[string]interface{})
-		for key, value := range seal {
-			switch v := value.(type) {
-			case string:
-				sealMap[key] = v
-			case int:
-				sealMap[key] = strconv.Itoa(v)
-			default:
-				sealMap[key] = fmt.Sprintf("%v", v)
-			}
-		}
-		seals = append(seals, sealMap)
+	if err := json.Unmarshal(data, &rawSeals); err != nil {
+		return nil, err
 	}
 
-	return seals, nil
+	return rawSeals, nil
 }

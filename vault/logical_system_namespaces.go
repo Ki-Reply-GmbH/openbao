@@ -256,7 +256,8 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		var sealConfigs []*SealConfig
 		seals, ok := data.GetOk("seals")
 		if ok {
-			err := b.Core.sealManager.ExtractSealConfigs(seals, sealConfigs)
+			var err error
+			sealConfigs, err = b.Core.sealManager.ExtractSealConfigs(seals)
 			if err != nil {
 				return logical.ErrorResponse("error while extracting seal configs"), err
 			}
