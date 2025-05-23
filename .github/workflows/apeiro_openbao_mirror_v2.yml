@@ -92,6 +92,9 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
+    concurrency:
+        group: ${{ github.ref }}
+        cancel-in-progress: true
     steps:
     - name: Generate GH App token
       id: generate-token
@@ -119,7 +122,7 @@ jobs:
       run: |
         echo ${{ steps.generate-token.outputs.token }} | gh auth login --with-token -p https --hostname github.tools.sap
         gh repo set-default https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}
-        gh run cancel ./.github/workflows/ci.yml
-        gh run cancel ./.github/workflows/changelog-checker.yml
-        gh run cancel ./.github/workflows/codeql.yml
-        gh run cancel ./.github/workflows/verify-commits.yml
+        gh run cancel openbao/.github/workflows/ci.yml
+        gh run cancel openbao/.github/workflows/changelog-checker.yml
+        gh run cancel openbao/.github/workflows/codeql.yml
+        gh run cancel openbao/.github/workflows/verify-commits.yml
