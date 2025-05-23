@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -403,92 +402,6 @@ func (s *SealConfig) Clone() *SealConfig {
 		copy(ret.VerificationKey, s.VerificationKey)
 	}
 	return ret
-}
-
-// Values like secret_shares(int), secret_threshold(int) and secret_shares(uint) when sent
-// over the API are converted to strings so we need to convert them back to the correct format
-func (s *SealConfig) UnmarshalJSON(data []byte) error {
-	aux := &struct {
-		Type            string      `json:"type"`
-		SecretShares    interface{} `json:"secret_shares"`
-		SecretThreshold interface{} `json:"secret_threshold"`
-		StoredShares    interface{} `json:"stored_shares"`
-		PGPKeys         []string    `json:"pgp_keys"`
-		Nonce           string      `json:"nonce"`
-		Backup          bool        `json:"backup"`
-	}{}
-
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	// Set the unproblematic fields directly
-	s.Type = aux.Type
-	s.PGPKeys = aux.PGPKeys
-	s.Nonce = aux.Nonce
-	s.Backup = aux.Backup
-
-	if err := s.setIntField(&s.SecretShares, aux.SecretShares, "secret_shares"); err != nil {
-		return err
-	}
-
-	if err := s.setIntField(&s.SecretThreshold, aux.SecretThreshold, "secret_threshold"); err != nil {
-		return err
-	}
-
-	if err := s.setUintField(&s.StoredShares, aux.StoredShares, "stored_shares"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *SealConfig) setIntField(field *int, value interface{}, fieldName string) error {
-	switch v := value.(type) {
-	case int:
-		*field = v
-	case string:
-		intVal, err := strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf("cannot convert %s value '%s' to int: %v", fieldName, v, err)
-		}
-		*field = intVal
-	case float64:
-		*field = int(v)
-	case nil:
-		*field = 0
-	default:
-		return fmt.Errorf("unexpected type for %s: %T", fieldName, v)
-	}
-	return nil
-}
-
-func (s *SealConfig) setUintField(field *uint, value interface{}, fieldName string) error {
-	switch v := value.(type) {
-	case uint:
-		*field = v
-	case int:
-		if v < 0 {
-			return fmt.Errorf("%s cannot be negative: %d", fieldName, v)
-		}
-		*field = uint(v)
-	case string:
-		uintVal, err := strconv.ParseUint(v, 10, 32)
-		if err != nil {
-			return fmt.Errorf("cannot convert %s value '%s' to uint: %v", fieldName, v, err)
-		}
-		*field = uint(uintVal)
-	case float64:
-		if v < 0 {
-			return fmt.Errorf("%s cannot be negative: %f", fieldName, v)
-		}
-		*field = uint(v)
-	case nil:
-		*field = 0
-	default:
-		return fmt.Errorf("unexpected type for %s: %T", fieldName, v)
-	}
-	return nil
 }
 
 type ErrEncrypt struct {
