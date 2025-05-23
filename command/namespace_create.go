@@ -4,7 +4,12 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/cli"
@@ -19,7 +24,8 @@ var (
 type NamespaceCreateCommand struct {
 	*BaseCommand
 
-	flagCustomMetadata map[string]string
+	flagCustomMetadata  map[string]string
+	flagSealsConfigPath string
 }
 
 func (c *NamespaceCreateCommand) Synopsis() string {
@@ -59,6 +65,14 @@ func (c *NamespaceCreateCommand) Flags() *FlagSets {
 			"This can be specified multiple times to add multiple pieces of metadata.",
 	})
 
+	f.StringVar(&StringVar{
+		Name:       "seals",
+		Target:     &c.flagSealsConfigPath,
+		Completion: complete.PredictFiles("*.json"),
+		Usage: "Path to a JSON file with has at least one or several SealConfigs." +
+			"MUST be an JSON array.",
+	})
+
 	return set
 }
 
@@ -96,8 +110,15 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
+	seals, err := c.parseSeals()
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error while parsing seals: %s", err))
+		return 2
+	}
+
 	data := map[string]interface{}{
 		"custom_metadata": c.flagCustomMetadata,
+		"seals":           seals,
 	}
 
 	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath, data)
@@ -112,4 +133,45 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 	}
 
 	return OutputSecret(c.UI, secret)
+}
+
+func (c *NamespaceCreateCommand) parseSeals() ([]map[string]interface{}, error) {
+	path := c.flagSealsConfigPath
+	var rawSeals []map[string]interface{}
+
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.Open(absolutePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	json.Unmarshal(data, &rawSeals)
+
+	var seals []map[string]interface{}
+	for _, seal := range rawSeals {
+		sealMap := make(map[string]interface{})
+		for key, value := range seal {
+			switch v := value.(type) {
+			case string:
+				sealMap[key] = v
+			case int:
+				sealMap[key] = strconv.Itoa(v)
+			default:
+				sealMap[key] = fmt.Sprintf("%v", v)
+			}
+		}
+		seals = append(seals, sealMap)
+	}
+
+	return seals, nil
 }

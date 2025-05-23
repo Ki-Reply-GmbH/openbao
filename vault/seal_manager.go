@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -199,4 +200,32 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	}
 
 	return nsSealKeyShares, nil
+}
+
+func (sm *SealManager) ExtractSealConfigs(seals interface{}, sealConfigs []*SealConfig) error {
+	sealsArray, ok := seals.([]interface{})
+	if !ok {
+		return fmt.Errorf("seals is not an array")
+	}
+
+	for _, seal := range sealsArray {
+		sealMap, ok := seal.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("seal is not a map")
+		}
+
+		byteSeal, err := json.Marshal(sealMap)
+		if err != nil {
+			return err
+		}
+
+		var sealConfig SealConfig
+		err = json.Unmarshal(byteSeal, &sealConfig)
+		if err != nil {
+			return err
+		}
+
+		sealConfigs = append(sealConfigs, &sealConfig)
+	}
+	return nil
 }
