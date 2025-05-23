@@ -34,6 +34,9 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    concurrency:
+        group: refs/heads/openbao-main-updates
+        cancel-in-progress: true
     steps:
     - name: Determine current datetime
       run: echo "CURRENT_DATETIME=$(TZ=Europe/Berlin date +%Y-%m-%d-T%H-%M-%S)" >> $GITHUB_ENV
@@ -93,7 +96,7 @@ jobs:
       pull-requests: write
       actions: write
     concurrency:
-        group: ${{ github.ref }}
+        group: refs/heads/openbao-main-updates
         cancel-in-progress: true
     steps:
     - name: Generate GH App token
