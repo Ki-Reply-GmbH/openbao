@@ -133,9 +133,10 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 
 	if len(seals) > 0 {
 		// TODO Handle Output for multiple seals
-		keyShares := secret.Data["key_shares"].([]interface{})
-		if keyShares != nil {
-			for i, key := range keyShares {
+		keySharesMap := secret.Data["key_shares"].(map[string]interface{})
+		if keySharesMap != nil {
+			defaultKeyShares := keySharesMap["default"].([]interface{})
+			for i, key := range defaultKeyShares {
 				c.UI.Output(fmt.Sprintf("Unseal Key %d: %s", i+1, key))
 			}
 		}

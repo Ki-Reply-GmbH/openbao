@@ -153,14 +153,18 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 // createNamespaceDataResponse is the standard response object
 // for any operations concerning a namespace
-func createNamespaceDataResponse(ns *namespace.Namespace) map[string]any {
+func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap ...map[string][]string) map[string]any {
+	var keySharesPerSeal map[string][]string
+	if len(keySharesMap) > 0 {
+		keySharesPerSeal = keySharesMap[0]
+	}
 	return map[string]any{
 		"uuid":            ns.UUID,
 		"path":            ns.Path,
 		"id":              ns.ID,
 		"tainted":         ns.Tainted,
 		"custom_metadata": ns.CustomMetadata,
-		"key_shares":      ns.KeyShares,
+		"key_shares":      keySharesPerSeal,
 	}
 }
 
@@ -271,6 +275,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		if err != nil {
 			return handleError(err)
 		}
+		keySharesMap := make(map[string][]string)
 		if new {
 			// TODO(wslabosz): write all the provided configs
 			if len(sealConfigs) > 0 {
@@ -282,12 +287,13 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 				if err != nil {
 					return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
 				}
-
 				var keyShares []string
 				for _, keyShare := range nsSealKeyShares {
 					keyShares = append(keyShares, fmt.Sprintf("%x", keyShare))
 				}
-				entry.KeyShares = keyShares
+				if len(keyShares) > 0 {
+					keySharesMap["default"] = keyShares
+				}
 			}
 
 			if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
@@ -295,7 +301,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
+		return &logical.Response{Data: createNamespaceDataResponse(entry, keySharesMap)}, nil
 	}
 }
 
