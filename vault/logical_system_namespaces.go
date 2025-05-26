@@ -50,6 +50,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Required:    true,
 			Description: "User provided key-value pairs.",
 		},
+		"key_shares": {
+			Type:        framework.TypeMap,
+			Required:    false,
+			Description: "Generated key shares per seal for the namespace.",
+		},
 	}
 
 	return []*framework.Path{
