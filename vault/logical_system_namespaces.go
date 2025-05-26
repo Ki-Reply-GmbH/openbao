@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -289,7 +290,8 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 				}
 				var keyShares []string
 				for _, keyShare := range nsSealKeyShares {
-					keyShares = append(keyShares, fmt.Sprintf("%x", keyShare))
+					fmt.Println(fmt.Sprintf("%x", keyShare))
+					keyShares = append(keyShares, hex.EncodeToString(keyShare))
 				}
 				if len(keyShares) > 0 {
 					keySharesMap["default"] = keyShares
