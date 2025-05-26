@@ -160,6 +160,7 @@ func createNamespaceDataResponse(ns *namespace.Namespace) map[string]any {
 		"id":              ns.ID,
 		"tainted":         ns.Tainted,
 		"custom_metadata": ns.CustomMetadata,
+		"key_shares":      ns.KeyShares,
 	}
 }
 
@@ -282,10 +283,11 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 					return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
 				}
 
-				// TODO Remove
-				for i, keyShare := range nsSealKeyShares {
-					fmt.Println("Key Share", i, ":", fmt.Sprintf("%x", keyShare))
+				var keyShares []string
+				for _, keyShare := range nsSealKeyShares {
+					keyShares = append(keyShares, fmt.Sprintf("%x", keyShare))
 				}
+				entry.KeyShares = keyShares
 			}
 
 			if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {

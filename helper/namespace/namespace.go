@@ -45,6 +45,7 @@ type Namespace struct {
 	// If tainted is true, but IsDeleting not, then namespace deletion operation has to be retried.
 	IsDeleting     bool              `json:"-"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
+	KeyShares      []string          `json:"key_shares" mapstructure:"key_shares"`
 }
 
 func (n *Namespace) String() string {
