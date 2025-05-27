@@ -119,6 +119,9 @@ func (sm *SealManager) SealNamespace(ns *namespace.Namespace) error {
 	var errs error
 	sm.barrierByNamespace.WalkPrefix(ns.Path, func(p string, v any) bool {
 		s := v.(SecurityBarrier)
+		if s.Sealed() {
+			return false
+		}
 		err := s.Seal()
 		if err != nil {
 			errs = errors.Join(errs, err)
@@ -148,15 +151,20 @@ func (sm *SealManager) NamespaceBarrier(ns *namespace.Namespace) SecurityBarrier
 	return barrier
 }
 
-// TODO(wslabosz): [PLACEHOLDER] UnsealNamespace unseals the barriers of the given namespace and all of its children.
+// UnsealNamespace unseals the barrier of the given namespace
+// TODO(wslabosz): as the seals is a shamir, we should track the progress of the unsealing
 func (sm *SealManager) UnsealNamespace(ctx context.Context, path string, key []byte) error {
 	v, exists := sm.barrierByNamespace.Get(path)
 	if !exists {
 		return errors.New("barrier for the namespace doesn't exist")
 	}
 
-	sb := v.(SecurityBarrier)
-	err := sb.Unseal(ctx, key)
+	s := v.(SecurityBarrier)
+	if !s.Sealed() {
+		return nil
+	}
+
+	err := s.Unseal(ctx, key)
 	return err
 }
 
