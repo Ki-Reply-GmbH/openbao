@@ -751,7 +751,8 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 	return
 }
 
-// TODO:
+// SealNamespace seals namespace with provided path, failing to do so if the namespace
+// doesn't exist, is a root namespace, is tainted or is actively deleting.
 func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
@@ -766,8 +767,9 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 	if err != nil {
 		return err
 	}
+
 	if namespaceToSeal == nil {
-		return nil
+		return errors.New("namespace doesn't exist")
 	}
 
 	if namespaceToSeal.ID == namespace.RootNamespaceID {
@@ -786,7 +788,8 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 	return nil
 }
 
-// TODO:
+// UnsealNamespace unseals namespace with a given path, using provided key
+// TODO(wslabosz): track the unsealing progress in a SealManager
 func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
 	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
 
@@ -805,7 +808,6 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 		return nil
 	}
 
-	// TODO: verify the namespace is actualy sealed
 	if namespaceToUnseal.ID == namespace.RootNamespaceID {
 		return errors.New("unable to unseal root namespace")
 	}
