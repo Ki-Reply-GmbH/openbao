@@ -295,7 +295,6 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 				}
 				var keyShares []string
 				for _, keyShare := range nsSealKeyShares {
-					fmt.Println(fmt.Sprintf("%x", keyShare))
 					keyShares = append(keyShares, hex.EncodeToString(keyShare))
 				}
 				if len(keyShares) > 0 {
