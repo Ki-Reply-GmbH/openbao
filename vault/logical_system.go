@@ -5818,14 +5818,14 @@ This path responds to the following HTTP methods.
 	PATCH /<path>
 		Update a namespace's custom metadata.
 
-	POST /seal/<path>
-		Seal a namespace.
-
-	POST /unseal/<path>
-		Unseal a namespace.
-
 	DELETE /<path>
 		Delete a namespace.
+
+	POST /<name>/seal
+		Seal a namespace.
+
+	POST /<name/unseal
+		Unseal a namespace.
 		`,
 	},
 }
