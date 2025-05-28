@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/openbao/openbao/sdk/v2/helper/license"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -276,7 +275,7 @@ type DisplayAttributes struct {
 
 // RequestExample is example of request data.
 type RequestExample struct {
-	Description string                 // optional description of the request
+	Description string         // optional description of the request
 	Data        map[string]any // map version of sample JSON request data
 
 	// Optional example response to the sample request. This approach is considered
@@ -364,7 +363,7 @@ func (p *Path) helpCallback(b *Backend) OperationFunc {
 
 		help, err := executeTemplate(pathHelpTemplate, &tplData)
 		if err != nil {
-			return nil, errwrap.Wrapf("error executing template: {{err}}", err)
+			return nil, fmt.Errorf("error executing template: %w", err)
 		}
 
 		// The plugin type (e.g. "kv", "cubbyhole") is only assigned at the time

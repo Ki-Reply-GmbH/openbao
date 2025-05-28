@@ -7,12 +7,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/database/dbplugin"
@@ -23,13 +23,13 @@ var _ ConnectionProducer = &SQLConnectionProducer{}
 
 // SQLConnectionProducer implements ConnectionProducer and provides a generic producer for most sql databases
 type SQLConnectionProducer struct {
-	ConnectionURL            string      `json:"connection_url" mapstructure:"connection_url" structs:"connection_url"`
-	MaxOpenConnections       int         `json:"max_open_connections" mapstructure:"max_open_connections" structs:"max_open_connections"`
-	MaxIdleConnections       int         `json:"max_idle_connections" mapstructure:"max_idle_connections" structs:"max_idle_connections"`
-	MaxConnectionLifetimeRaw any `json:"max_connection_lifetime" mapstructure:"max_connection_lifetime" structs:"max_connection_lifetime"`
-	Username                 string      `json:"username" mapstructure:"username" structs:"username"`
-	Password                 string      `json:"password" mapstructure:"password" structs:"password"`
-	DisableEscaping          bool        `json:"disable_escaping" mapstructure:"disable_escaping" structs:"disable_escaping"`
+	ConnectionURL            string `json:"connection_url" mapstructure:"connection_url" structs:"connection_url"`
+	MaxOpenConnections       int    `json:"max_open_connections" mapstructure:"max_open_connections" structs:"max_open_connections"`
+	MaxIdleConnections       int    `json:"max_idle_connections" mapstructure:"max_idle_connections" structs:"max_idle_connections"`
+	MaxConnectionLifetimeRaw any    `json:"max_connection_lifetime" mapstructure:"max_connection_lifetime" structs:"max_connection_lifetime"`
+	Username                 string `json:"username" mapstructure:"username" structs:"username"`
+	Password                 string `json:"password" mapstructure:"password" structs:"password"`
+	DisableEscaping          bool   `json:"disable_escaping" mapstructure:"disable_escaping" structs:"disable_escaping"`
 
 	Type                  string
 	RawConfig             map[string]any
@@ -104,7 +104,7 @@ func (c *SQLConnectionProducer) Init(ctx context.Context, conf map[string]any, v
 
 	c.maxConnectionLifetime, err = parseutil.ParseDurationSecond(c.MaxConnectionLifetimeRaw)
 	if err != nil {
-		return nil, errwrap.Wrapf("invalid max_connection_lifetime: {{err}}", err)
+		return nil, fmt.Errorf("invalid max_connection_lifetime: %w", err)
 	}
 
 	// Set initialized to true at this point since all fields are set,
@@ -113,11 +113,11 @@ func (c *SQLConnectionProducer) Init(ctx context.Context, conf map[string]any, v
 
 	if verifyConnection {
 		if _, err := c.Connection(ctx); err != nil {
-			return nil, errwrap.Wrapf("error verifying connection: {{err}}", err)
+			return nil, fmt.Errorf("error verifying connection: %w", err)
 		}
 
 		if err := c.db.PingContext(ctx); err != nil {
-			return nil, errwrap.Wrapf("error verifying connection: {{err}}", err)
+			return nil, fmt.Errorf("error verifying connection: %w", err)
 		}
 	}
 
