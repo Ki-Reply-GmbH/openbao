@@ -81,7 +81,7 @@ func RegisterRequestForwardingServer(s grpc.ServiceRegistrar, srv RequestForward
 	s.RegisterService(&RequestForwarding_ServiceDesc, srv)
 }
 
-func _RequestForwarding_ForwardRequest_Handler(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
+func _RequestForwarding_ForwardRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(forwarding.Request)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -93,13 +93,13 @@ func _RequestForwarding_ForwardRequest_Handler(srv any, ctx context.Context, dec
 		Server:     srv,
 		FullMethod: "/vault.RequestForwarding/ForwardRequest",
 	}
-	handler := func(ctx context.Context, req any) (any, error) {
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RequestForwardingServer).ForwardRequest(ctx, req.(*forwarding.Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RequestForwarding_Echo_Handler(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
+func _RequestForwarding_Echo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EchoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func _RequestForwarding_Echo_Handler(srv any, ctx context.Context, dec func(any)
 		Server:     srv,
 		FullMethod: "/vault.RequestForwarding/Echo",
 	}
-	handler := func(ctx context.Context, req any) (any, error) {
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RequestForwardingServer).Echo(ctx, req.(*EchoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
