@@ -576,6 +576,10 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}
 
+	if c.IsNSSealed(ns) {
+		return nil, consts.ErrNamespaceSealed
+	}
+
 	isRestrictedSysAPI := ns.ID != namespace.RootNamespaceID &&
 		strings.HasPrefix(req.Path, "sys/") &&
 		restrictedSysAPIs.HasPathSegments(req.Path[len("sys/"):])

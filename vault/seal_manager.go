@@ -145,6 +145,7 @@ func (sm *SealManager) ParentNamespaceBarrier(ns *namespace.Namespace) SecurityB
 }
 
 func (sm *SealManager) NamespaceBarrier(ns *namespace.Namespace) SecurityBarrier {
+	// this should acquire a lock
 	_, v, _ := sm.barrierByNamespace.LongestPrefix(ns.Path)
 	barrier := v.(SecurityBarrier)
 
