@@ -779,38 +779,6 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 	return nil
 }
 
-// UnsealNamespace unseals namespace with a given path, using provided key
-// TODO(wslabosz): track the unsealing progress in a SealManager
-func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
-	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
-
-	if err := ns.checkInvalidation(ctx); err != nil {
-		return err
-	}
-
-	ns.lock.Lock()
-	defer ns.lock.Unlock()
-
-	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path)
-	if err != nil {
-		return err
-	}
-	if namespaceToUnseal == nil {
-		return nil
-	}
-
-	if namespaceToUnseal.ID == namespace.RootNamespaceID {
-		return errors.New("unable to unseal root namespace")
-	}
-
-	err = ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal.Path, key)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'
 // header combined with the request path, returning the namespace and the
 // "trimmed" request path devoid of any namespace components.
