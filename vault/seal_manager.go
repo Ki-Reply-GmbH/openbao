@@ -68,7 +68,7 @@ func (c *Core) teardownSealManager() error {
 }
 
 // TODO(wslabosz): add logs
-func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace) error {
+func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
 	sealConfig.StoredShares = 1
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
@@ -97,9 +97,11 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		sm.barrierByStoragePath.Insert(metaPrefix+barrierSealConfigPath, parentBarrier)
 	}
 	sm.sealsByNamespace[ns.UUID] = []*Seal{&defaultSeal}
-	err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
-	if err != nil {
-		return fmt.Errorf("failed to set barrier config: %w", err)
+	if writeToStorage {
+		err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
+		if err != nil {
+			return fmt.Errorf("failed to set barrier config: %w", err)
+		}
 	}
 
 	return nil
@@ -275,6 +277,25 @@ func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, err
 		sealConfigs = append(sealConfigs, &sealConfig)
 	}
 	return sealConfigs, nil
+}
+
+func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
+	fmt.Println("RegisterNamespace called")
+	sealConfig, err := sm.core.seal.BarrierConfig(ctx, ns)
+	if err != nil {
+		return false, err
+	}
+	// No sealConfig found for namespace
+	if sealConfig == nil {
+		return false, nil
+	}
+	fmt.Println("Seal Config found")
+
+	if err := sm.SetSeal(ctx, sealConfig, ns, false); err != nil {
+		return true, err
+	}
+
+	return true, nil
 }
 
 type StorageAccess interface {

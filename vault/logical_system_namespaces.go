@@ -346,7 +346,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		if new {
 			// TODO(wslabosz): write all the provided configs
 			if len(sealConfigs) > 0 {
-				if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry); err != nil {
+				if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry, true); err != nil {
 					return handleError(err)
 				}
 
