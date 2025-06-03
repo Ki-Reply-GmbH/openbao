@@ -103,7 +103,6 @@ type IdentityStore struct {
 	tokenStorer   TokenStorer
 	entityCreator EntityCreator
 	mfaBackend    *LoginMFABackend
-	core          *Core
 }
 
 type groupDiff struct {
