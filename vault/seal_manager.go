@@ -280,18 +280,28 @@ func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, err
 }
 
 func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
-	fmt.Println("RegisterNamespace called")
-	sealConfig, err := sm.core.seal.BarrierConfig(ctx, ns)
+	// Get the storage path for this namespace's seal config
+	namespaceView := sm.core.NamespaceView(ns)
+	sealConfigPath := namespaceView.Prefix() + barrierSealConfigPath
+
+	// Get access via the parent barrier
+	storage := sm.StorageAccessForPath(sealConfigPath)
+	configBytes, err := storage.Get(ctx, sealConfigPath)
 	if err != nil {
 		return false, err
 	}
-	// No sealConfig found for namespace
-	if sealConfig == nil {
+
+	// No seal config found - unsealed namespace
+	if configBytes == nil {
 		return false, nil
 	}
-	fmt.Println("Seal Config found")
 
-	if err := sm.SetSeal(ctx, sealConfig, ns, false); err != nil {
+	var sealConfig SealConfig
+	if err := json.Unmarshal(configBytes, &sealConfig); err != nil {
+		return false, fmt.Errorf("failed to decode namespace seal config: %w", err)
+	}
+
+	if err := sm.SetSeal(ctx, &sealConfig, ns, false); err != nil {
 		return true, err
 	}
 

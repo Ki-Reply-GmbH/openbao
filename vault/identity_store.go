@@ -65,6 +65,7 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 		tokenStorer:   core,
 		entityCreator: core,
 		mfaBackend:    core.loginMFABackend,
+		core:          core,
 	}
 
 	// Create a memdb instance, which by default, operates on lower cased
