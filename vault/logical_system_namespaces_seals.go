@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -195,16 +194,11 @@ func (b *SystemBackend) handleNamespaceSealStatus() framework.OperationFunc {
 			return handleError(err)
 		}
 
-		buf, err := json.Marshal(status)
-		if err != nil {
-			return nil, err
+		if status == nil {
+			return nil, nil
 		}
 
-		return &logical.Response{Data: map[string]interface{}{
-			logical.HTTPStatusCode:  200,
-			logical.HTTPRawBody:     buf,
-			logical.HTTPContentType: "application/json",
-		}}, nil
+		return &logical.Response{Data: map[string]interface{}{"seal_status": status}}, nil
 	}
 }
 

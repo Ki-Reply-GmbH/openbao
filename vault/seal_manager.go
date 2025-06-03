@@ -185,7 +185,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 	// Verify that any kind of seal exists for a namespace
 	seals, ok := sm.sealsByNamespace[ns.UUID]
 	if !ok {
-		return nil, errors.New("namespace is not set with a seal")
+		return nil, nil
 	}
 
 	// Check the barrier first
