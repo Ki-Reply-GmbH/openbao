@@ -176,7 +176,6 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 		}
 
 		isSealed, err := ns.core.sealManager.RegisterNamespace(ctx, &namespace)
-		fmt.Printf("Namespace: %v IsSealed %v\n", namespace.Path, isSealed)
 		if err != nil {
 			return false, fmt.Errorf("failed to register namespace %s with seal manager %w", namespace.ID, err)
 		}

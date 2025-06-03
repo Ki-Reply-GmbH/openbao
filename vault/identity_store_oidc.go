@@ -2011,8 +2011,7 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 			i.Logger().Error("error listing namespaces", "err", err)
 		}
 		for _, ns := range allNs {
-			barrier := i.core.sealManager.NamespaceBarrier(ns.Path)
-			if sealed := barrier.Sealed(); sealed {
+			if sealed := i.namespacer.IsNSSealed(ns); sealed {
 				continue
 			}
 			nsPath := ns.Path

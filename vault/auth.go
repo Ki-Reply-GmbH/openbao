@@ -597,8 +597,7 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
-		barrier := c.sealManager.NamespaceBarrier(ns)
-		if sealed, err := barrier.Sealed(); sealed || err != nil {
+		if sealed := c.IsNSSealed(ns); sealed {
 			c.logger.Info(fmt.Sprintf("Barrier for namespace %v is sealed\n", ns.Path))
 			continue
 		}
