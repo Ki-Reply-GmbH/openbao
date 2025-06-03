@@ -1386,11 +1386,8 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
-		barrier := c.sealManager.NamespaceBarrier(ns)
-		c.logger.Info("loadTransactionalMounts")
-		if sealed, err := barrier.Sealed(); sealed || err != nil {
-			fmt.Printf("Barrier for namespace %v is sealed\n", ns.Path)
-			c.logger.Info("Barrier for namespace %v is sealed\n", ns.Path)
+		barrier := c.sealManager.NamespaceBarrier(ns.Path)
+		if sealed := barrier.Sealed(); sealed {
 			continue
 		}
 		view := c.NamespaceView(ns)
