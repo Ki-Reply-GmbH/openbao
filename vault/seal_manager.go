@@ -503,8 +503,7 @@ func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, err
 
 func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
 	// Get the storage path for this namespace's seal config
-	namespaceView := sm.core.NamespaceView(ns)
-	sealConfigPath := namespaceView.Prefix() + barrierSealConfigPath
+	sealConfigPath := sm.core.NamespaceView(ns).SubView(barrierSealConfigPath).Prefix()
 
 	// Get access via the parent barrier
 	storage := sm.StorageAccessForPath(sealConfigPath)
