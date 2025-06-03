@@ -1386,7 +1386,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
-		if sealed := c.IsNSSealed(ns); sealed {
+		if c.IsNSSealed(ns) {
 			continue
 		}
 		view := c.NamespaceView(ns)
