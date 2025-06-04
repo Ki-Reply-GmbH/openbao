@@ -5824,7 +5824,7 @@ This path responds to the following HTTP methods.
 		`,
 	},
 	"namespaces-seal": {
-		"Seal, unseal, check seal status of a namespace.",
+		"Seal, unseal and check seal status of a namespace.",
 		`
 This path responds to the following HTTP methods.
 
@@ -5835,7 +5835,7 @@ This path responds to the following HTTP methods.
 		Unseal a namespace.
 		
     GET /<name>/seal-status
-        Returns the seal status of the OpenBao instance.
+        Returns the seal status of the namespace.
 		`,
 	},
 }
