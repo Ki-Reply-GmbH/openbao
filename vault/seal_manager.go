@@ -147,6 +147,9 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 		if err := sm.core.UnloadNamespaceMounts(ctx, childNS); err != nil {
 			errs = errors.Join(errs, err)
 		}
+		if err := sm.core.UnloadNamespaceCredentialMounts(ctx, childNS); err != nil {
+			errs = errors.Join(errs, err)
+		}
 		err = s.Seal()
 		if err != nil {
 			errs = errors.Join(errs, err)
