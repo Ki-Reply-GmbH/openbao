@@ -130,14 +130,27 @@ func (sm *SealManager) StorageAccessForPath(path string) StorageAccess {
 }
 
 // SealNamespace seals the barriers of the given namespace and all of its children.
-func (sm *SealManager) SealNamespace(ns *namespace.Namespace) error {
+func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespace) error {
 	var errs error
 	sm.barrierByNamespace.WalkPrefix(ns.Path, func(p string, v any) bool {
 		s := v.(SecurityBarrier)
 		if s.Sealed() {
 			return false
 		}
-		err := s.Seal()
+		childNS, err := sm.core.namespaceStore.GetNamespaceByPath(ctx, namespace.Canonicalize(p))
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
+		if childNS == nil {
+			errs = errors.Join(errs, fmt.Errorf("Child Namespace not found for path: %s", p))
+		}
+		// if err := sm.cleanupNamespacePolicies(ctx, childNS); err != nil {
+		// 	errs = errors.Join(errs, err)
+		// }
+		if err := sm.core.UnloadNamespaceMounts(ctx, childNS); err != nil {
+			errs = errors.Join(errs, err)
+		}
+		err = s.Seal()
 		if err != nil {
 			errs = errors.Join(errs, err)
 		}
