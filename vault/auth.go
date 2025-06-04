@@ -1201,7 +1201,7 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 	return nil
 }
 
-// unloadNamespaceMounts is used before we seal the namespace to reset the mounts to
+// UnloadNamespaceCredentialMounts is used before we seal the namespace to reset the mounts to
 // their unloaded state, calling Cleanup if defined
 func (c *Core) UnloadNamespaceCredentialMounts(ctx context.Context, ns *namespace.Namespace) error {
 	c.authLock.Lock()
