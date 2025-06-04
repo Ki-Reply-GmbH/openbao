@@ -137,16 +137,13 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 		if s.Sealed() {
 			return false
 		}
-		childNS, err := sm.core.namespaceStore.GetNamespaceByPath(ctx, namespace.Canonicalize(p))
+		childNS, err := sm.core.namespaceStore.getNamespaceByPathLocked(ctx, namespace.Canonicalize(p))
 		if err != nil {
 			errs = errors.Join(errs, err)
 		}
 		if childNS == nil {
 			errs = errors.Join(errs, fmt.Errorf("Child Namespace not found for path: %s", p))
 		}
-		// if err := sm.cleanupNamespacePolicies(ctx, childNS); err != nil {
-		// 	errs = errors.Join(errs, err)
-		// }
 		if err := sm.core.UnloadNamespaceMounts(ctx, childNS); err != nil {
 			errs = errors.Join(errs, err)
 		}
@@ -195,14 +192,9 @@ func (sm *SealManager) SecretProgress(ns *namespace.Namespace, lock bool) (int, 
 }
 
 func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespace, lock bool) (*SealStatusResponse, error) {
-	// Verify that any kind of seal exists for a namespace
-	seals, ok := sm.sealsByNamespace[ns.UUID]
-	if !ok {
-		return nil, nil
-	}
-
 	// Check the barrier first
 	barrier := sm.NamespaceBarrier(ns.Path)
+
 	init, err := barrier.Initialized(ctx)
 	if err != nil {
 		sm.logger.Error("namespace barrier init check failed", "namespace", ns.Path, "error", err)
@@ -213,8 +205,8 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 		return nil, nil
 	}
 
+	seal := *sm.sealsByNamespace[ns.UUID]["default"]
 	// Verify the seal configuration
-	seal := *seals["default"]
 	sealConf, err := seal.BarrierConfig(ctx, ns)
 	if err != nil {
 		return nil, err
