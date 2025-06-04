@@ -1201,6 +1201,27 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 	return nil
 }
 
+// unloadNamespaceMounts is used before we seal the namespace to reset the mounts to
+// their unloaded state, calling Cleanup if defined
+func (c *Core) UnloadNamespaceCredentialMounts(ctx context.Context, ns *namespace.Namespace) error {
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
+
+	if c.auth != nil {
+		authTable := c.auth.shallowClone()
+		for _, e := range authTable.Entries {
+			if e.namespace.UUID == ns.UUID {
+				backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.namespace), credentialRoutePrefix+e.Path)
+				if backend != nil {
+					backend.Cleanup(ctx)
+				}
+				c.logger.Info("successfully unmounted", "type", e.Type, "version", e.RunningVersion, "path", e.Path, "namespace", e.Namespace())
+			}
+		}
+	}
+	return nil
+}
+
 // newCredentialBackend is used to create and configure a new credential backend by name.
 // It also returns the SHA256 of the plugin, if available.
 func (c *Core) newCredentialBackend(ctx context.Context, entry *MountEntry, sysView logical.SystemView, view logical.Storage) (logical.Backend, string, error) {
