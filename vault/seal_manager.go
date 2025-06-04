@@ -144,10 +144,10 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 		if childNS == nil {
 			errs = errors.Join(errs, fmt.Errorf("Child Namespace not found for path: %s", p))
 		}
-		if err := sm.core.UnloadNamespaceMounts(ctx, childNS); err != nil {
+		if err := sm.core.UnloadNamespaceCredentialMounts(ctx, childNS); err != nil {
 			errs = errors.Join(errs, err)
 		}
-		if err := sm.core.UnloadNamespaceCredentialMounts(ctx, childNS); err != nil {
+		if err := sm.core.UnloadNamespaceMounts(ctx, childNS); err != nil {
 			errs = errors.Join(errs, err)
 		}
 		err = s.Seal()
