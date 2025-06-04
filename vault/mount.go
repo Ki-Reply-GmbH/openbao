@@ -2011,6 +2011,30 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 	return nil
 }
 
+// unloadNamespaceMounts is used before we seal the namespace to reset the mounts to
+// their unloaded state, calling Cleanup if defined
+func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespace) error {
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
+
+	if c.mounts != nil {
+		mountTable := c.mounts.shallowClone()
+		for _, e := range mountTable.Entries {
+			if e.namespace.UUID == ns.UUID {
+				nsCtx := namespace.ContextWithNamespace(ctx, e.namespace)
+				backend := c.router.MatchingBackend(nsCtx, e.Path)
+				if backend != nil {
+					backend.Cleanup(ctx)
+				}
+				if err := c.router.Unmount(nsCtx, e.Path); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // newLogicalBackend is used to create and configure a new logical backend by name.
 // It also returns the SHA256 of the plugin, if available.
 func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView logical.SystemView, view logical.Storage) (logical.Backend, string, error) {
