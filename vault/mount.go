@@ -2029,6 +2029,7 @@ func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespac
 				if err := c.router.Unmount(nsCtx, e.Path); err != nil {
 					return err
 				}
+				c.logger.Info("successfully unmounted", "type", e.Type, "version", e.RunningVersion, "path", e.Path, "namespace", e.Namespace())
 			}
 		}
 	}
