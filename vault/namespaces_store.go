@@ -779,7 +779,7 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal tainted or actively deleting namespace")
 	}
 
-	err = ns.core.sealManager.SealNamespace(namespaceToSeal)
+	err = ns.core.sealManager.SealNamespace(ctx, namespaceToSeal)
 	if err != nil {
 		return err
 	}
