@@ -1996,7 +1996,7 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 	defer c.mountsLock.Unlock()
 
 	if c.mounts != nil {
-		mountTable := c.auth.shallowClone()
+		mountTable := c.mounts.shallowClone()
 		err := c.cleanupMountBackends(ctx, mountTable, func(*MountEntry) bool { return true }, true)
 		if err != nil {
 			return err
@@ -2016,7 +2016,7 @@ func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespac
 	defer c.mountsLock.Unlock()
 
 	if c.mounts != nil {
-		mountTable := c.auth.shallowClone()
+		mountTable := c.mounts.shallowClone()
 		return c.cleanupMountBackends(ctx, mountTable, func(e *MountEntry) bool {
 			return e.namespace.UUID == ns.UUID
 		}, true)
