@@ -1992,8 +1992,8 @@ func (c *Core) setupMounts(ctx context.Context) error {
 // unloadMounts is used before we seal the vault to reset the mounts to
 // their unloaded state, calling Cleanup if defined. This is reversed by load and setup mounts.
 func (c *Core) unloadMounts(ctx context.Context) error {
-	c.authLock.Lock()
-	defer c.authLock.Unlock()
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
 
 	if c.mounts != nil {
 		mountTable := c.auth.shallowClone()
@@ -2012,8 +2012,8 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 // unloadNamespaceMounts is used before we seal the namespace to reset the mounts to
 // their unloaded state, calling Cleanup if defined
 func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespace) error {
-	c.authLock.Lock()
-	defer c.authLock.Unlock()
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
 
 	if c.mounts != nil {
 		mountTable := c.auth.shallowClone()
