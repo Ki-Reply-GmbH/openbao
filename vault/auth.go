@@ -1183,7 +1183,7 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 
 	if c.auth != nil {
 		authTable := c.auth.shallowClone()
-		if err := c.cleanupMountBackends(ctx, authTable, func(e *MountEntry) bool { return true }, false, credentialRoutePrefix); err != nil {
+		if err := c.cleanupMountBackends(ctx, authTable, func(e *MountEntry) bool { return true }, credentialRoutePrefix); err != nil {
 			return err
 		}
 	}
@@ -1206,7 +1206,7 @@ func (c *Core) UnloadNamespaceCredentialMounts(ctx context.Context, ns *namespac
 		authTable := c.auth.shallowClone()
 		if err := c.cleanupMountBackends(ctx, authTable, func(e *MountEntry) bool {
 			return e.namespace.UUID == ns.UUID
-		}, false, credentialRoutePrefix); err != nil {
+		}, credentialRoutePrefix); err != nil {
 			return err
 		}
 	}

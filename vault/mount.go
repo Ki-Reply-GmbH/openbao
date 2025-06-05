@@ -1997,7 +1997,7 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 
 	if c.mounts != nil {
 		mountTable := c.mounts.shallowClone()
-		err := c.cleanupMountBackends(ctx, mountTable, func(*MountEntry) bool { return true }, true, "")
+		err := c.cleanupMountBackends(ctx, mountTable, func(*MountEntry) bool { return true }, "")
 		if err != nil {
 			return err
 		}
@@ -2019,7 +2019,7 @@ func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespac
 		mountTable := c.mounts.shallowClone()
 		if err := c.cleanupMountBackends(ctx, mountTable, func(e *MountEntry) bool {
 			return e.namespace.UUID == ns.UUID
-		}, false, ""); err != nil {
+		}, ""); err != nil {
 			return err
 		}
 	}
@@ -2029,18 +2029,13 @@ func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespac
 	return nil
 }
 
-func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable, predicate func(*MountEntry) bool, unmountPath bool, pathPrefix string) error {
+func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable, predicate func(*MountEntry) bool, pathPrefix string) error {
 	for _, e := range mountTable.Entries {
 		if predicate(e) {
 			nsCtx := namespace.ContextWithNamespace(ctx, e.namespace)
 			backend := c.router.MatchingBackend(nsCtx, pathPrefix+e.Path)
 			if backend != nil {
 				backend.Cleanup(ctx)
-			}
-			if unmountPath {
-				if err := c.router.Unmount(nsCtx, pathPrefix+e.Path); err != nil {
-					return err
-				}
 			}
 		}
 	}
