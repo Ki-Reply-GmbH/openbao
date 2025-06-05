@@ -1997,10 +1997,7 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 
 	if c.mounts != nil {
 		mountTable := c.mounts.shallowClone()
-		err := c.cleanupMountBackends(ctx, mountTable, func(*MountEntry) bool { return true }, "")
-		if err != nil {
-			return err
-		}
+		c.cleanupMountBackends(ctx, mountTable, "", func(*MountEntry) bool { return true })
 	}
 
 	c.mounts = nil
@@ -2017,11 +2014,9 @@ func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespac
 
 	if c.mounts != nil {
 		mountTable := c.mounts.shallowClone()
-		if err := c.cleanupMountBackends(ctx, mountTable, func(e *MountEntry) bool {
+		c.cleanupMountBackends(ctx, mountTable, "", func(e *MountEntry) bool {
 			return e.namespace.UUID == ns.UUID
-		}, ""); err != nil {
-			return err
-		}
+		})
 	}
 	if c.logger.IsInfo() {
 		c.logger.Info(fmt.Sprintf("successfully unmounted namespace %q mounts from mount table", ns.Path))
@@ -2029,7 +2024,7 @@ func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespac
 	return nil
 }
 
-func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable, predicate func(*MountEntry) bool, pathPrefix string) error {
+func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable, pathPrefix string, predicate func(*MountEntry) bool) {
 	for _, e := range mountTable.Entries {
 		if predicate(e) {
 			nsCtx := namespace.ContextWithNamespace(ctx, e.namespace)
@@ -2039,7 +2034,6 @@ func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable,
 			}
 		}
 	}
-	return nil
 }
 
 // newLogicalBackend is used to create and configure a new logical backend by name.
