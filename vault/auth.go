@@ -1183,7 +1183,9 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 
 	if c.auth != nil {
 		authTable := c.auth.shallowClone()
-		return c.cleanupMountBackends(ctx, authTable, func(e *MountEntry) bool { return true }, false)
+		if err := c.cleanupMountBackends(ctx, authTable, func(e *MountEntry) bool { return true }, false); err != nil {
+			return err
+		}
 	}
 
 	c.auth = nil
