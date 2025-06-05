@@ -1992,16 +1992,14 @@ func (c *Core) setupMounts(ctx context.Context) error {
 // unloadMounts is used before we seal the vault to reset the mounts to
 // their unloaded state, calling Cleanup if defined. This is reversed by load and setup mounts.
 func (c *Core) unloadMounts(ctx context.Context) error {
-	c.mountsLock.Lock()
-	defer c.mountsLock.Unlock()
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
 
 	if c.mounts != nil {
-		mountTable := c.mounts.shallowClone()
-		for _, e := range mountTable.Entries {
-			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.namespace), e.Path)
-			if backend != nil {
-				backend.Cleanup(ctx)
-			}
+		mountTable := c.auth.shallowClone()
+		err := c.cleanupMountBackends(ctx, mountTable, func(*MountEntry) bool { return true }, true)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -2014,22 +2012,30 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 // unloadNamespaceMounts is used before we seal the namespace to reset the mounts to
 // their unloaded state, calling Cleanup if defined
 func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespace) error {
-	c.mountsLock.Lock()
-	defer c.mountsLock.Unlock()
+	c.authLock.Lock()
+	defer c.authLock.Unlock()
 
 	if c.mounts != nil {
-		mountTable := c.mounts.shallowClone()
-		for _, e := range mountTable.Entries {
-			if e.namespace.UUID == ns.UUID {
-				nsCtx := namespace.ContextWithNamespace(ctx, e.namespace)
-				backend := c.router.MatchingBackend(nsCtx, e.Path)
-				if backend != nil {
-					backend.Cleanup(ctx)
-				}
+		mountTable := c.auth.shallowClone()
+		return c.cleanupMountBackends(ctx, mountTable, func(e *MountEntry) bool {
+			return e.namespace.UUID == ns.UUID
+		}, true)
+	}
+	return nil
+}
+
+func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable, filter func(*MountEntry) bool, unmountRouter bool) error {
+	for _, e := range mountTable.Entries {
+		if filter(e) {
+			nsCtx := namespace.ContextWithNamespace(ctx, e.namespace)
+			backend := c.router.MatchingBackend(nsCtx, e.Path)
+			if backend != nil {
+				backend.Cleanup(ctx)
+			}
+			if unmountRouter {
 				if err := c.router.Unmount(nsCtx, e.Path); err != nil {
 					return err
 				}
-				c.logger.Info("successfully unmounted", "type", e.Type, "version", e.RunningVersion, "path", e.Path, "namespace", e.Namespace())
 			}
 		}
 	}

@@ -1183,21 +1183,14 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 
 	if c.auth != nil {
 		authTable := c.auth.shallowClone()
-		for _, e := range authTable.Entries {
-			backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.namespace), credentialRoutePrefix+e.Path)
-			if backend != nil {
-				backend.Cleanup(ctx)
-			}
-		}
+		return c.cleanupMountBackends(ctx, authTable, func(e *MountEntry) bool { return true }, false)
 	}
 
 	c.auth = nil
-
 	if c.tokenStore != nil {
 		c.tokenStore.teardown()
 		c.tokenStore = nil
 	}
-
 	return nil
 }
 
@@ -1209,15 +1202,9 @@ func (c *Core) UnloadNamespaceCredentialMounts(ctx context.Context, ns *namespac
 
 	if c.auth != nil {
 		authTable := c.auth.shallowClone()
-		for _, e := range authTable.Entries {
-			if e.namespace.UUID == ns.UUID {
-				backend := c.router.MatchingBackend(namespace.ContextWithNamespace(ctx, e.namespace), credentialRoutePrefix+e.Path)
-				if backend != nil {
-					backend.Cleanup(ctx)
-				}
-				c.logger.Info("successfully unmounted", "type", e.Type, "version", e.RunningVersion, "path", e.Path, "namespace", e.Namespace())
-			}
-		}
+		return c.cleanupMountBackends(ctx, authTable, func(e *MountEntry) bool {
+			return e.namespace.UUID == ns.UUID
+		}, false)
 	}
 	return nil
 }
