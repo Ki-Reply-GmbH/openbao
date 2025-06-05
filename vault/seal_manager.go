@@ -137,17 +137,17 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 		if s.Sealed() {
 			return false
 		}
-		childNS, err := sm.core.namespaceStore.getNamespaceByPathLocked(ctx, namespace.Canonicalize(p))
+		descendantNamespace, err := sm.core.namespaceStore.getNamespaceByPathLocked(ctx, namespace.Canonicalize(p))
 		if err != nil {
 			errs = errors.Join(errs, err)
 		}
-		if childNS == nil {
-			errs = errors.Join(errs, fmt.Errorf("Child Namespace not found for path: %s", p))
+		if descendantNamespace == nil {
+			errs = errors.Join(errs, fmt.Errorf("namespace not found for path: %s", p))
 		}
-		if err := sm.core.UnloadNamespaceCredentialMounts(ctx, childNS); err != nil {
+		if err := sm.core.UnloadNamespaceCredentialMounts(ctx, descendantNamespace); err != nil {
 			errs = errors.Join(errs, err)
 		}
-		if err := sm.core.UnloadNamespaceMounts(ctx, childNS); err != nil {
+		if err := sm.core.UnloadNamespaceMounts(ctx, descendantNamespace); err != nil {
 			errs = errors.Join(errs, err)
 		}
 		err = s.Seal()
