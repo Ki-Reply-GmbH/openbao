@@ -1202,9 +1202,14 @@ func (c *Core) UnloadNamespaceCredentialMounts(ctx context.Context, ns *namespac
 
 	if c.auth != nil {
 		authTable := c.auth.shallowClone()
-		return c.cleanupMountBackends(ctx, authTable, func(e *MountEntry) bool {
+		if err := c.cleanupMountBackends(ctx, authTable, func(e *MountEntry) bool {
 			return e.namespace.UUID == ns.UUID
-		}, false)
+		}, false); err != nil {
+			return err
+		}
+	}
+	if c.logger.IsInfo() {
+		c.logger.Info(fmt.Sprintf("successfully unmounted namespace %s from auth table", ns.Path))
 	}
 	return nil
 }

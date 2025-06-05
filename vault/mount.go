@@ -2017,9 +2017,14 @@ func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespac
 
 	if c.mounts != nil {
 		mountTable := c.mounts.shallowClone()
-		return c.cleanupMountBackends(ctx, mountTable, func(e *MountEntry) bool {
+		if err := c.cleanupMountBackends(ctx, mountTable, func(e *MountEntry) bool {
 			return e.namespace.UUID == ns.UUID
-		}, true)
+		}, true); err != nil {
+			return err
+		}
+	}
+	if c.logger.IsInfo() {
+		c.logger.Info(fmt.Sprintf("successfully unmounted namespace %s from mount table", ns.Path))
 	}
 	return nil
 }
