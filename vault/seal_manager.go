@@ -63,7 +63,7 @@ func (c *Core) setupSealManager() error {
 	c.sealManager, err = NewSealManager(c, sealLogger)
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
-	c.sealManager.barrierByStoragePath.Insert(barrierSealConfigPath, nil)
+	c.sealManager.barrierByStoragePath.Insert(deprecatedBarrierSealConfigPath, nil)
 	return err
 }
 
@@ -105,7 +105,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	sm.barrierByStoragePath.Insert(metaPrefix, barrier)
 	parentBarrier := sm.ParentNamespaceBarrier(ns)
 	if parentBarrier != nil {
-		sm.barrierByStoragePath.Insert(metaPrefix+barrierSealConfigPath, parentBarrier)
+		sm.barrierByStoragePath.Insert(metaPrefix+barrierSealBaseConfigPath+defaultSealPath+shamirSealConfigPath, parentBarrier)
 	}
 
 	sm.sealsByNamespace[ns.UUID] = map[string]*Seal{"default": &defaultSeal}
@@ -536,8 +536,7 @@ func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, err
 
 func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
 	// Get the storage path for this namespace's seal config
-	sealConfigPath := sm.core.NamespaceView(ns).SubView(barrierSealConfigPath).Prefix()
-
+	sealConfigPath := sm.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(shamirSealConfigPath).Prefix()
 	// Get access via the parent barrier
 	storage := sm.StorageAccessForPath(sealConfigPath)
 	configBytes, err := storage.Get(ctx, sealConfigPath)

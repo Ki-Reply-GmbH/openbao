@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 	"sync/atomic"
 
@@ -27,15 +28,24 @@ import (
 )
 
 const (
-	// barrierSealConfigPath is the path used to store our seal configuration.
-	// This value is stored in plaintext, since we must be able to read it even
-	// with the Vault sealed. This is required so that we know how many secret
-	// parts must be used to reconstruct the unseal key.
-	barrierSealConfigPath = "core/seal-config"
+	// barrierSealBaseConfigPath is the path used to store all namespace scoped
+	// seals configuration.
+	barrierSealBaseConfigPath = "core/seals/"
+
+	// defaultSealPath is the name/path that all seal operations default to.
+	defaultSealPath = "default/"
+
+	// shamirSealConfigPath is the path used to store our seal configuration.
+	// This value is stored in plaintext, so that we can read it even with the
+	// barrier sealed. This is required so that we know how many secret parts
+	// must be used to reconstruct the unseal key.
+	shamirSealConfigPath = "shamir-config"
 
 	// recoverySealConfigPath is the path to the recovery key seal configuration.
 	// This is stored in plaintext so that we can perform auto-unseal.
-	recoverySealConfigPath = "core/recovery-config"
+	recoverySealConfigPath = "recovery-config"
+
+	// ----
 
 	// recoveryKeyPath is the path to the recovery key
 	recoveryKeyPath = "core/recovery-key"
@@ -45,6 +55,27 @@ const (
 
 	// hsmStoredIVPath is the path to the initialization vector for stored keys
 	hsmStoredIVPath = "core/hsm/iv"
+)
+
+// List of deprecated paths:
+const (
+	// deprecatedBarrierSealConfigPath is the path used to store our seal configuration.
+	// This value is stored in plaintext, since we must be able to read it even
+	// with the Vault sealed. This is required so that we know how many secret
+	// parts must be used to reconstruct the unseal key.
+	// DEPRECATED: Use shamirSealConfigPath
+	deprecatedBarrierSealConfigPath = "core/seal-config"
+
+	// deprecatedRecoverySealConfigPlaintextPath is the path to the recovery key
+	// seal configuration. This is stored in plaintext so that we can perform
+	// auto-unseal.
+	// DEPRECATED: Use recoverySealConfigPath instead.
+	deprecatedRecoverySealConfigPlaintextPath = "core/recovery-config"
+
+	// deprecatedEncryptedRecoverySealConfig is the path to the recovery key seal
+	// configuration. It lives inside the barrier.
+	// DEPRECATED: Use recoverySealConfigPath instead.
+	deprecatedEncryptedRecoverySealConfig = "core/recovery-seal-config"
 )
 
 const (
@@ -160,28 +191,65 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace
 		return nil, err
 	}
 
-	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
-	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
+	sealType := "barrier"
 
-	// Fetch the core configuration
-	valueBytes, err := barrier.Get(ctx, view.Prefix())
+	var sealBytes []byte
+	var err error
+	if ns.ID != namespace.RootNamespaceID {
+		view := d.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(shamirSealConfigPath)
+		barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
+
+		// Fetch the seal configuration
+		sealBytes, err = barrier.Get(ctx, view.Prefix())
+
+	} else {
+		var pe *physical.Entry
+		pe, err = d.core.physical.Get(ctx, path.Join(barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath))
+		sealBytes = pe.Value
+	}
+
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
 	}
 
-	// If the seal configuration is missing, we are not initialized
-	if valueBytes == nil {
-		d.core.logger.Info("seal configuration missing, not initialized")
-		return nil, nil
+	var oldEntry *physical.Entry
+	if sealBytes == nil {
+		if d.core.Sealed() {
+			d.core.logger.Info("seal configuration missing, but cannot check old path as core is sealed", "seal_type", sealType)
+			return nil, nil
+		}
+
+		// Check the old barrier seal config path so an upgraded standby will
+		// return the correct seal config
+		oldEntry, err = d.core.physical.Get(ctx, deprecatedBarrierSealConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %q seal configuration: %w", deprecatedRecoverySealConfigPlaintextPath, err)
+		}
+
+		// If the seal configuration is missing, then we are not initialized.
+		if oldEntry == nil {
+			d.core.logger.Info("seal configuration missing, not initialized", "seal_type", sealType)
+			return nil, nil
+		}
 	}
 
-	var conf SealConfig
+	conf := &SealConfig{}
+	if oldEntry != nil {
+		err = json.Unmarshal(oldEntry.Value, conf)
+	} else {
+		err = jsonutil.DecodeJSON(sealBytes, conf)
+	}
 
-	// Decode the barrier entry
-	if err := jsonutil.DecodeJSON(valueBytes, &conf); err != nil {
-		d.core.logger.Error("failed to decode seal configuration", "error", err)
-		return nil, fmt.Errorf("failed to decode seal configuration: %w", err)
+	if err != nil {
+		d.core.logger.Error("failed to decode seal configuration", "seal_type", sealType, "error", err)
+		return nil, fmt.Errorf("failed to decode %q seal configuration: %w", sealType, err)
+	}
+
+	// Check if a valid seal configuration
+	if err := conf.Validate(); err != nil {
+		d.core.logger.Error("invalid seal configuration", "seal_type", sealType, "error", err)
+		return nil, fmt.Errorf("%q seal validation failed: %w", sealType, err)
 	}
 
 	switch conf.Type {
@@ -194,18 +262,18 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace
 		return nil, fmt.Errorf("barrier seal type of %q does not match expected type of %q", conf.Type, d.BarrierType())
 	}
 
-	// Check for a valid seal configuration
-	if err := conf.Validate(); err != nil {
-		d.core.logger.Error("invalid seal configuration", "error", err)
-		return nil, fmt.Errorf("seal validation failed: %w", err)
-	}
-
-	d.SetCachedBarrierConfig(&conf)
+	d.SetCachedBarrierConfig(conf)
 	return conf.Clone(), nil
 }
 
 func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, ns *namespace.Namespace) error {
-	if err := d.checkCore(); err != nil {
+	var err error
+	if err = d.checkCore(); err != nil {
+		return err
+	}
+
+	// Perform migration if applicable
+	if err = d.migrateBarrierConfig(ctx); err != nil {
 		return err
 	}
 
@@ -231,14 +299,63 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, 
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
-	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
-	if err := barrier.Put(ctx, view.Prefix(), buf); err != nil {
+	view := d.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(shamirSealConfigPath)
+
+	// Store the seal configuration
+	if ns.ID == namespace.RootNamespaceID {
+		pe := &physical.Entry{
+			Key:   view.Prefix(),
+			Value: buf,
+		}
+		err = d.core.physical.Put(ctx, pe)
+	} else {
+		barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
+		err = barrier.Put(ctx, view.Prefix(), buf)
+	}
+
+	if err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
 
 	d.SetCachedBarrierConfig(config.Clone())
+
+	return nil
+}
+
+// migrateBarrierConfig is a helper func to migrate the barrier config from
+// deprecatedBarrierSealConfigPath path to the new one under `/seals`.
+// This is called from SetBarrierConfig which is always called with the stateLock.
+func (d *defaultSeal) migrateBarrierConfig(ctx context.Context) error {
+	var pe *physical.Entry
+	var err error
+
+	// Get config from the old deprecatedBarrierSealConfigPath path
+	pe, err = d.core.physical.Get(ctx, deprecatedBarrierSealConfigPath)
+	if err != nil {
+		return fmt.Errorf("failed to read %q barrier seal configuration during migration: %w", deprecatedBarrierSealConfigPath, err)
+	}
+
+	// If entry is nil, then skip migration
+	if pe == nil {
+		return nil
+	}
+
+	// Only log if we are performing the migration
+	d.core.logger.Debug("migrating barrier seal configuration")
+	defer d.core.logger.Debug("done migrating barrier seal configuration")
+
+	// Perform path migration
+	pe.Key = path.Join(barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath)
+
+	if err := d.core.physical.Put(ctx, pe); err != nil {
+		return fmt.Errorf("failed to write barrier seal configuration during migration: %w", err)
+	}
+
+	// Perform deletion of the old entry
+	if err := d.core.physical.Delete(ctx, deprecatedBarrierSealConfigPath); err != nil {
+		return fmt.Errorf("failed to delete %q barrier seal configuration during migration: %w", deprecatedBarrierSealConfigPath, err)
+	}
 
 	return nil
 }
