@@ -15,6 +15,14 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
 )
 
+// contextKeyRefreshCache is a ctx value struct that denotes
+// the cache should be refreshed during a Get call.
+type contextKeyRefreshCache struct{}
+
+func (c contextKeyRefreshCache) String() string {
+	return "refresh_cache"
+}
+
 const (
 	// DefaultCacheSize is used if no cache size is specified for NewCache
 	DefaultCacheSize = 128 * 1024
@@ -22,10 +30,6 @@ const (
 	// TransactionCacheFactor is a multiple of cache size to reduce
 	// transactions by, to avoid high memory usage.
 	TransactionCacheFactor = DefaultParallelTransactions
-
-	// refreshCacheCtxKey is a ctx value that denotes the cache should be
-	// refreshed during a Get call.
-	refreshCacheCtxKey = "refresh_cache"
 )
 
 // These paths don't need to be cached by the LRU cache. This should
@@ -38,22 +42,21 @@ var cacheExceptionsPaths = []string{
 	"core/poison-pill",
 	"core/raft/tls",
 
-	// Add barrierSealConfigPath and recoverySealConfigPlaintextPath to the cache
-	// exceptions to avoid unseal errors. See VAULT-17227
-	"core/seal-config",
-	"core/recovery-config",
+	// Seal configs are excluded from cache to avoid (core) unseal errors.
+	// See VAULT-17227
+	"core/seals/",
 }
 
 // CacheRefreshContext returns a context with an added value denoting if the
 // cache should attempt a refresh.
 func CacheRefreshContext(ctx context.Context, r bool) context.Context {
-	return context.WithValue(ctx, refreshCacheCtxKey, r)
+	return context.WithValue(ctx, contextKeyRefreshCache{}, r)
 }
 
 // cacheRefreshFromContext is a helper to look up if the provided context is
 // requesting a cache refresh.
 func cacheRefreshFromContext(ctx context.Context) bool {
-	r, ok := ctx.Value(refreshCacheCtxKey).(bool)
+	r, ok := ctx.Value(contextKeyRefreshCache{}).(bool)
 	if !ok {
 		return false
 	}
