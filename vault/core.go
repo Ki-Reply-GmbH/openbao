@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -2568,8 +2569,10 @@ func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
 	return c.auditedHeaders
 }
 
-func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfig, error) {
-	pe, err := c.physical.Get(ctx, barrierSealConfigPath)
+func (c *Core) PhysicalSealConfigs(ctx context.Context) (
+	existingSealConfig *SealConfig, existingRecoverySealConfig *SealConfig, err error,
+) {
+	pe, err := c.physical.Get(ctx, path.Join(barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch barrier seal configuration at migration check time: %w", err)
 	}
@@ -2577,43 +2580,39 @@ func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfi
 		return nil, nil, nil
 	}
 
-	barrierConf := new(SealConfig)
-
-	if err := jsonutil.DecodeJSON(pe.Value, barrierConf); err != nil {
+	if err := jsonutil.DecodeJSON(pe.Value, &existingSealConfig); err != nil {
 		return nil, nil, fmt.Errorf("failed to decode barrier seal configuration at migration check time: %w", err)
 	}
-	err = barrierConf.Validate()
+	err = existingSealConfig.Validate()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to validate barrier seal configuration at migration check time: %w", err)
 	}
 	// In older versions of vault the default seal would not store a type. This
 	// is here to offer backwards compatibility for older seal configs.
-	if barrierConf.Type == "" {
-		barrierConf.Type = wrapping.WrapperTypeShamir.String()
+	if existingSealConfig.Type == "" {
+		existingSealConfig.Type = wrapping.WrapperTypeShamir.String()
 	}
 
-	var recoveryConf *SealConfig
-	pe, err = c.physical.Get(ctx, recoverySealConfigPlaintextPath)
+	pe, err = c.physical.Get(ctx, path.Join(barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch seal configuration at migration check time: %w", err)
 	}
 	if pe != nil {
-		recoveryConf = &SealConfig{}
-		if err := jsonutil.DecodeJSON(pe.Value, recoveryConf); err != nil {
+		if err := jsonutil.DecodeJSON(pe.Value, &existingRecoverySealConfig); err != nil {
 			return nil, nil, fmt.Errorf("failed to decode seal configuration at migration check time: %w", err)
 		}
-		err = recoveryConf.Validate()
+		err = existingRecoverySealConfig.Validate()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to validate seal configuration at migration check time: %w", err)
 		}
 		// In older versions of vault the default seal would not store a type. This
 		// is here to offer backwards compatibility for older seal configs.
-		if recoveryConf.Type == "" {
-			recoveryConf.Type = wrapping.WrapperTypeShamir.String()
+		if existingRecoverySealConfig.Type == "" {
+			existingRecoverySealConfig.Type = wrapping.WrapperTypeShamir.String()
 		}
 	}
 
-	return barrierConf, recoveryConf, nil
+	return existingSealConfig, existingRecoverySealConfig, nil
 }
 
 // adjustForSealMigration takes the unwrapSeal, which is nil if (a) we're not
@@ -2745,7 +2744,7 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 		if err := c.seal.SetRecoveryConfig(ctx, rc); err != nil {
 			return fmt.Errorf("error storing recovery config after migration: %w", err)
 		}
-	} else if err := c.physical.Delete(ctx, recoverySealConfigPlaintextPath); err != nil {
+	} else if err := c.physical.Delete(ctx, path.Join(barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath)); err != nil {
 		return fmt.Errorf("failed to delete old recovery seal configuration during migration: %w", err)
 	}
 
