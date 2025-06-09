@@ -40,7 +40,7 @@ func (s *SealAccess) RecoveryKeySupported() bool {
 }
 
 func (s *SealAccess) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
-	return s.seal.RecoveryConfig(ctx)
+	return s.seal.RecoveryConfig(ctx, namespace.RootNamespace)
 }
 
 func (s *SealAccess) VerifyRecoveryKey(ctx context.Context, key []byte) error {
@@ -51,7 +51,7 @@ func (s *SealAccess) VerifyRecoveryKey(ctx context.Context, key []byte) error {
 func (s *SealAccess) ClearCaches(ctx context.Context) {
 	s.seal.SetBarrierConfig(ctx, nil, namespace.RootNamespace)
 	if s.RecoveryKeySupported() {
-		s.seal.SetRecoveryConfig(ctx, nil)
+		s.seal.SetRecoveryConfig(ctx, nil, namespace.RootNamespace)
 	}
 }
 

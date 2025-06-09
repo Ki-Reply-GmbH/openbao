@@ -572,7 +572,7 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		{
 			c.seal.SetBarrierConfig(activeCtx, nil, namespace.RootNamespace)
 			if c.seal.RecoveryKeySupported() {
-				c.seal.SetRecoveryConfig(activeCtx, nil)
+				c.seal.SetRecoveryConfig(activeCtx, nil, namespace.RootNamespace)
 			}
 
 			if err := c.performKeyUpgrades(activeCtx); err != nil {

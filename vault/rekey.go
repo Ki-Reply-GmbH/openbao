@@ -83,7 +83,7 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 	// recovery keys and we are rekeying the barrier key, we use the
 	// recovery config as the threshold instead.
 	if recovery || c.seal.RecoveryKeySupported() {
-		config, err = c.seal.RecoveryConfig(ctx)
+		config, err = c.seal.RecoveryConfig(ctx, namespace.RootNamespace)
 	} else {
 		config, err = c.seal.BarrierConfig(ctx, namespace.RootNamespace)
 	}
@@ -334,7 +334,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 	var err error
 	var useRecovery bool // Determines whether recovery key is being used to rekey the root key
 	if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedGeneric && c.seal.RecoveryKeySupported() {
-		existingConfig, err = c.seal.RecoveryConfig(ctx)
+		existingConfig, err = c.seal.RecoveryConfig(ctx, namespace.RootNamespace)
 		useRecovery = true
 	} else {
 		existingConfig, err = c.seal.BarrierConfig(ctx, namespace.RootNamespace)
@@ -605,7 +605,7 @@ func (c *Core) RecoveryRekeyUpdate(ctx context.Context, key []byte, nonce string
 	defer c.rekeyLock.Unlock()
 
 	// Get the seal configuration
-	existingConfig, err := c.seal.RecoveryConfig(ctx)
+	existingConfig, err := c.seal.RecoveryConfig(ctx, namespace.RootNamespace)
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing recovery config: %w", err).Error())
 	}
@@ -761,7 +761,7 @@ func (c *Core) performRecoveryRekey(ctx context.Context, newRootKey []byte) logi
 
 	c.recoveryRekeyConfig.VerificationKey = nil
 
-	if err := c.seal.SetRecoveryConfig(ctx, c.recoveryRekeyConfig); err != nil {
+	if err := c.seal.SetRecoveryConfig(ctx, c.recoveryRekeyConfig, namespace.RootNamespace); err != nil {
 		c.logger.Error("error saving rekey seal configuration", "error", err)
 		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to save rekey seal configuration: %w", err).Error())
 	}
