@@ -348,7 +348,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	// disabled. When using recovery keys they are stored in the barrier, so
 	// this must happen post-unseal.
 	if c.seal.RecoveryKeySupported() {
-		err = c.seal.SetRecoveryConfig(ctx, recoveryConfig)
+		err = c.seal.SetRecoveryConfig(ctx, recoveryConfig, namespace.RootNamespace)
 		if err != nil {
 			c.logger.Error("failed to save recovery configuration", "error", err)
 			return nil, fmt.Errorf("recovery configuration saving failed: %w", err)

@@ -74,7 +74,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("bad: %v", outConf)
 	}
 	if recoveryConf != nil {
-		outConf, err := c.seal.RecoveryConfig(context.Background())
+		outConf, err := c.seal.RecoveryConfig(context.Background(), namespace.RootNamespace)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -130,7 +130,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("bad: %v expect: %v", outConf, barrierConf)
 	}
 	if recoveryConf != nil {
-		outConf, err = c.seal.RecoveryConfig(context.Background())
+		outConf, err = c.seal.RecoveryConfig(context.Background(), namespace.RootNamespace)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -171,7 +171,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("bad: %v expect: %v", outConf, barrierConf)
 	}
 	if recoveryConf != nil {
-		outConf, err = c2.seal.RecoveryConfig(context.Background())
+		outConf, err = c2.seal.RecoveryConfig(context.Background(), namespace.RootNamespace)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
