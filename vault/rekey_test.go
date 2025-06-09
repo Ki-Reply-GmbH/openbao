@@ -212,7 +212,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// SealConfig should update
 	var sealConf *SealConfig
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.RecoveryConfig(context.Background(), namespace.RootNamespace)
 	} else {
 		sealConf, err = c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
 	}
@@ -313,7 +313,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 	// SealConfig should update
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.RecoveryConfig(context.Background(), namespace.RootNamespace)
 	} else {
 		sealConf, err = c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
 	}

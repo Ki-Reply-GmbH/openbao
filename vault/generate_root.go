@@ -214,7 +214,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	var config *SealConfig
 	var err error
 	if c.seal.RecoveryKeySupported() {
-		config, err = c.seal.RecoveryConfig(ctx)
+		config, err = c.seal.RecoveryConfig(ctx, namespace.RootNamespace)
 		if err != nil {
 			return nil, err
 		}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"sync"
 
 	"github.com/armon/go-radix"
@@ -61,10 +62,24 @@ func (c *Core) setupSealManager() error {
 	sealLogger := c.baseLogger.Named("seal")
 	c.AddLogger(sealLogger)
 	c.sealManager, err = NewSealManager(c, sealLogger)
+	if err != nil {
+		return err
+	}
+
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
-	c.sealManager.barrierByStoragePath.Insert(barrierSealConfigPath, nil)
-	return err
+
+	baseSealPath := path.Join(barrierSealBaseConfigPath, defaultSealPath) + "/"
+	c.sealManager.barrierByStoragePath.Insert(baseSealPath+shamirSealConfigPath, nil)
+	// TODO: remove
+	c.sealManager.barrierByStoragePath.Insert(baseSealPath+autoUnsealConfigPath, nil)
+	c.sealManager.barrierByStoragePath.Insert(baseSealPath+recoverySealConfigPath, nil)
+
+	// these are deprecated locations that also have to live outside the barrier
+	c.sealManager.barrierByStoragePath.Insert(deprecatedBarrierSealConfigPath, nil)
+	c.sealManager.barrierByStoragePath.Insert(deprecatedRecoverySealConfigPlaintextPath, nil)
+
+	return nil
 }
 
 // teardownSealManager is used to remove seal manager
@@ -103,9 +118,17 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 	sm.barrierByNamespace.Insert(ns.Path, barrier)
 	sm.barrierByStoragePath.Insert(metaPrefix, barrier)
+
+	// store the seal config using patient barrier
 	parentBarrier := sm.ParentNamespaceBarrier(ns)
 	if parentBarrier != nil {
-		sm.barrierByStoragePath.Insert(metaPrefix+barrierSealBaseConfigPath+defaultSealPath+shamirSealConfigPath, parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, autoUnsealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath), parentBarrier)
+
+		// Insert nils for old seal configs locations
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, deprecatedBarrierSealConfigPath), nil)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, deprecatedRecoverySealConfigPlaintextPath), nil)
 	}
 
 	sm.sealsByNamespace[ns.UUID] = map[string]*Seal{"default": &defaultSeal}

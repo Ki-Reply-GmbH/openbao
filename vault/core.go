@@ -1646,7 +1646,7 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 
 	switch {
 	case seal.RecoveryKeySupported():
-		config, err = seal.RecoveryConfig(ctx)
+		config, err = seal.RecoveryConfig(ctx, namespace.RootNamespace)
 	case c.isRaftUnseal():
 		// Ignore follower's seal config and refer to leader's barrier
 		// configuration.
@@ -1895,7 +1895,7 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 
 		// Force a cache bust here, which will also run migration code
 		if c.seal.RecoveryKeySupported() {
-			c.seal.SetRecoveryConfig(ctx, nil)
+			c.seal.SetRecoveryConfig(ctx, nil, namespace.RootNamespace)
 		}
 
 		c.standby = false
@@ -2390,7 +2390,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	// Purge these for safety in case of a rekey
 	_ = c.seal.SetBarrierConfig(ctx, nil, namespace.RootNamespace)
 	if c.seal.RecoveryKeySupported() {
-		_ = c.seal.SetRecoveryConfig(ctx, nil)
+		_ = c.seal.SetRecoveryConfig(ctx, nil, namespace.RootNamespace)
 	}
 
 	// Load prior un-updated store into version history cache to compare
@@ -2741,7 +2741,7 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 	}
 
 	if c.seal.RecoveryKeySupported() {
-		if err := c.seal.SetRecoveryConfig(ctx, rc); err != nil {
+		if err := c.seal.SetRecoveryConfig(ctx, rc, namespace.RootNamespace); err != nil {
 			return fmt.Errorf("error storing recovery config after migration: %w", err)
 		}
 	} else if err := c.physical.Delete(ctx, path.Join(barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath)); err != nil {
