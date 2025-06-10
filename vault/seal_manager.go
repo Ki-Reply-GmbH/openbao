@@ -144,10 +144,11 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 		if descendantNamespace == nil {
 			errs = errors.Join(errs, fmt.Errorf("namespace not found for path: %s", p))
 		}
-		if err := sm.core.UnloadNamespaceCredentialMounts(ctx, descendantNamespace); err != nil {
+		sm.core.namespaceStore.ClearNamespacePolicies(ctx, descendantNamespace, false)
+		if err := sm.core.namespaceStore.UnloadNamespaceCredentials(ctx, descendantNamespace); err != nil {
 			errs = errors.Join(errs, err)
 		}
-		if err := sm.core.UnloadNamespaceMounts(ctx, descendantNamespace); err != nil {
+		if err := sm.core.namespaceStore.UnloadNamespaceMounts(ctx, descendantNamespace); err != nil {
 			errs = errors.Join(errs, err)
 		}
 		err = s.Seal()

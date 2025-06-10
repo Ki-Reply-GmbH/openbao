@@ -1997,7 +1997,7 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 
 	if c.mounts != nil {
 		mountTable := c.mounts.shallowClone()
-		c.cleanupMountBackends(ctx, mountTable, "", func(*MountEntry) bool { return true })
+		c.cleanupMountBackends(ctx, mountTable, "", false, func(*MountEntry) bool { return true })
 	}
 
 	c.mounts = nil
@@ -2008,15 +2008,15 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 
 // unloadNamespaceMounts is used before we seal the namespace to reset the mounts to
 // their unloaded state, calling Cleanup if defined
-func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespace) error {
+func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespace, predicate func(*MountEntry) bool) error {
 	c.mountsLock.Lock()
 	defer c.mountsLock.Unlock()
 
 	if c.mounts != nil {
 		mountTable := c.mounts.shallowClone()
-		c.cleanupMountBackends(ctx, mountTable, "", func(e *MountEntry) bool {
-			return e.namespace.UUID == ns.UUID
-		})
+		if err := c.cleanupMountBackends(ctx, mountTable, "", true, predicate); err != nil {
+			return err
+		}
 	}
 	if c.logger.IsInfo() {
 		c.logger.Info(fmt.Sprintf("successfully unmounted namespace %q mounts from mount table", ns.Path))
@@ -2024,7 +2024,7 @@ func (c *Core) UnloadNamespaceMounts(ctx context.Context, ns *namespace.Namespac
 	return nil
 }
 
-func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable, pathPrefix string, predicate func(*MountEntry) bool) {
+func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable, pathPrefix string, unmountRouter bool, predicate func(*MountEntry) bool) error {
 	for _, e := range mountTable.Entries {
 		if predicate(e) {
 			nsCtx := namespace.ContextWithNamespace(ctx, e.namespace)
@@ -2032,8 +2032,14 @@ func (c *Core) cleanupMountBackends(ctx context.Context, mountTable *MountTable,
 			if backend != nil {
 				backend.Cleanup(ctx)
 			}
+			if unmountRouter {
+				if err := c.router.Unmount(nsCtx, e.Path); err != nil {
+					return err
+				}
+			}
 		}
 	}
+	return nil
 }
 
 // newLogicalBackend is used to create and configure a new logical backend by name.
