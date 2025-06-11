@@ -69,11 +69,9 @@ func (c *Core) setupSealManager() error {
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
 
-	baseSealPath := path.Join(barrierSealBaseConfigPath, defaultSealPath) + "/"
-	c.sealManager.barrierByStoragePath.Insert(baseSealPath+shamirSealConfigPath, nil)
-	// TODO: remove
-	c.sealManager.barrierByStoragePath.Insert(baseSealPath+autoUnsealConfigPath, nil)
-	c.sealManager.barrierByStoragePath.Insert(baseSealPath+recoverySealConfigPath, nil)
+	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, autoUnsealConfigPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath), nil)
 
 	// these are deprecated locations that also have to live outside the barrier
 	c.sealManager.barrierByStoragePath.Insert(deprecatedBarrierSealConfigPath, nil)
@@ -559,17 +557,32 @@ func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, err
 
 func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
 	// Get the storage path for this namespace's seal config
-	sealConfigPath := sm.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(shamirSealConfigPath).Prefix()
+	sealConfigsPath := sm.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath)
+	shamirSealPath := sealConfigsPath.SubView(shamirSealConfigPath).Prefix()
+
 	// Get access via the parent barrier
-	storage := sm.StorageAccessForPath(sealConfigPath)
-	configBytes, err := storage.Get(ctx, sealConfigPath)
+	storage := sm.StorageAccessForPath(shamirSealPath)
+
+	var err error
+	var configBytes []byte
+	configBytes, err = storage.Get(ctx, shamirSealPath)
 	if err != nil {
 		return false, err
 	}
 
-	// No seal config found - unsealed namespace
+	// No shamir seal config found
 	if configBytes == nil {
-		return false, nil
+		autoUnsealSealPath := sealConfigsPath.SubView(autoUnsealConfigPath).Prefix()
+		storage := sm.StorageAccessForPath(autoUnsealSealPath)
+		configBytes, err = storage.Get(ctx, autoUnsealSealPath)
+		if err != nil {
+			return false, err
+		}
+
+		// No auto unseal seal config found
+		if configBytes == nil {
+			return false, nil
+		}
 	}
 
 	var sealConfig SealConfig
