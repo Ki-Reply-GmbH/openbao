@@ -264,11 +264,11 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 	}
 
 	// Make sure the seal configs were updated correctly.
-	b, r, err := cluster.Cores[0].Core.PhysicalSealConfigs(context.Background())
+	shamirConfig, _, r, err := cluster.Cores[0].Core.PhysicalSealConfigs(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifyBarrierConfig(t, b, wrapping.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
+	verifyBarrierConfig(t, shamirConfig, wrapping.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
 	if r != nil {
 		t.Fatalf("expected nil recovery config, got: %#v", r)
 	}
@@ -536,11 +536,11 @@ func attemptUnseal(client *api.Client, keys [][]byte) error {
 
 func verifySealConfigShamir(t *testing.T, core *vault.TestClusterCore) {
 	t.Helper()
-	b, r, err := core.PhysicalSealConfigs(context.Background())
+	shamirConfig, _, r, err := core.PhysicalSealConfigs(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifyBarrierConfig(t, b, wrapping.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
+	verifyBarrierConfig(t, shamirConfig, wrapping.WrapperTypeShamir.String(), keyShares, keyThreshold, 1)
 	if r != nil {
 		t.Fatal("should not have recovery config for shamir")
 	}
@@ -548,11 +548,11 @@ func verifySealConfigShamir(t *testing.T, core *vault.TestClusterCore) {
 
 func verifySealConfigTransit(t *testing.T, core *vault.TestClusterCore) {
 	t.Helper()
-	b, r, err := core.PhysicalSealConfigs(context.Background())
+	_, autoUnsealConfig, r, err := core.PhysicalSealConfigs(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	verifyBarrierConfig(t, b, wrapping.WrapperTypeTransit.String(), 1, 1, 1)
+	verifyBarrierConfig(t, autoUnsealConfig, wrapping.WrapperTypeTransit.String(), 1, 1, 1)
 	verifyBarrierConfig(t, r, wrapping.WrapperTypeShamir.String(), keyShares, keyThreshold, 0)
 }
 

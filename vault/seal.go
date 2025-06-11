@@ -74,11 +74,6 @@ const (
 	// auto-unseal.
 	// DEPRECATED: Use recoverySealConfigPath instead.
 	deprecatedRecoverySealConfigPlaintextPath = "core/recovery-config"
-
-	// deprecatedEncryptedRecoverySealConfig is the path to the recovery key seal
-	// configuration. It lives inside the barrier.
-	// DEPRECATED: Use recoverySealConfigPath instead.
-	deprecatedEncryptedRecoverySealConfig = "core/recovery-seal-config"
 )
 
 const (
@@ -328,11 +323,6 @@ func (d *defaultSeal) migrateBarrierConfig(ctx context.Context, ns *namespace.Na
 	newBarrier := d.core.sealManager.StorageAccessForPath(entryPath)
 	if err := newBarrier.Put(ctx, entryPath, entryBytes); err != nil {
 		return fmt.Errorf("failed to write barrier seal configuration during migration: %w", err)
-	}
-
-	// Perform deletion of the old entry
-	if err := barrier.Delete(ctx, deprecatedBarrierSealConfigPath); err != nil {
-		return fmt.Errorf("failed to delete %q barrier seal configuration during migration: %w", deprecatedBarrierSealConfigPath, err)
 	}
 
 	return nil
