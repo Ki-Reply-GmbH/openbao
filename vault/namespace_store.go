@@ -1017,16 +1017,8 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 
 func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent *namespace.Namespace, namespaceToDelete *namespace.Namespace) error {
 	// clear ACL policies
-	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve namespace policies: %w", err)
-	}
-
-	for _, policy := range policiesToClear {
-		err := ns.core.policyStore.deletePolicyForce(nsCtx, policy, PolicyTypeACL)
-		if err != nil {
-			return fmt.Errorf("failed to delete policy: %w", err)
-		}
+	if err := ns.clearNamespacePolicies(nsCtx, namespaceToDelete, true); err != nil {
+		return fmt.Errorf("failed to clear namespace policies: %w", err)
 	}
 
 	// clear auth mounts
@@ -1087,6 +1079,42 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 	return nil
 }
 
+func (ns *NamespaceStore) clearNamespacePolicies(ctx context.Context, namespace *namespace.Namespace, physicalDeletion bool) error {
+	policiesToClear, err := ns.core.policyStore.ListPolicies(ctx, PolicyTypeACL, false)
+	if err != nil {
+		ns.logger.Error("failed to retrieve namespace policies", "namespace", namespace.Path, "error", err.Error())
+		return err
+	}
+
+	for _, policy := range policiesToClear {
+		if physicalDeletion {
+			err := ns.core.policyStore.deletePolicyForce(ctx, policy, PolicyTypeACL)
+			if err != nil {
+				ns.logger.Error(fmt.Sprintf("failed to delete policy %q", policy), "namespace", namespace.Path, "error", err.Error())
+				return err
+			}
+		} else {
+			ns.core.policyStore.invalidate(ctx, policy, PolicyTypeACL)
+		}
+	}
+	return nil
+}
+
+func (ns *NamespaceStore) UnloadNamespaceCredentials(ctx context.Context, namespace *namespace.Namespace) error {
+	return ns.core.UnloadNamespaceCredentialMounts(ctx, namespace, namespaceMatchPredicate(namespace))
+}
+
+func (ns *NamespaceStore) UnloadNamespaceMounts(ctx context.Context, namespace *namespace.Namespace) error {
+	return ns.core.UnloadNamespaceMounts(ctx, namespace, namespaceMatchPredicate(namespace))
+}
+
+// Returns true if mount entry namespace UUID matches the given namespace UUID
+func namespaceMatchPredicate(targetNS *namespace.Namespace) func(*MountEntry) bool {
+	return func(e *MountEntry) bool {
+		return e.namespace.UUID == targetNS.UUID
+	}
+}
+
 // SealNamespace seals namespace with provided path, failing to do so if the namespace
 // doesn't exist, is a root namespace or is tainted.
 func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
@@ -1115,7 +1143,7 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal tainted namespace")
 	}
 
-	return ns.core.sealManager.SealNamespace(namespaceToSeal)
+	return ns.core.sealManager.SealNamespace(ctx, namespaceToSeal)
 }
 
 // UnsealNamespace unseals namespace with a given path, using provided key
