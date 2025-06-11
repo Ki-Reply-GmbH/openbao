@@ -1726,16 +1726,12 @@ func (c *Core) sealMigrated(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
-	existShamirSealConfig, existAutoUnsealSealConfig, existRecoverySealConfig, err := c.PhysicalSealConfigs(ctx)
+	existSealConfig, existRecoverySealConfig, err := c.PhysicalSealConfigs(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	if existShamirSealConfig != nil && existShamirSealConfig.Type != c.seal.BarrierType().String() {
-		return false, nil
-	}
-
-	if existAutoUnsealSealConfig != nil && existAutoUnsealSealConfig.Type != c.seal.BarrierType().String() {
+	if existSealConfig != nil && existSealConfig.Type != c.seal.BarrierType().String() {
 		return false, nil
 	}
 
@@ -2594,66 +2590,69 @@ func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
 }
 
 func (c *Core) PhysicalSealConfigs(ctx context.Context) (
-	existingShamirSealConfig, existingAutoUnsealSealConfig, existingRecoverySealConfig *SealConfig, err error,
+	existingSealConfig, existingRecoverySealConfig *SealConfig, err error,
 ) {
 	entryPathShamir := c.NamespaceView(namespace.RootNamespace).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(shamirSealConfigPath).Prefix()
 	barrier := c.sealManager.StorageAccessForPath(entryPathShamir)
 	sealBytes, err := barrier.Get(ctx, entryPathShamir)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to fetch shamir barrier seal configuration at migration check time: %w", err)
+		return nil, nil, fmt.Errorf("failed to fetch shamir barrier seal configuration at migration check time: %w", err)
 	}
 
 	if sealBytes != nil {
-		if err := jsonutil.DecodeJSON(sealBytes, &existingShamirSealConfig); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to decode shamir barrier seal configuration at migration check time: %w", err)
+		if err := jsonutil.DecodeJSON(sealBytes, &existingSealConfig); err != nil {
+			return nil, nil, fmt.Errorf("failed to decode shamir barrier seal configuration at migration check time: %w", err)
 		}
 
-		if err = existingShamirSealConfig.Validate(); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to validate shamir barrier seal configuration at migration check time: %w", err)
+		if err = existingSealConfig.Validate(); err != nil {
+			return nil, nil, fmt.Errorf("failed to validate shamir barrier seal configuration at migration check time: %w", err)
 		}
 
 		// In older versions of vault the default seal would not store a type. This
 		// is here to offer backwards compatibility for older seal configs.
-		if existingShamirSealConfig.Type == "" {
-			existingShamirSealConfig.Type = wrapping.WrapperTypeShamir.String()
+		if existingSealConfig.Type == "" {
+			existingSealConfig.Type = wrapping.WrapperTypeShamir.String()
 		}
 	}
 
-	entryPathAutoUnseal := c.NamespaceView(namespace.RootNamespace).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(autoUnsealConfigPath).Prefix()
-	barrier = c.sealManager.StorageAccessForPath(entryPathAutoUnseal)
-	sealBytes, err = barrier.Get(ctx, entryPathAutoUnseal)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to fetch auto unseal barrier seal configuration at migration check time: %w", err)
-	}
-
-	if sealBytes != nil {
-		if err := jsonutil.DecodeJSON(sealBytes, &existingAutoUnsealSealConfig); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to decode auto unseal barrier seal configuration at migration check time: %w", err)
+	if existingSealConfig == nil {
+		entryPathAutoUnseal := c.NamespaceView(namespace.RootNamespace).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(autoUnsealConfigPath).Prefix()
+		barrier = c.sealManager.StorageAccessForPath(entryPathAutoUnseal)
+		sealBytes, err = barrier.Get(ctx, entryPathAutoUnseal)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to fetch auto unseal barrier seal configuration at migration check time: %w", err)
 		}
 
-		if err = existingAutoUnsealSealConfig.Validate(); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to validate auto unseal barrier seal configuration at migration check time: %w", err)
+		if sealBytes != nil {
+			if err := jsonutil.DecodeJSON(sealBytes, &existingSealConfig); err != nil {
+				return nil, nil, fmt.Errorf("failed to decode auto unseal barrier seal configuration at migration check time: %w", err)
+			}
+
+			if err = existingSealConfig.Validate(); err != nil {
+				return nil, nil, fmt.Errorf("failed to validate auto unseal barrier seal configuration at migration check time: %w", err)
+			}
 		}
 	}
 
 	// both shamir and auto unseal seals do not exist
-	if existingShamirSealConfig == nil && existingAutoUnsealSealConfig == nil {
-		return nil, nil, nil, nil
+	if existingSealConfig == nil {
+		return nil, nil, nil
 	}
 
 	entryPathRecovery := c.NamespaceView(namespace.RootNamespace).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(recoverySealConfigPath).Prefix()
 	barrier = c.sealManager.StorageAccessForPath(entryPathRecovery)
 	sealBytes, err = barrier.Get(ctx, entryPathRecovery)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to fetch recovery seal configuration at migration check time: %w", err)
+		return nil, nil, fmt.Errorf("failed to fetch recovery seal configuration at migration check time: %w", err)
 	}
+
 	if sealBytes != nil {
 		if err := jsonutil.DecodeJSON(sealBytes, &existingRecoverySealConfig); err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to decode recovery seal configuration at migration check time: %w", err)
+			return nil, nil, fmt.Errorf("failed to decode recovery seal configuration at migration check time: %w", err)
 		}
 		err = existingRecoverySealConfig.Validate()
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to validate recovery seal configuration at migration check time: %w", err)
+			return nil, nil, fmt.Errorf("failed to validate recovery seal configuration at migration check time: %w", err)
 		}
 		// In older versions of vault the default seal would not store a type. This
 		// is here to offer backwards compatibility for older seal configs.
@@ -2662,22 +2661,22 @@ func (c *Core) PhysicalSealConfigs(ctx context.Context) (
 		}
 	}
 
-	return existingShamirSealConfig, existingAutoUnsealSealConfig, existingRecoverySealConfig, nil
+	return existingSealConfig, existingRecoverySealConfig, nil
 }
 
 // adjustForSealMigration takes the unwrapSeal, which is nil if (a) we're not
 // configured for seal migration or (b) we might be doing a seal migration away
-// from shamir.  It will only be non-nil if there is a configured seal with
+// from shamir. It will only be non-nil if there is a configured seal with
 // the config key disabled=true, which implies a migration away from autoseal.
 //
 // For case (a), the common case, we expect that the stored barrier
-// config matches the seal type, in which case we simply return nil.  If they
+// config matches the seal type, in which case we simply return nil. If they
 // don't match, and the stored seal config is of type Shamir but the configured
 // seal is not Shamir, that is case (b) and we make an unwrapSeal of type Shamir.
 // Any other unwrapSeal=nil scenario is treated as an error.
 //
 // Given a non-nil unwrapSeal or case (b), we setup c.migrationInfo to prepare
-// for a migration upon receiving a valid migration unseal request.  We cannot
+// for a migration upon receiving a valid migration unseal request. We cannot
 // check at this time for already performed (or incomplete) migrations because
 // we haven't yet been unsealed, so we have no way of checking whether a
 // shamir seal works to read stored seal-encrypted data.
@@ -2685,25 +2684,15 @@ func (c *Core) PhysicalSealConfigs(ctx context.Context) (
 // The assumption throughout is that the very last step of seal migration is
 // to write the new barrier/recovery stored seal config.
 func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
-	ctx := context.Background()
-	existShamirSealConfig, existAutoUnsealSealConfig, existRecoverySealConfig, err := c.PhysicalSealConfigs(ctx)
+	existSealConfig, existRecoverySealConfig, err := c.PhysicalSealConfigs(namespace.RootContext(context.Background()))
 	if err != nil {
 		return fmt.Errorf("Error checking for existing seal: %s", err)
 	}
 
-	// If we don't have an existing config, skip out
-	if existShamirSealConfig == nil && existAutoUnsealSealConfig == nil {
+	// If we don't have an existing config or if it's the
+	// deprecated auto seal which needs an upgrade, skip out
+	if existSealConfig == nil || existSealConfig.Type == WrapperTypeHsmAutoDeprecated.String() {
 		return nil
-	}
-
-	// If we have the deprecated auto seal which needs an upgrade, skip out
-	if existAutoUnsealSealConfig != nil && existAutoUnsealSealConfig.Type == WrapperTypeHsmAutoDeprecated.String() {
-		return nil
-	}
-
-	existSealConfig := existShamirSealConfig
-	if existSealConfig == nil {
-		existSealConfig = existAutoUnsealSealConfig
 	}
 
 	if unwrapSeal == nil {
@@ -2764,7 +2753,7 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 }
 
 func (c *Core) migrateSealConfig(ctx context.Context) error {
-	existShamirSealConfig, existAutoUnsealSealConfig, existRecoverySealConfig, err := c.PhysicalSealConfigs(ctx)
+	existSealConfig, existRecoverySealConfig, err := c.PhysicalSealConfigs(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to read existing seal configuration during migration: %v", err)
 	}
@@ -2774,7 +2763,7 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 	switch {
 	case c.migrationInfo.seal.RecoveryKeySupported() && c.seal.RecoveryKeySupported():
 		// Migrating from auto->auto, copy the configs over
-		bc, rc = existAutoUnsealSealConfig, existRecoverySealConfig
+		bc, rc = existSealConfig, existRecoverySealConfig
 	case c.migrationInfo.seal.RecoveryKeySupported():
 		// Migrating from auto->shamir, clone auto's recovery config and set
 		// stored keys to 1.
@@ -2791,7 +2780,7 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 			StoredShares:    1,
 		}
 
-		rc = existShamirSealConfig.Clone()
+		rc = existSealConfig.Clone()
 		rc.StoredShares = 0
 	}
 
@@ -2803,8 +2792,19 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 		if err := c.seal.SetRecoveryConfig(ctx, rc, namespace.RootNamespace); err != nil {
 			return fmt.Errorf("error storing recovery config after migration: %w", err)
 		}
+
+		// delete the shamir config entry
+		if err = c.physical.Delete(ctx, path.Join(barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath)); err != nil {
+			return fmt.Errorf("failed to delete old shamir seal configuration during migration: %w", err)
+		}
+
 	} else if err := c.physical.Delete(ctx, path.Join(barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath)); err != nil {
 		return fmt.Errorf("failed to delete old recovery seal configuration during migration: %w", err)
+	} else {
+		// delete autounseal config entry
+		if err = c.physical.Delete(ctx, path.Join(barrierSealBaseConfigPath, defaultSealPath, autoUnsealConfigPath)); err != nil {
+			return fmt.Errorf("failed to delete old shamir seal configuration during migration: %w", err)
+		}
 	}
 
 	return nil
