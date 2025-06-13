@@ -143,7 +143,7 @@ func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
 	entryPath := resolveStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
 	storage := d.core.sealManager.StorageAccessForPath(entryPath)
-	entryBytes, err := storage.Get(ctx, storedBarrierKeysPath)
+	entryBytes, err := storage.Get(ctx, entryPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch stored keys: %w", err)
 	}
