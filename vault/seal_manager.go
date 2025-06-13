@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"sync"
 
 	"github.com/armon/go-radix"
@@ -15,8 +16,6 @@ import (
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
-	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
@@ -61,10 +60,24 @@ func (c *Core) setupSealManager() error {
 	sealLogger := c.baseLogger.Named("seal")
 	c.AddLogger(sealLogger)
 	c.sealManager, err = NewSealManager(c, sealLogger)
+	if err != nil {
+		return err
+	}
+
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
-	c.sealManager.barrierByStoragePath.Insert("core/seal-config", nil)
-	return err
+
+	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, autoUnsealConfigPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, storedBarrierKeysPath), nil)
+
+	// these are deprecated locations that also have to live outside the barrier
+	c.sealManager.barrierByStoragePath.Insert(deprecatedBarrierSealConfigPath, nil)
+	c.sealManager.barrierByStoragePath.Insert(deprecatedRecoverySealConfigPlaintextPath, nil)
+	c.sealManager.barrierByStoragePath.Insert(deprecatedStoredBarrierKeysPath, nil)
+
+	return nil
 }
 
 // teardownSealManager is used to remove seal manager
@@ -100,18 +113,29 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("failed to construct namespace barrier: %w", err)
 	}
 	// barrier.Initialize(ctx context.Context, rootKey []byte, sealKey []byte, random io.Reader)
+
 	sm.barrierByNamespace.Insert(ns.Path, barrier)
 	sm.barrierByStoragePath.Insert(metaPrefix, barrier)
+
+	// store the seal config using patient barrier
 	parentBarrier := sm.ParentNamespaceBarrier(ns)
 	if parentBarrier != nil {
-		sm.barrierByStoragePath.Insert(metaPrefix+barrierSealConfigPath, parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, autoUnsealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, storedBarrierKeysPath), parentBarrier)
+
+		// deprecated locations
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, deprecatedBarrierSealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, deprecatedRecoverySealConfigPlaintextPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, deprecatedStoredBarrierKeysPath), parentBarrier)
 	}
 
 	sm.sealsByNamespace[ns.UUID] = map[string]*Seal{"default": &defaultSeal}
 	sm.unlockInformationByNamespace[ns.UUID] = map[string]*unlockInformation{}
 
 	if writeToStorage {
-		err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
+		err = defaultSeal.SetBarrierConfig(ctx, sealConfig)
 		if err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}
@@ -216,7 +240,7 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 
 	// Verify the seal configuration
 	seal := *seals["default"]
-	sealConf, err := seal.BarrierConfig(ctx, ns)
+	sealConf, err := seal.BarrierConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +356,7 @@ func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bo
 // If the key fragments are part of a recovery key, also verify that
 // it matches the stored recovery key on disk.
 func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespace.Namespace) ([]byte, error) {
-	sealConfig, err := seal.BarrierConfig(ctx, ns)
+	sealConfig, err := seal.BarrierConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +444,7 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) error {
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
 	nsSeal := *sm.sealsByNamespace[ns.UUID]["default"]
 
-	sealConfig, err := nsSeal.BarrierConfig(ctx, ns)
+	sealConfig, err := nsSeal.BarrierConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve seal config: %w", err)
 	}
@@ -522,18 +546,32 @@ func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, err
 
 func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
 	// Get the storage path for this namespace's seal config
-	sealConfigPath := sm.core.NamespaceView(ns).SubView(barrierSealConfigPath).Prefix()
+	sealConfigsPath := sm.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath)
+	shamirSealPath := sealConfigsPath.SubView(shamirSealConfigPath).Prefix()
 
 	// Get access via the parent barrier
-	storage := sm.StorageAccessForPath(sealConfigPath)
-	configBytes, err := storage.Get(ctx, sealConfigPath)
+	storage := sm.StorageAccessForPath(shamirSealPath)
+
+	var err error
+	var configBytes []byte
+	configBytes, err = storage.Get(ctx, shamirSealPath)
 	if err != nil {
 		return false, err
 	}
 
-	// No seal config found - unsealed namespace
+	// No shamir seal config found
 	if configBytes == nil {
-		return false, nil
+		autoUnsealSealPath := sealConfigsPath.SubView(autoUnsealConfigPath).Prefix()
+		storage := sm.StorageAccessForPath(autoUnsealSealPath)
+		configBytes, err = storage.Get(ctx, autoUnsealSealPath)
+		if err != nil {
+			return false, err
+		}
+
+		// No auto unseal seal config found
+		if configBytes == nil {
+			return false, nil
+		}
 	}
 
 	var sealConfig SealConfig
@@ -546,78 +584,4 @@ func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Name
 	}
 
 	return true, nil
-}
-
-type StorageAccess interface {
-	Put(context.Context, string, []byte) error
-	Get(context.Context, string) ([]byte, error)
-	Delete(context.Context, string) error
-	ListPage(context.Context, string, string, int) ([]string, error)
-}
-
-var (
-	_ StorageAccess = (*directStorageAccess)(nil)
-	_ StorageAccess = (*secureStorageAccess)(nil)
-)
-
-type directStorageAccess struct {
-	physical physical.Backend
-}
-
-func (p *directStorageAccess) Put(ctx context.Context, path string, value []byte) error {
-	pe := &physical.Entry{
-		Key:   path,
-		Value: value,
-	}
-	return p.physical.Put(ctx, pe)
-}
-
-func (p *directStorageAccess) Get(ctx context.Context, path string) ([]byte, error) {
-	pe, err := p.physical.Get(ctx, path)
-	if err != nil {
-		return nil, err
-	}
-	if pe == nil {
-		return nil, nil
-	}
-	return pe.Value, nil
-}
-
-func (p *directStorageAccess) Delete(ctx context.Context, key string) error {
-	return p.physical.Delete(ctx, key)
-}
-
-func (p *directStorageAccess) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
-	return p.physical.ListPage(ctx, prefix, after, limit)
-}
-
-type secureStorageAccess struct {
-	barrier SecurityBarrier
-}
-
-func (b *secureStorageAccess) Put(ctx context.Context, path string, value []byte) error {
-	se := &logical.StorageEntry{
-		Key:   path,
-		Value: value,
-	}
-	return b.barrier.Put(ctx, se)
-}
-
-func (b *secureStorageAccess) Get(ctx context.Context, path string) ([]byte, error) {
-	se, err := b.barrier.Get(ctx, path)
-	if err != nil {
-		return nil, err
-	}
-	if se == nil {
-		return nil, nil
-	}
-	return se.Value, nil
-}
-
-func (b *secureStorageAccess) Delete(ctx context.Context, key string) error {
-	return b.barrier.Delete(ctx, key)
-}
-
-func (b *secureStorageAccess) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
-	return b.barrier.ListPage(ctx, prefix, after, limit)
 }

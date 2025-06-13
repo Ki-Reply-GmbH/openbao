@@ -10,53 +10,83 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 	"sync/atomic"
-
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
-
-	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/v2/physical"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/golang/protobuf/proto"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/vault/seal"
 )
 
 const (
-	// barrierSealConfigPath is the path used to store our seal configuration.
-	// This value is stored in plaintext, since we must be able to read it even
-	// with the Vault sealed. This is required so that we know how many secret
-	// parts must be used to reconstruct the unseal key.
-	barrierSealConfigPath = "core/seal-config"
+	// barrierSealBaseConfigPath is the path used to store all namespace scoped
+	// seals configuration.
+	barrierSealBaseConfigPath = "core/seals/"
 
-	// recoverySealConfigPath is the path to the recovery key seal
-	// configuration. It lives inside the barrier.
-	// DEPRECATED: Use recoverySealConfigPlaintextPath instead.
-	recoverySealConfigPath = "core/recovery-seal-config"
+	// defaultSealPath is the name/path that all seal operations default to.
+	defaultSealPath = "default/"
 
-	// recoverySealConfigPlaintextPath is the path to the recovery key seal
-	// configuration. This is stored in plaintext so that we can perform
-	// auto-unseal.
-	recoverySealConfigPlaintextPath = "core/recovery-config"
+	// shamirSealConfigPath is the path used to store our seal configuration.
+	// This value is stored in plaintext, so that we can read it even with the
+	// barrier sealed. This is required so that we know how many secret parts
+	// must be used to reconstruct the unseal key.
+	shamirSealConfigPath = "shamir-config"
+
+	// autoUnsealConfigPath is the path used to store our auto-unseal configuration.
+	// As it can contain sensitive data, it has to live inside the barrier.
+	autoUnsealConfigPath = "autounseal-config"
+
+	// recoverySealConfigPath is the path to the recovery key seal configuration.
+	// This is stored in plaintext so that we can perform auto-unseal.
+	recoverySealConfigPath = "recovery-config"
+
+	// storedBarrierKeysPath is the path used for storing HSM-encrypted unseal keyd.
+	// Stored outside barrier, but encrypted with seal mechanism's key information.
+	storedBarrierKeysPath = "encrypted-root"
+
+	// ----
 
 	// recoveryKeyPath is the path to the recovery key
 	recoveryKeyPath = "core/recovery-key"
 
-	// StoredBarrierKeysPath is the path used for storing HSM-encrypted unseal keys
-	StoredBarrierKeysPath = "core/hsm/barrier-unseal-keys"
-
 	// hsmStoredIVPath is the path to the initialization vector for stored keys
 	hsmStoredIVPath = "core/hsm/iv"
+)
+
+// List of deprecated paths:
+const (
+	// deprecatedBarrierSealConfigPath is the path used to store our seal configuration.
+	// This value is stored in plaintext, since we must be able to read it even
+	// with the Vault sealed. This is required so that we know how many secret
+	// parts must be used to reconstruct the unseal key.
+	// DEPRECATED: Use shamirSealConfigPath or autoUnsealConfigPath instead.
+	deprecatedBarrierSealConfigPath = "core/seal-config"
+
+	// deprecatedRecoverySealConfigPlaintextPath is the path to the recovery key
+	// seal configuration. This is stored in plaintext so that we can perform
+	// auto-unseal.
+	// DEPRECATED: Use recoverySealConfigPath instead.
+	deprecatedRecoverySealConfigPlaintextPath = "core/recovery-config"
+
+	// deprecatedStoredBarrierKeysPath is the old path used for storing
+	// HSM-encrypted unseal keys before introduction of multiple seals layout.
+	// DEPRECATED: Use storedBarrierKeysPath instead.
+	deprecatedStoredBarrierKeysPath = "core/hsm/barrier-unseal-keys"
 )
 
 const (
 	RecoveryTypeUnsupported = "unsupported"
 	RecoveryTypeShamir      = "shamir"
 )
+
+func resolveStorageEntryPath(metaPrefix, entryPath string) string {
+	return path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, entryPath)
+}
 
 type Seal interface {
 	SetCore(*Core)
@@ -67,9 +97,9 @@ type Seal interface {
 	SealWrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
-	BarrierType() wrapping.WrapperType                                        // SealAccess
-	BarrierConfig(context.Context, *namespace.Namespace) (*SealConfig, error) // SealAccess
-	SetBarrierConfig(context.Context, *SealConfig, *namespace.Namespace) error
+	BarrierType() wrapping.WrapperType                  // SealAccess
+	BarrierConfig(context.Context) (*SealConfig, error) // SealAccess
+	SetBarrierConfig(context.Context, *SealConfig) error
 	SetCachedBarrierConfig(*SealConfig)
 	RecoveryKeySupported() bool // SealAccess
 	RecoveryType() string
@@ -147,112 +177,6 @@ func (d *defaultSeal) RecoveryKeySupported() bool {
 	return false
 }
 
-func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access, keys)
-}
-
-func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	keys, err := readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access)
-	return keys, err
-}
-
-func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
-	cfg := d.config.Load().(*SealConfig)
-	if cfg != nil {
-		return cfg.Clone(), nil
-	}
-
-	if err := d.checkCore(); err != nil {
-		return nil, err
-	}
-
-	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
-	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
-
-	// Fetch the core configuration
-	valueBytes, err := barrier.Get(ctx, view.Prefix())
-	if err != nil {
-		d.core.logger.Error("failed to read seal configuration", "error", err)
-		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
-	}
-
-	// If the seal configuration is missing, we are not initialized
-	if valueBytes == nil {
-		d.core.logger.Info("seal configuration missing, not initialized")
-		return nil, nil
-	}
-
-	var conf SealConfig
-
-	// Decode the barrier entry
-	if err := jsonutil.DecodeJSON(valueBytes, &conf); err != nil {
-		d.core.logger.Error("failed to decode seal configuration", "error", err)
-		return nil, fmt.Errorf("failed to decode seal configuration: %w", err)
-	}
-
-	switch conf.Type {
-	// This case should not be valid for other types as only this is the default
-	case "":
-		conf.Type = d.BarrierType().String()
-	case d.BarrierType().String():
-	default:
-		d.core.logger.Error("barrier seal type does not match expected type", "barrier_seal_type", conf.Type, "loaded_seal_type", d.BarrierType())
-		return nil, fmt.Errorf("barrier seal type of %q does not match expected type of %q", conf.Type, d.BarrierType())
-	}
-
-	// Check for a valid seal configuration
-	if err := conf.Validate(); err != nil {
-		d.core.logger.Error("invalid seal configuration", "error", err)
-		return nil, fmt.Errorf("seal validation failed: %w", err)
-	}
-
-	d.SetCachedBarrierConfig(&conf)
-	return conf.Clone(), nil
-}
-
-func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, ns *namespace.Namespace) error {
-	if err := d.checkCore(); err != nil {
-		return err
-	}
-
-	// Provide a way to wipe out the cached value (also prevents actually
-	// saving a nil config)
-	if config == nil {
-		d.config.Store((*SealConfig)(nil))
-		return nil
-	}
-
-	config.Type = d.BarrierType().String()
-
-	// If we are doing a raft unseal we do not want to persist the barrier config
-	// because storage isn't setup yet.
-	if d.core.isRaftUnseal() {
-		d.config.Store(config.Clone())
-		return nil
-	}
-
-	// Encode the seal configuration
-	buf, err := json.Marshal(config)
-	if err != nil {
-		return fmt.Errorf("failed to encode seal configuration: %w", err)
-	}
-
-	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
-	barrier := d.core.sealManager.StorageAccessForPath(view.Prefix())
-	if err := barrier.Put(ctx, view.Prefix(), buf); err != nil {
-		d.core.logger.Error("failed to write seal configuration", "error", err)
-		return fmt.Errorf("failed to write seal configuration: %w", err)
-	}
-
-	d.SetCachedBarrierConfig(config.Clone())
-
-	return nil
-}
-
-func (d *defaultSeal) SetCachedBarrierConfig(config *SealConfig) {
-	d.config.Store(config)
-}
-
 func (d *defaultSeal) RecoveryType() string {
 	return RecoveryTypeUnsupported
 }
@@ -278,6 +202,172 @@ func (d *defaultSeal) VerifyRecoveryKey(ctx context.Context, key []byte) error {
 
 func (d *defaultSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 	return errors.New("recovery not supported")
+}
+
+func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
+	entryPath := resolveStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
+	storage := d.core.sealManager.StorageAccessForPath(entryPath)
+
+	return writeStoredKeys(ctx, storage, entryPath, d.access, keys)
+}
+
+func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
+	entryPath := resolveStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
+	storage := d.core.sealManager.StorageAccessForPath(entryPath)
+
+	return readStoredKeys(ctx, storage, entryPath, d.access)
+}
+
+func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
+	cfg := d.config.Load().(*SealConfig)
+	if cfg != nil {
+		return cfg.Clone(), nil
+	}
+
+	if err := d.checkCore(); err != nil {
+		return nil, err
+	}
+
+	sealType := "barrier"
+
+	var sealBytes []byte
+	var err error
+
+	// Fetch the seal configuration
+	entryPath := resolveStorageEntryPath(d.metaPrefix, shamirSealConfigPath)
+	barrier := d.core.sealManager.StorageAccessForPath(entryPath)
+
+	sealBytes, err = barrier.Get(ctx, entryPath)
+	if err != nil {
+		d.core.logger.Error("failed to read seal configuration", "error", err)
+		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
+	}
+
+	if sealBytes == nil {
+		if d.core.Sealed() {
+			d.core.logger.Info("seal configuration missing, but cannot check old path as core is sealed", "seal_type", sealType)
+			return nil, nil
+		}
+
+		// Check the old barrier seal config path so an upgraded standby will
+		// return the correct seal config
+		oldStorage := d.core.sealManager.StorageAccessForPath(deprecatedBarrierSealConfigPath)
+		sealBytes, err = oldStorage.Get(ctx, deprecatedBarrierSealConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %q seal configuration: %w", deprecatedRecoverySealConfigPlaintextPath, err)
+		}
+
+		// If the seal configuration is missing, then we are not initialized.
+		if sealBytes == nil {
+			d.core.logger.Info("seal configuration missing, not initialized", "seal_type", sealType)
+			return nil, nil
+		}
+	}
+
+	conf := &SealConfig{}
+	if err = jsonutil.DecodeJSON(sealBytes, conf); err != nil {
+		d.core.logger.Error("failed to decode seal configuration", "seal_type", sealType, "error", err)
+		return nil, fmt.Errorf("failed to decode %q seal configuration: %w", sealType, err)
+	}
+
+	// Check if a valid seal configuration
+	if err := conf.Validate(); err != nil {
+		d.core.logger.Error("invalid seal configuration", "seal_type", sealType, "error", err)
+		return nil, fmt.Errorf("%q seal validation failed: %w", sealType, err)
+	}
+
+	switch conf.Type {
+	// This case should not be valid for other types as only this is the default
+	case "":
+		conf.Type = d.BarrierType().String()
+	case d.BarrierType().String():
+	default:
+		d.core.logger.Error("barrier seal type does not match expected type", "barrier_seal_type", conf.Type, "loaded_seal_type", d.BarrierType())
+		return nil, fmt.Errorf("barrier seal type of %q does not match expected type of %q", conf.Type, d.BarrierType())
+	}
+
+	d.SetCachedBarrierConfig(conf)
+	return conf.Clone(), nil
+}
+
+func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) error {
+	if err := d.checkCore(); err != nil {
+		return err
+	}
+
+	// Perform migration if applicable
+	if err := d.migrateBarrierConfig(ctx); err != nil {
+		return err
+	}
+
+	// Provide a way to wipe out the cached value (also prevents actually
+	// saving a nil config)
+	if config == nil {
+		d.config.Store((*SealConfig)(nil))
+		return nil
+	}
+
+	config.Type = d.BarrierType().String()
+
+	// If we are doing a raft unseal we do not want to persist the barrier config
+	// because storage isn't setup yet.
+	if d.core.isRaftUnseal() {
+		d.config.Store(config.Clone())
+		return nil
+	}
+
+	// Encode the seal configuration
+	buf, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to encode seal configuration: %w", err)
+	}
+
+	// Store the seal configuration
+	entryPath := resolveStorageEntryPath(d.metaPrefix, shamirSealConfigPath)
+	barrier := d.core.sealManager.StorageAccessForPath(entryPath)
+	if err = barrier.Put(ctx, entryPath, buf); err != nil {
+		d.core.logger.Error("failed to write seal configuration", "error", err)
+		return fmt.Errorf("failed to write seal configuration: %w", err)
+	}
+
+	d.SetCachedBarrierConfig(config.Clone())
+
+	return nil
+}
+
+// migrateBarrierConfig is a helper func to migrate the barrier config from
+// deprecatedBarrierSealConfigPath path to the new one under `/seals`.
+// This is called from SetBarrierConfig which is always called with the stateLock.
+func (d *defaultSeal) migrateBarrierConfig(ctx context.Context) error {
+	barrier := d.core.sealManager.StorageAccessForPath(deprecatedBarrierSealConfigPath)
+
+	// Get config from the old deprecatedBarrierSealConfigPath path
+	entryBytes, err := barrier.Get(ctx, deprecatedBarrierSealConfigPath)
+	if err != nil {
+		return fmt.Errorf("failed to read %q barrier seal configuration during migration: %w", deprecatedBarrierSealConfigPath, err)
+	}
+
+	// If entry is nil, then skip migration
+	if entryBytes == nil {
+		return nil
+	}
+
+	// Only log if we are performing the migration
+	d.core.logger.Debug("migrating barrier seal configuration")
+	defer d.core.logger.Debug("done migrating barrier seal configuration")
+
+	// Perform path migration
+	entryPath := resolveStorageEntryPath(d.metaPrefix, shamirSealConfigPath)
+	newBarrier := d.core.sealManager.StorageAccessForPath(entryPath)
+	if err := newBarrier.Put(ctx, entryPath, entryBytes); err != nil {
+		return fmt.Errorf("failed to write barrier seal configuration during migration: %w", err)
+	}
+
+	return nil
+}
+
+func (d *defaultSeal) SetCachedBarrierConfig(config *SealConfig) {
+	d.config.Store(config)
 }
 
 func (d *defaultSeal) GetShamirWrapper() (*aeadwrapper.ShamirWrapper, error) {
@@ -434,7 +524,7 @@ func (e *ErrDecrypt) Is(target error) bool {
 	return ok || errors.Is(e.Err, target)
 }
 
-func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access, keys [][]byte) error {
+func writeStoredKeys(ctx context.Context, storage StorageAccess, entryPath string, encryptor seal.Access, keys [][]byte) error {
 	if keys == nil {
 		return errors.New("keys were nil")
 	}
@@ -459,32 +549,27 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix s
 	}
 
 	// Store the seal configuration.
-	pe := &physical.Entry{
-		Key:   metaPrefix + StoredBarrierKeysPath, // TODO(SEALHA): will we need to store more than one set of keys?
-		Value: value,
-	}
-
-	if err := storage.Put(ctx, pe); err != nil {
+	if err := storage.Put(ctx, entryPath, value); err != nil {
 		return fmt.Errorf("failed to write keys to storage: %w", err)
 	}
 
 	return nil
 }
 
-func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access) ([][]byte, error) {
-	pe, err := storage.Get(ctx, metaPrefix+StoredBarrierKeysPath)
+func readStoredKeys(ctx context.Context, storage StorageAccess, entryPath string, encryptor seal.Access) ([][]byte, error) {
+	storedKeysEntry, err := storage.Get(ctx, entryPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch stored keys: %w", err)
 	}
 
 	// This is not strictly an error; we may not have any stored keys, for
 	// instance, if we're not initialized
-	if pe == nil {
+	if storedKeysEntry == nil {
 		return nil, nil
 	}
 
 	blobInfo := &wrapping.BlobInfo{}
-	if err := proto.Unmarshal(pe.Value, blobInfo); err != nil {
+	if err := proto.Unmarshal(storedKeysEntry, blobInfo); err != nil {
 		return nil, fmt.Errorf("failed to proto decode stored keys: %w", err)
 	}
 
