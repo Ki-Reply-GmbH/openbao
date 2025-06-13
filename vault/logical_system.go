@@ -5836,6 +5836,9 @@ This path responds to the following HTTP methods.
 		
     GET /<name>/seal-status
         Returns the seal status of the namespace.
+		
+	Get /<name>/key-status
+		Provides the namespace current backend encryption key term and installation time.
 		`,
 	},
 }

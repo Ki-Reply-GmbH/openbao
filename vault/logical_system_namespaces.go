@@ -283,7 +283,6 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		}
 		keySharesMap := make(map[string][]string)
 		if new {
-			// TODO(wslabosz): write all the provided configs
 			if len(sealConfigs) > 0 {
 				if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry, true); err != nil {
 					return handleError(err)
@@ -291,7 +290,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 
 				nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
 				if err != nil {
-					return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
+					return logical.ErrorResponse(err.Error()), err
 				}
 				var keyShares []string
 				for _, keyShare := range nsSealKeyShares {

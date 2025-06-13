@@ -17,11 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, name string, customMetadata map[string]string) *namespace.Namespace {
+// testCreateNamespace returns details of created namespace, and keyshares of the namespace seal
+func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, name string, reqBody map[string]interface{}) (*namespace.Namespace, map[string][]string) {
 	t.Helper()
 	req := logical.TestRequest(t, logical.UpdateOperation, path.Join("namespaces", name))
-	if customMetadata != nil {
-		req.Data["custom_metadata"] = customMetadata
+	if reqBody != nil {
+		req.Data = reqBody
 	}
 	res, err := b.HandleRequest(ctx, req)
 	require.NoError(t, err)
@@ -32,7 +33,7 @@ func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, n
 		Path:           res.Data["path"].(string),
 		Tainted:        res.Data["tainted"].(bool),
 		CustomMetadata: res.Data["custom_metadata"].(map[string]string),
-	}
+	}, res.Data["key_shares"].(map[string][]string)
 }
 
 func TestNamespaceBackend_Set(t *testing.T) {
@@ -55,7 +56,7 @@ func TestNamespaceBackend_Set(t *testing.T) {
 	})
 
 	t.Run("create namespace name validation", func(t *testing.T) {
-		nsTeam1 := testCreateNamespace(t, rootCtx, b, "team_1", map[string]string{})
+		nsTeam1, _ := testCreateNamespace(t, rootCtx, b, "team_1", nil)
 		tcases := []struct {
 			path      string
 			wantPath  string
@@ -122,7 +123,7 @@ func TestNamespaceBackend_Set(t *testing.T) {
 
 	t.Run("update namespace metadata", func(t *testing.T) {
 		customMetadata := map[string]string{"abc": "def"}
-		testCreateNamespace(t, rootCtx, b, "bar", customMetadata)
+		testCreateNamespace(t, rootCtx, b, "bar", map[string]interface{}{"custom_metadata": customMetadata})
 
 		newMetadata := map[string]string{"testing": "hello"}
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/foo")
@@ -145,7 +146,7 @@ func TestNamespaceBackend_Read(t *testing.T) {
 
 	t.Run("reads existing namespace as expected", func(t *testing.T) {
 		customMetadata := map[string]string{"abc": "def"}
-		testCreateNamespace(t, rootCtx, b, "foo", customMetadata)
+		testCreateNamespace(t, rootCtx, b, "foo", map[string]interface{}{"custom_metadata": customMetadata})
 
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/foo")
 		res, err := b.HandleRequest(rootCtx, req)
@@ -161,9 +162,9 @@ func TestNamespaceBackend_Read(t *testing.T) {
 
 	t.Run("reads nested namespace via context and path", func(t *testing.T) {
 		customMetadata := map[string]string{"abc": "def"}
-		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
-		testCreateNamespace(t, nestedCtx, b, "bar", customMetadata)
+		testCreateNamespace(t, nestedCtx, b, "bar", map[string]interface{}{"custom_metadata": customMetadata})
 
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/bar")
 		res, err := b.HandleRequest(nestedCtx, req)
@@ -221,7 +222,7 @@ func TestNamespaceBackend_Patch(t *testing.T) {
 
 	t.Run("remove metadata keys", func(t *testing.T) {
 		customMetadata := map[string]string{"abc": "def"}
-		testCreateNamespace(t, rootCtx, b, "bar", customMetadata)
+		testCreateNamespace(t, rootCtx, b, "bar", map[string]interface{}{"custom_metadata": customMetadata})
 
 		req := logical.TestRequest(t, logical.PatchOperation, "namespaces/bar")
 		patch := map[string]interface{}{"abc": nil}
@@ -244,7 +245,7 @@ func TestNamespaceBackend_Patch(t *testing.T) {
 
 	t.Run("add and remove keys in one shot", func(t *testing.T) {
 		customMetadata := map[string]string{"abc": "def"}
-		testCreateNamespace(t, rootCtx, b, "baz", customMetadata)
+		testCreateNamespace(t, rootCtx, b, "baz", map[string]interface{}{"custom_metadata": customMetadata})
 
 		req := logical.TestRequest(t, logical.PatchOperation, "namespaces/baz")
 		patch := map[string]interface{}{"abc": nil, "testing": "hello"}
@@ -257,9 +258,10 @@ func TestNamespaceBackend_Patch(t *testing.T) {
 	})
 
 	t.Run("patch nested namespace", func(t *testing.T) {
-		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
-		testCreateNamespace(t, nestedCtx, b, "bar", map[string]string{"abc": "def"})
+		customMetadata := map[string]string{"abc": "def"}
+		testCreateNamespace(t, nestedCtx, b, "bar", map[string]interface{}{"custom_metadata": customMetadata})
 
 		// ctx ns = /, path = foo/bar
 		req := logical.TestRequest(t, logical.PatchOperation, "namespaces/foo/bar")
@@ -315,7 +317,7 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 	})
 
 	t.Run("delete nested namespace", func(t *testing.T) {
-		fooNs := testCreateNamespace(t, rootCtx, b, "foobar", nil)
+		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foobar", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		testCreateNamespace(t, nestedCtx, b, "bar", nil)
 		testCreateNamespace(t, nestedCtx, b, "baz", nil)
@@ -406,7 +408,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 	})
 
 	t.Run("list only includes one level of namespaces", func(t *testing.T) {
-		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		testCreateNamespace(t, rootCtx, b, "bar", nil)
 		testCreateNamespace(t, nestedCtx, b, "baz", nil)
@@ -441,7 +443,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 
 	t.Run("list nested namespaces", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "unrelated", nil)
-		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		testCreateNamespace(t, nestedCtx, b, "bar", nil)
 		testCreateNamespace(t, nestedCtx, b, "baz", nil)
@@ -518,7 +520,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 	})
 
 	t.Run("scan includes multiple levels of namespaces", func(t *testing.T) {
-		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
 		testCreateNamespace(t, rootCtx, b, "bar", nil)
 		testCreateNamespace(t, nestedCtx, b, "baz", nil)
@@ -553,9 +555,9 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 
 	t.Run("scan nested namespaces", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "unrelated", nil)
-		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooNs, _ := testCreateNamespace(t, rootCtx, b, "foo", nil)
 		fooCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
-		bazNs := testCreateNamespace(t, fooCtx, b, "baz", nil)
+		bazNs, _ := testCreateNamespace(t, fooCtx, b, "baz", nil)
 		bazCtx := namespace.ContextWithNamespace(rootCtx, bazNs)
 		testCreateNamespace(t, bazCtx, b, "bar", nil)
 
