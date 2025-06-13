@@ -548,6 +548,17 @@ func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Name
 	return true, nil
 }
 
+func (sm *SealManager) RotateNamespace(ctx context.Context, namespace *namespace.Namespace) error {
+	nsBarrier, found := sm.barrierByNamespace.Get(namespace.Path)
+	nsSecurityBarrier, ok := nsBarrier.(SecurityBarrier)
+	if !found || !ok {
+		return errors.New("namespace is not a sealable namespace")
+	}
+
+	_, err := nsSecurityBarrier.Rotate(ctx, sm.core.secureRandomReader)
+	return err
+}
+
 type StorageAccess interface {
 	Put(context.Context, string, []byte) error
 	Get(context.Context, string) ([]byte, error)
