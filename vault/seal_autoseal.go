@@ -15,12 +15,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
-
 	proto "github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/openbao/helper/namespace"
+	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
@@ -127,26 +125,34 @@ func (d *autoSeal) RecoveryKeySupported() bool {
 // SetStoredKeys uses the autoSeal.Access.Encrypts method to wrap the keys. The stored entry
 // does not need to be seal wrapped in this case.
 func (d *autoSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access, keys)
+	entryPath := resolveStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
+	storage := d.core.sealManager.StorageAccessForPath(entryPath)
+
+	return writeStoredKeys(ctx, storage, entryPath, d.Access, keys)
 }
 
 // GetStoredKeys retrieves the key shares by unwrapping the encrypted key using the
 // autoseal.
 func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access)
+	entryPath := resolveStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
+	storage := d.core.sealManager.StorageAccessForPath(entryPath)
+
+	return readStoredKeys(ctx, storage, entryPath, d.Access)
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
-	pe, err := d.core.physical.Get(ctx, StoredBarrierKeysPath)
+	entryPath := resolveStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
+	storage := d.core.sealManager.StorageAccessForPath(entryPath)
+	entryBytes, err := storage.Get(ctx, storedBarrierKeysPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch stored keys: %w", err)
 	}
-	if pe == nil {
+	if entryBytes == nil {
 		return errors.New("no stored keys found")
 	}
 
 	blobInfo := &wrapping.BlobInfo{}
-	if err := proto.Unmarshal(pe.Value, blobInfo); err != nil {
+	if err := proto.Unmarshal(entryBytes, blobInfo); err != nil {
 		return fmt.Errorf("failed to proto decode stored keys: %w", err)
 	}
 
@@ -195,7 +201,7 @@ func (d *autoSeal) UpgradeKeys(ctx context.Context) error {
 	return nil
 }
 
-func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
+func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	if d.barrierConfig.Load().(*SealConfig) != nil {
 		return d.barrierConfig.Load().(*SealConfig).Clone(), nil
 	}
@@ -210,7 +216,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (
 	var err error
 
 	// Fetch the seal configuration
-	entryPath := d.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(autoUnsealConfigPath).Prefix()
+	entryPath := resolveStorageEntryPath(d.metaPrefix, autoUnsealConfigPath)
 	barrier := d.core.sealManager.StorageAccessForPath(entryPath)
 	sealBytes, err = barrier.Get(ctx, entryPath)
 	if err != nil {
@@ -261,13 +267,13 @@ func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (
 	return conf.Clone(), nil
 }
 
-func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig, ns *namespace.Namespace) error {
+func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error {
 	if err := d.checkCore(); err != nil {
 		return err
 	}
 
 	// Perform migration if applicable
-	if err := d.migrateBarrierConfig(ctx, ns); err != nil {
+	if err := d.migrateBarrierConfig(ctx); err != nil {
 		return err
 	}
 
@@ -284,9 +290,8 @@ func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig, ns *n
 		return fmt.Errorf("failed to encode barrier seal configuration: %w", err)
 	}
 
-	entryPath := d.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(autoUnsealConfigPath).Prefix()
-
 	// Store the seal configuration
+	entryPath := resolveStorageEntryPath(d.metaPrefix, autoUnsealConfigPath)
 	barrier := d.core.sealManager.StorageAccessForPath(entryPath)
 	if err = barrier.Put(ctx, entryPath, buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
@@ -307,7 +312,7 @@ func (d *autoSeal) RecoveryType() string {
 }
 
 // RecoveryConfig returns the recovery config on recoverySealConfigPath.
-func (d *autoSeal) RecoveryConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
+func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 	if d.recoveryConfig.Load().(*SealConfig) != nil {
 		return d.recoveryConfig.Load().(*SealConfig).Clone(), nil
 	}
@@ -321,7 +326,7 @@ func (d *autoSeal) RecoveryConfig(ctx context.Context, ns *namespace.Namespace) 
 	var sealBytes []byte
 	var err error
 
-	entryPath := d.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(recoverySealConfigPath).Prefix()
+	entryPath := resolveStorageEntryPath(d.metaPrefix, recoverySealConfigPath)
 	barrier := d.core.sealManager.StorageAccessForPath(entryPath)
 	sealBytes, err = barrier.Get(ctx, entryPath)
 	if err != nil {
@@ -375,13 +380,13 @@ func (d *autoSeal) RecoveryConfig(ctx context.Context, ns *namespace.Namespace) 
 
 // SetRecoveryConfig writes the recovery configuration to the physical storage
 // and sets it as the seal's recoveryConfig.
-func (d *autoSeal) SetRecoveryConfig(ctx context.Context, conf *SealConfig, ns *namespace.Namespace) error {
+func (d *autoSeal) SetRecoveryConfig(ctx context.Context, conf *SealConfig) error {
 	if err := d.checkCore(); err != nil {
 		return err
 	}
 
 	// Perform migration if applicable
-	if err := d.migrateRecoveryConfig(ctx, ns); err != nil {
+	if err := d.migrateRecoveryConfig(ctx); err != nil {
 		return err
 	}
 
@@ -392,14 +397,14 @@ func (d *autoSeal) SetRecoveryConfig(ctx context.Context, conf *SealConfig, ns *
 
 	conf.Type = d.RecoveryType()
 
-	// Encode the seal configuration
+	// Encode the recovery seal configuration
 	buf, err := json.Marshal(conf)
 	if err != nil {
 		return fmt.Errorf("failed to encode recovery seal configuration: %w", err)
 	}
 
-	// Store the seal configuration
-	entryPath := d.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(recoverySealConfigPath).Prefix()
+	// Store the recovery seal configuration
+	entryPath := resolveStorageEntryPath(d.metaPrefix, recoverySealConfigPath)
 	barrier := d.core.sealManager.StorageAccessForPath(entryPath)
 
 	if err := barrier.Put(ctx, entryPath, buf); err != nil {
@@ -530,7 +535,7 @@ func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
 // migrateBarrierConfig is a helper func to migrate the barrier config from
 // deprecatedBarrierSealConfigPath path to the new one under `/seals`.
 // This is called from SetBarrierConfig which is always called with the stateLock.
-func (d *autoSeal) migrateBarrierConfig(ctx context.Context, ns *namespace.Namespace) error {
+func (d *autoSeal) migrateBarrierConfig(ctx context.Context) error {
 	barrier := d.core.sealManager.StorageAccessForPath(deprecatedBarrierSealConfigPath)
 
 	// Get config from the old deprecatedBarrierSealConfigPath path
@@ -549,7 +554,7 @@ func (d *autoSeal) migrateBarrierConfig(ctx context.Context, ns *namespace.Names
 	defer d.logger.Debug("done migrating barrier seal configuration")
 
 	// Perform path migration
-	entryPath := d.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(autoUnsealConfigPath).Prefix()
+	entryPath := resolveStorageEntryPath(d.metaPrefix, autoUnsealConfigPath)
 	newBarrier := d.core.sealManager.StorageAccessForPath(entryPath)
 	if err := newBarrier.Put(ctx, entryPath, entryBytes); err != nil {
 		return fmt.Errorf("failed to write barrier seal configuration during migration: %w", err)
@@ -561,7 +566,7 @@ func (d *autoSeal) migrateBarrierConfig(ctx context.Context, ns *namespace.Names
 // migrateRecoveryConfig is a helper func to migrate the barrier config from
 // deprecated location (deprecatedRecoverySealConfigPlaintextPath) inside the barrier.
 // This is called from SetRecoveryConfig which is always called with the stateLock.
-func (d *autoSeal) migrateRecoveryConfig(ctx context.Context, ns *namespace.Namespace) error {
+func (d *autoSeal) migrateRecoveryConfig(ctx context.Context) error {
 	// Get config from the deprecatedRecoverySealConfigPlaintextPath path
 	barrierStorage := d.core.sealManager.StorageAccessForPath(deprecatedRecoverySealConfigPlaintextPath)
 	sealBytes, err := barrierStorage.Get(ctx, deprecatedRecoverySealConfigPlaintextPath)
@@ -578,9 +583,8 @@ func (d *autoSeal) migrateRecoveryConfig(ctx context.Context, ns *namespace.Name
 	d.logger.Debug("migrating recovery seal configuration")
 	defer d.logger.Debug("done migrating recovery seal configuration")
 
-	entryPath := d.core.NamespaceView(ns).SubView(barrierSealBaseConfigPath).SubView(defaultSealPath).SubView(recoverySealConfigPath).Prefix()
+	entryPath := resolveStorageEntryPath(d.metaPrefix, recoverySealConfigPath)
 	barrier := d.core.sealManager.StorageAccessForPath(entryPath)
-
 	if err := barrier.Put(ctx, entryPath, sealBytes); err != nil {
 		return fmt.Errorf("failed to write recovery seal configuration during migration: %w", err)
 	}
