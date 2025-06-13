@@ -1666,13 +1666,13 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 
 	switch {
 	case seal.RecoveryKeySupported():
-		config, err = seal.RecoveryConfig(ctx, namespace.RootNamespace)
+		config, err = seal.RecoveryConfig(ctx)
 	case c.isRaftUnseal():
 		// Ignore follower's seal config and refer to leader's barrier
 		// configuration.
 		config = raftInfo.leaderBarrierConfig
 	default:
-		config, err = seal.BarrierConfig(ctx, namespace.RootNamespace)
+		config, err = seal.BarrierConfig(ctx)
 	}
 	if err != nil {
 		return nil, err
@@ -1916,7 +1916,7 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 
 		// Force a cache bust here, which will also run migration code
 		if c.seal.RecoveryKeySupported() {
-			c.seal.SetRecoveryConfig(ctx, nil, namespace.RootNamespace)
+			c.seal.SetRecoveryConfig(ctx, nil)
 		}
 
 		c.standby = false
@@ -2409,9 +2409,9 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	}
 
 	// Purge these for safety in case of a rekey
-	_ = c.seal.SetBarrierConfig(ctx, nil, namespace.RootNamespace)
+	_ = c.seal.SetBarrierConfig(ctx, nil)
 	if c.seal.RecoveryKeySupported() {
-		_ = c.seal.SetRecoveryConfig(ctx, nil, namespace.RootNamespace)
+		_ = c.seal.SetRecoveryConfig(ctx, nil)
 	}
 
 	// Load prior un-updated store into version history cache to compare
@@ -2784,12 +2784,12 @@ func (c *Core) migrateSealConfig(ctx context.Context) error {
 		rc.StoredShares = 0
 	}
 
-	if err := c.seal.SetBarrierConfig(ctx, bc, namespace.RootNamespace); err != nil {
+	if err := c.seal.SetBarrierConfig(ctx, bc); err != nil {
 		return fmt.Errorf("error storing barrier config after migration: %w", err)
 	}
 
 	if c.seal.RecoveryKeySupported() {
-		if err := c.seal.SetRecoveryConfig(ctx, rc, namespace.RootNamespace); err != nil {
+		if err := c.seal.SetRecoveryConfig(ctx, rc); err != nil {
 			return fmt.Errorf("error storing recovery config after migration: %w", err)
 		}
 
@@ -2880,7 +2880,7 @@ func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []
 		if useTestSeal {
 			testseal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
 			testseal.SetCore(c)
-			cfg, err := seal.BarrierConfig(ctx, namespace.RootNamespace)
+			cfg, err := seal.BarrierConfig(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("failed to setup test barrier config: %w", err)
 			}

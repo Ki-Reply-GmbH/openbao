@@ -105,7 +105,7 @@ func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
 	}
 
 	// Verify the seal configuration
-	sealConf, err := c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+	sealConf, err := c.seal.BarrierConfig(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -292,7 +292,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		}
 	}()
 
-	err = c.seal.SetBarrierConfig(ctx, barrierConfig, namespace.RootNamespace)
+	err = c.seal.SetBarrierConfig(ctx, barrierConfig)
 	if err != nil {
 		c.logger.Error("failed to save barrier configuration", "error", err)
 		return nil, fmt.Errorf("barrier configuration saving failed: %w", err)
@@ -348,7 +348,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	// disabled. When using recovery keys they are stored in the barrier, so
 	// this must happen post-unseal.
 	if c.seal.RecoveryKeySupported() {
-		err = c.seal.SetRecoveryConfig(ctx, recoveryConfig, namespace.RootNamespace)
+		err = c.seal.SetRecoveryConfig(ctx, recoveryConfig)
 		if err != nil {
 			c.logger.Error("failed to save recovery configuration", "error", err)
 			return nil, fmt.Errorf("recovery configuration saving failed: %w", err)

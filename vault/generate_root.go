@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
@@ -214,12 +213,12 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	var config *SealConfig
 	var err error
 	if c.seal.RecoveryKeySupported() {
-		config, err = c.seal.RecoveryConfig(ctx, namespace.RootNamespace)
+		config, err = c.seal.RecoveryConfig(ctx)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		config, err = c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+		config, err = c.seal.BarrierConfig(ctx)
 		if err != nil {
 			return nil, err
 		}

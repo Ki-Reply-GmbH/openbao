@@ -2137,7 +2137,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		t.Fatal(err)
 	}
 
-	cfg, err := leader.Core.seal.BarrierConfig(ctx, namespace.RootNamespace)
+	cfg, err := leader.Core.seal.BarrierConfig(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
