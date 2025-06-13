@@ -15,18 +15,18 @@ import (
 var (
 	// ErrBarrierSealed is returned if an operation is performed on
 	// a sealed barrier. No operation is expected to succeed before unsealing
-	ErrBarrierSealed = errors.New("Barrier is sealed")
+	ErrBarrierSealed = errors.New("barrier is sealed")
 
 	// ErrBarrierAlreadyInit is returned if the barrier is already
 	// initialized. This prevents a re-initialization.
-	ErrBarrierAlreadyInit = errors.New("Barrier is already initialized")
+	ErrBarrierAlreadyInit = errors.New("barrier is already initialized")
 
 	// ErrBarrierNotInit is returned if a non-initialized barrier
 	// is attempted to be unsealed.
-	ErrBarrierNotInit = errors.New("Barrier is not initialized")
+	ErrBarrierNotInit = errors.New("barrier is not initialized")
 
 	// ErrBarrierInvalidKey is returned if the Unseal key is invalid
-	ErrBarrierInvalidKey = errors.New("Unseal failed, invalid key")
+	ErrBarrierInvalidKey = errors.New("unseal failed, invalid key")
 
 	// ErrPlaintextTooLarge is returned if a plaintext is offered for encryption
 	// that is too large to encrypt in memory
@@ -34,8 +34,8 @@ var (
 )
 
 const (
-	// keyringPath is the location of the keyring data. This is encrypted
-	// by the root key.
+	// keyringPath is the location of the keyring data.
+	// This entry is encrypted by the root key.
 	keyringPath = "core/keyring"
 
 	// keyringUpgradePrefix is the path used to store keyring update entries.
@@ -64,8 +64,8 @@ const (
 	legacyRootKeyPath = "core/master"
 
 	// shamirKekPath is used with Shamir in v1.3+ to store a copy of the
-	// unseal key behind the barrier.  As with rootKeyPath this is primarily
-	// used by standbys to handle rekeys.  It also comes into play when restoring
+	// unseal key behind the barrier. As with rootKeyPath this is primarily
+	// used by standbys to handle rekeys. It also comes into play when restoring
 	// raft snapshots.
 	shamirKekPath = "core/shamir-kek"
 )
