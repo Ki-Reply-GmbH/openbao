@@ -32,7 +32,7 @@ func TestNamespaceBackend_KeyStatus(t *testing.T) {
 		require.Empty(t, resp)
 	})
 
-	t.Run("returns key info for sealable namespacve", func(t *testing.T) {
+	t.Run("returns key info for sealable namespace", func(t *testing.T) {
 		sealConfig := map[string]interface{}{"type": "shamir", "secret_shares": 3, "secret_threshold": 2}
 		testCreateNamespace(t, rootCtx, b, "bar", map[string]interface{}{"seals": sealConfig})
 		req := logical.TestRequest(t, logical.ReadOperation, "namespaces/bar/key-status")
