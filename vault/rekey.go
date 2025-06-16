@@ -547,7 +547,7 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 
 	if len(newSealKey) > 0 {
 		err := c.barrier.Put(ctx, &logical.StorageEntry{
-			Key:   shamirKekPath,
+			Key:   resolveSealStorageEntryPath("", shamirKekPath),
 			Value: newSealKey,
 		})
 		if err != nil {

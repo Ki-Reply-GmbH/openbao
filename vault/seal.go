@@ -49,13 +49,8 @@ const (
 	// Stored outside barrier, but encrypted with seal mechanism's key information.
 	storedBarrierKeysPath = "encrypted-root"
 
-	// ----
-
 	// recoveryKeyPath is the path to the recovery key
 	recoveryKeyPath = "core/recovery-key"
-
-	// hsmStoredIVPath is the path to the initialization vector for stored keys
-	hsmStoredIVPath = "core/hsm/iv"
 )
 
 // List of deprecated paths:
@@ -84,7 +79,9 @@ const (
 	RecoveryTypeShamir      = "shamir"
 )
 
-func resolveStorageEntryPath(metaPrefix, entryPath string) string {
+// resolveSealStorageEntryPath resolves path to the specific seal config location
+// using the given namespaces prefix and name of the entry.
+func resolveSealStorageEntryPath(metaPrefix, entryPath string) string {
 	return path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, entryPath)
 }
 
@@ -205,14 +202,14 @@ func (d *defaultSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 }
 
 func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	entryPath := resolveStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
+	entryPath := resolveSealStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
 	storage := d.core.sealManager.StorageAccessForPath(entryPath)
 
 	return writeStoredKeys(ctx, storage, entryPath, d.access, keys)
 }
 
 func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	entryPath := resolveStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
+	entryPath := resolveSealStorageEntryPath(d.metaPrefix, storedBarrierKeysPath)
 	storage := d.core.sealManager.StorageAccessForPath(entryPath)
 
 	return readStoredKeys(ctx, storage, entryPath, d.access)
@@ -234,7 +231,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	var err error
 
 	// Fetch the seal configuration
-	entryPath := resolveStorageEntryPath(d.metaPrefix, shamirSealConfigPath)
+	entryPath := resolveSealStorageEntryPath(d.metaPrefix, shamirSealConfigPath)
 	barrier := d.core.sealManager.StorageAccessForPath(entryPath)
 
 	sealBytes, err = barrier.Get(ctx, entryPath)
@@ -323,7 +320,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 	}
 
 	// Store the seal configuration
-	entryPath := resolveStorageEntryPath(d.metaPrefix, shamirSealConfigPath)
+	entryPath := resolveSealStorageEntryPath(d.metaPrefix, shamirSealConfigPath)
 	barrier := d.core.sealManager.StorageAccessForPath(entryPath)
 	if err = barrier.Put(ctx, entryPath, buf); err != nil {
 		d.core.logger.Error("failed to write seal configuration", "error", err)
@@ -357,7 +354,7 @@ func (d *defaultSeal) migrateBarrierConfig(ctx context.Context) error {
 	defer d.core.logger.Debug("done migrating barrier seal configuration")
 
 	// Perform path migration
-	entryPath := resolveStorageEntryPath(d.metaPrefix, shamirSealConfigPath)
+	entryPath := resolveSealStorageEntryPath(d.metaPrefix, shamirSealConfigPath)
 	newBarrier := d.core.sealManager.StorageAccessForPath(entryPath)
 	if err := newBarrier.Put(ctx, entryPath, entryBytes); err != nil {
 		return fmt.Errorf("failed to write barrier seal configuration during migration: %w", err)
