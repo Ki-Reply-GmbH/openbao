@@ -48,6 +48,15 @@ func NewRawBackend(core *Core) *RawBackend {
 	return r
 }
 
+func checkRawProtectedPaths(op, path string) error {
+	for _, p := range protectedPaths {
+		if strings.HasPrefix(path, p) || strings.HasSuffix(path, p) {
+			return fmt.Errorf("cannot %s %q", op, path)
+		}
+	}
+	return nil
+}
+
 // handleRawRead is used to read directly from the barrier
 func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	path := data.Get("path").(string)
@@ -67,12 +76,8 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 		b.logger.Info("reading", "path", path)
 	}
 
-	// Prevent access of protected paths
-	for _, p := range protectedPaths {
-		if strings.HasPrefix(path, p) {
-			err := fmt.Sprintf("cannot read %q", path)
-			return logical.ErrorResponse(err), logical.ErrInvalidRequest
-		}
+	if err := checkRawProtectedPaths("read", path); err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	barrier := b.core.sealManager.StorageAccessForPath(path)
@@ -132,12 +137,8 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		b.logger.Info("writing", "path", path)
 	}
 
-	// Prevent access of protected paths
-	for _, p := range protectedPaths {
-		if strings.HasPrefix(path, p) {
-			err := fmt.Sprintf("cannot write %q", path)
-			return logical.ErrorResponse(err), logical.ErrInvalidRequest
-		}
+	if err := checkRawProtectedPaths("write", path); err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	v := data.Get("value").(string)
@@ -228,12 +229,8 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 		b.logger.Info("deleting", "path", path)
 	}
 
-	// Prevent access of protected paths
-	for _, p := range protectedPaths {
-		if strings.HasPrefix(path, p) {
-			err := fmt.Sprintf("cannot delete %q", path)
-			return logical.ErrorResponse(err), logical.ErrInvalidRequest
-		}
+	if err := checkRawProtectedPaths("delete", path); err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	barrier := b.core.sealManager.StorageAccessForPath(path)
@@ -260,12 +257,8 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 		b.logger.Info("listing", "path", path)
 	}
 
-	// Prevent access of protected paths
-	for _, p := range protectedPaths {
-		if strings.HasPrefix(path, p) {
-			err := fmt.Sprintf("cannot list %q", path)
-			return logical.ErrorResponse(err), logical.ErrInvalidRequest
-		}
+	if err := checkRawProtectedPaths("list", path); err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	barrier := b.core.sealManager.StorageAccessForPath(path)

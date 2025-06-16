@@ -960,27 +960,34 @@ func (c *Core) reloadShamirKey(ctx context.Context) error {
 	if cfg, _ := c.seal.BarrierConfig(ctx); cfg == nil {
 		return nil
 	}
-	var shamirKey []byte
+
 	switch c.seal.StoredKeysSupported() {
 	case seal.StoredKeysSupportedGeneric:
 		return nil
 	case seal.StoredKeysSupportedShamirRoot:
-		entry, err := c.barrier.Get(ctx, shamirKekPath)
+		entry, err := c.barrier.Get(ctx, resolveSealStorageEntryPath("", shamirKekPath))
 		if err != nil {
 			return err
 		}
 		if entry == nil {
-			return nil
+			entry, err = c.barrier.Get(ctx, legacyShamirKekPath)
+			if err != nil {
+				return err
+			}
+			if entry == nil {
+				return nil
+			}
 		}
-		shamirKey = entry.Value
+		shamirWrapper, err := c.seal.GetShamirWrapper()
+		if err != nil {
+			return err
+		}
+		return shamirWrapper.SetAesGcmKeyBytes(entry.Value)
 	case seal.StoredKeysNotSupported:
 		return errors.New("legacy shamir seals are not supported by OpenBao")
+	default:
+		return nil
 	}
-	shamirWrapper, err := c.seal.GetShamirWrapper()
-	if err != nil {
-		return err
-	}
-	return shamirWrapper.SetAesGcmKeyBytes(shamirKey)
 }
 
 func (c *Core) performKeyUpgrades(ctx context.Context) error {

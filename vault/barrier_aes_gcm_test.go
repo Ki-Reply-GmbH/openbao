@@ -561,7 +561,7 @@ func TestAESGCMBarrier_ReloadKeyring(t *testing.T) {
 	b.Initialize(context.Background(), key, nil, rand.Reader)
 	b.Unseal(context.Background(), key)
 
-	keyringRaw, err := inm.Get(context.Background(), keyringPath)
+	keyringRaw, err := inm.Get(context.Background(), resolveSealStorageEntryPath("", keyringPath))
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

@@ -2903,7 +2903,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 func TestSystemBackend_rawRead_Protected(t *testing.T) {
 	b := testSystemBackendRaw(t)
 
-	req := logical.TestRequest(t, logical.ReadOperation, "raw/"+keyringPath)
+	req := logical.TestRequest(t, logical.ReadOperation, "raw/"+resolveSealStorageEntryPath("", keyringPath))
 	_, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -2913,7 +2913,7 @@ func TestSystemBackend_rawRead_Protected(t *testing.T) {
 func TestSystemBackend_rawWrite_Protected(t *testing.T) {
 	b := testSystemBackendRaw(t)
 
-	req := logical.TestRequest(t, logical.UpdateOperation, "raw/"+keyringPath)
+	req := logical.TestRequest(t, logical.UpdateOperation, "raw/"+resolveSealStorageEntryPath("", keyringPath))
 	_, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)
@@ -3280,7 +3280,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 func TestSystemBackend_rawDelete_Protected(t *testing.T) {
 	b := testSystemBackendRaw(t)
 
-	req := logical.TestRequest(t, logical.DeleteOperation, "raw/"+keyringPath)
+	req := logical.TestRequest(t, logical.DeleteOperation, "raw/"+resolveSealStorageEntryPath("", keyringPath))
 	_, err := b.HandleRequest(namespace.RootContext(nil), req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("err: %v", err)

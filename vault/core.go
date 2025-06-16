@@ -1599,7 +1599,7 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 		// unseal the node.
 		for {
 			if !keyringFound {
-				entry, err := c.underlyingPhysical.Get(ctx, keyringPath)
+				entry, err := c.underlyingPhysical.Get(ctx, resolveSealStorageEntryPath("", keyringPath))
 				if err != nil {
 					c.logger.Error("failed to list physical keys", "error", err)
 					return

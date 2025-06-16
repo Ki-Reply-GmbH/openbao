@@ -34,9 +34,10 @@ var (
 )
 
 const (
-	// keyringPath is the location of the keyring data.
-	// This entry is encrypted by the root key.
-	keyringPath = "core/keyring"
+	// keyringPath is the location of the copy of the barrier keyring
+	// encrypted with that seal's current root key, which allows you
+	// to decrypt the current latest root key.
+	keyringPath = "barrier-keyring"
 
 	// keyringUpgradePrefix is the path used to store keyring update entries.
 	// When running in HA mode, the active instance will install the new key
@@ -59,15 +60,28 @@ const (
 	// used to reload the keyring itself.
 	rootKeyPath = "core/root-key"
 
+	// shamirKekPath is used with Shamir in v1.3+ to store a copy
+	// of the unseal key behind the barrier. As with rootKeyPath
+	// this is primarily used by standbys to handle rekeys.
+	// It also comes into play when restoring raft snapshots.
+	shamirKekPath = "kek"
+)
+
+const (
+	// legacyKeyringPath is the location of the keyring data.
+	// This entry is encrypted by the root key.
+	legacyKeyringPath = "core/keyring"
+
+	// legacyShamirKekPath is an old path introduced in v1.3+,
+	// used with Shamir to store a copy of the unseal key behind
+	// the barrier. As with rootKeyPath this is primarily used by
+	// standbys to handle rekeys. It also comes into play when
+	// restoring raft snapshots.
+	legacyShamirKekPath = "core/shamir-kek"
+
 	// legacyRootKeyPath is the former value of rootKeyPath and is replaced
 	// on initialization or rotation.
 	legacyRootKeyPath = "core/master"
-
-	// shamirKekPath is used with Shamir in v1.3+ to store a copy of the
-	// unseal key behind the barrier. As with rootKeyPath this is primarily
-	// used by standbys to handle rekeys. It also comes into play when restoring
-	// raft snapshots.
-	shamirKekPath = "core/shamir-kek"
 )
 
 type SecurityBarrierCore interface {
