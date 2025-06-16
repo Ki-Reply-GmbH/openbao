@@ -67,9 +67,11 @@ const (
 	shamirKekPath = "kek"
 )
 
+// legacy paths:
 const (
 	// legacyKeyringPath is the location of the keyring data.
 	// This entry is encrypted by the root key.
+	// DEPRECATED: Use keyringPath instead.
 	legacyKeyringPath = "core/keyring"
 
 	// legacyShamirKekPath is an old path introduced in v1.3+,
@@ -77,10 +79,12 @@ const (
 	// the barrier. As with rootKeyPath this is primarily used by
 	// standbys to handle rekeys. It also comes into play when
 	// restoring raft snapshots.
+	// DEPRECATED: Use shamirKekPath instead.
 	legacyShamirKekPath = "core/shamir-kek"
 
 	// legacyRootKeyPath is the former value of rootKeyPath and is replaced
 	// on initialization or rotation.
+	// DEPRECATED: Use rootKeyPath instead.
 	legacyRootKeyPath = "core/master"
 )
 

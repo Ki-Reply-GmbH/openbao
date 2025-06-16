@@ -45,33 +45,37 @@ const (
 	// This is stored in plaintext so that we can perform auto-unseal.
 	recoverySealConfigPath = "recovery-config"
 
-	// storedBarrierKeysPath is the path used for storing HSM-encrypted unseal keyd.
+	// storedBarrierKeysPath is the path used for storing HSM-encrypted unseal key.
 	// Stored outside barrier, but encrypted with seal mechanism's key information.
 	storedBarrierKeysPath = "encrypted-root"
 
-	// recoveryKeyPath is the path to the recovery key
-	recoveryKeyPath = "core/recovery-key"
+	// recoveryKeyPath is the path to the recovery key.
+	recoveryKeyPath = "recovery-key"
 )
 
-// List of deprecated paths:
+// legacy paths:
 const (
-	// deprecatedBarrierSealConfigPath is the path used to store our seal configuration.
+	// legacyBarrierSealConfigPath is the path used to store our seal configuration.
 	// This value is stored in plaintext, since we must be able to read it even
 	// with the Vault sealed. This is required so that we know how many secret
 	// parts must be used to reconstruct the unseal key.
 	// DEPRECATED: Use shamirSealConfigPath or autoUnsealConfigPath instead.
-	deprecatedBarrierSealConfigPath = "core/seal-config"
+	legacyBarrierSealConfigPath = "core/seal-config"
 
-	// deprecatedRecoverySealConfigPlaintextPath is the path to the recovery key
+	// legacyRecoverySealConfigPlaintextPath is the path to the recovery key
 	// seal configuration. This is stored in plaintext so that we can perform
 	// auto-unseal.
 	// DEPRECATED: Use recoverySealConfigPath instead.
-	deprecatedRecoverySealConfigPlaintextPath = "core/recovery-config"
+	legacyRecoverySealConfigPlaintextPath = "core/recovery-config"
 
-	// deprecatedStoredBarrierKeysPath is the old path used for storing
+	// legacyRecoveryKeyPath is the old path to the recovery key.
+	// DEPRECATED: Use recoveryKeyPath instead.
+	legacyRecoveryKeyPath = "core/recovery-key"
+
+	// legacyStoredBarrierKeysPath is the old path used for storing
 	// HSM-encrypted unseal keys before introduction of multiple seals layout.
 	// DEPRECATED: Use storedBarrierKeysPath instead.
-	deprecatedStoredBarrierKeysPath = "core/hsm/barrier-unseal-keys"
+	legacyStoredBarrierKeysPath = "core/hsm/barrier-unseal-keys"
 )
 
 const (
@@ -248,10 +252,10 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 
 		// Check the old barrier seal config path so an upgraded standby will
 		// return the correct seal config
-		oldStorage := d.core.sealManager.StorageAccessForPath(deprecatedBarrierSealConfigPath)
-		sealBytes, err = oldStorage.Get(ctx, deprecatedBarrierSealConfigPath)
+		oldStorage := d.core.sealManager.StorageAccessForPath(legacyBarrierSealConfigPath)
+		sealBytes, err = oldStorage.Get(ctx, legacyBarrierSealConfigPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read %q seal configuration: %w", deprecatedRecoverySealConfigPlaintextPath, err)
+			return nil, fmt.Errorf("failed to read %q seal configuration: %w", legacyRecoverySealConfigPlaintextPath, err)
 		}
 
 		// If the seal configuration is missing, then we are not initialized.
@@ -333,15 +337,15 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 }
 
 // migrateBarrierConfig is a helper func to migrate the barrier config from
-// deprecatedBarrierSealConfigPath path to the new one under `/seals`.
+// legacyBarrierSealConfigPath path to the new one under `/seals`.
 // This is called from SetBarrierConfig which is always called with the stateLock.
 func (d *defaultSeal) migrateBarrierConfig(ctx context.Context) error {
-	barrier := d.core.sealManager.StorageAccessForPath(deprecatedBarrierSealConfigPath)
+	barrier := d.core.sealManager.StorageAccessForPath(legacyBarrierSealConfigPath)
 
-	// Get config from the old deprecatedBarrierSealConfigPath path
-	entryBytes, err := barrier.Get(ctx, deprecatedBarrierSealConfigPath)
+	// Get config from the old legacyBarrierSealConfigPath path
+	entryBytes, err := barrier.Get(ctx, legacyBarrierSealConfigPath)
 	if err != nil {
-		return fmt.Errorf("failed to read %q barrier seal configuration during migration: %w", deprecatedBarrierSealConfigPath, err)
+		return fmt.Errorf("failed to read %q barrier seal configuration during migration: %w", legacyBarrierSealConfigPath, err)
 	}
 
 	// If entry is nil, then skip migration

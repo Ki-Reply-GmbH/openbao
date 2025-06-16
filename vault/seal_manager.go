@@ -67,15 +67,17 @@ func (c *Core) setupSealManager() error {
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
 
-	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath), nil)
-	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, autoUnsealConfigPath), nil)
-	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath), nil)
-	c.sealManager.barrierByStoragePath.Insert(path.Join(barrierSealBaseConfigPath, defaultSealPath, storedBarrierKeysPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(resolveSealStorageEntryPath("", shamirSealConfigPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(resolveSealStorageEntryPath("", autoUnsealConfigPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(resolveSealStorageEntryPath("", recoverySealConfigPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(resolveSealStorageEntryPath("", storedBarrierKeysPath), nil)
+	c.sealManager.barrierByStoragePath.Insert(resolveSealStorageEntryPath("", recoveryKeyPath), nil)
 
-	// these are deprecated locations that also have to live outside the barrier
-	c.sealManager.barrierByStoragePath.Insert(deprecatedBarrierSealConfigPath, nil)
-	c.sealManager.barrierByStoragePath.Insert(deprecatedRecoverySealConfigPlaintextPath, nil)
-	c.sealManager.barrierByStoragePath.Insert(deprecatedStoredBarrierKeysPath, nil)
+	// these are legacy locations that also have to live outside the barrier
+	c.sealManager.barrierByStoragePath.Insert(legacyBarrierSealConfigPath, nil)
+	c.sealManager.barrierByStoragePath.Insert(legacyRecoverySealConfigPlaintextPath, nil)
+	c.sealManager.barrierByStoragePath.Insert(legacyStoredBarrierKeysPath, nil)
+	c.sealManager.barrierByStoragePath.Insert(legacyRecoveryKeyPath, nil)
 
 	return nil
 }
@@ -120,15 +122,17 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	// store the seal config using patient barrier
 	parentBarrier := sm.ParentNamespaceBarrier(ns)
 	if parentBarrier != nil {
-		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, shamirSealConfigPath), parentBarrier)
-		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, autoUnsealConfigPath), parentBarrier)
-		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, recoverySealConfigPath), parentBarrier)
-		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, barrierSealBaseConfigPath, defaultSealPath, storedBarrierKeysPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(resolveSealStorageEntryPath(metaPrefix, shamirSealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(resolveSealStorageEntryPath(metaPrefix, autoUnsealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(resolveSealStorageEntryPath(metaPrefix, recoverySealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(resolveSealStorageEntryPath(metaPrefix, storedBarrierKeysPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(resolveSealStorageEntryPath(metaPrefix, recoveryKeyPath), parentBarrier)
 
-		// deprecated locations
-		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, deprecatedBarrierSealConfigPath), parentBarrier)
-		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, deprecatedRecoverySealConfigPlaintextPath), parentBarrier)
-		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, deprecatedStoredBarrierKeysPath), parentBarrier)
+		// legacy locations
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, legacyBarrierSealConfigPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, legacyRecoverySealConfigPlaintextPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, legacyStoredBarrierKeysPath), parentBarrier)
+		sm.barrierByStoragePath.Insert(path.Join(metaPrefix, legacyRecoveryKeyPath), parentBarrier)
 	}
 
 	sm.sealsByNamespace[ns.UUID] = map[string]*Seal{"default": &defaultSeal}
