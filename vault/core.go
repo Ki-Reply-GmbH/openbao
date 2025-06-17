@@ -1400,9 +1400,9 @@ func (c *Core) Sealed() bool {
 	return c.sealed.Load()
 }
 
-// IsNSSealed checks if the namespace is current sealed
+// IsNSSealed checks if any namespace in namespace hierarchy is current sealed.
 func (c *Core) IsNSSealed(ns *namespace.Namespace) bool {
-	return c.sealManager.NamespaceBarrier(ns.Path).Sealed()
+	return c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path).Sealed()
 }
 
 // SecretProgress returns the number of keys provided so far. Lock
