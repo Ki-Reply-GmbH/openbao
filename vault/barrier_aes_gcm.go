@@ -158,7 +158,7 @@ func (b *AESGCMBarrier) Initialized(ctx context.Context) (bool, error) {
 	}
 
 	// Read the keyring file
-	entry, err := b.backend.Get(ctx, b.metaPrefix+keyringPath)
+	entry, err := b.backend.Get(ctx, resolveSealStorageEntryPath(b.metaPrefix, keyringPath))
 	if err != nil {
 		return false, fmt.Errorf("failed to check for initialization: %w", err)
 	}
@@ -214,7 +214,7 @@ func (b *AESGCMBarrier) Initialize(ctx context.Context, key, sealKey []byte, rea
 		}
 
 		err = b.putInternal(ctx, b.backend, 1, primary, &logical.StorageEntry{
-			Key:   b.metaPrefix + shamirKekPath,
+			Key:   resolveSealStorageEntryPath(b.metaPrefix, shamirKekPath),
 			Value: sealKey,
 		})
 		if err != nil {
@@ -254,14 +254,14 @@ func (b *AESGCMBarrier) persistKeyringInternal(ctx context.Context, keyring *Key
 	}
 
 	// Encrypt the barrier init value
-	value, err := b.encrypt(b.metaPrefix+keyringPath, initialKeyTerm, gcm, keyringBuf)
+	value, err := b.encrypt(resolveSealStorageEntryPath(b.metaPrefix, keyringPath), initialKeyTerm, gcm, keyringBuf)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt barrier initial value: %w", err)
 	}
 
 	// Create the keyring physical entry
 	pe := &physical.Entry{
-		Key:   b.metaPrefix + keyringPath,
+		Key:   resolveSealStorageEntryPath(b.metaPrefix, keyringPath),
 		Value: value,
 	}
 
@@ -372,7 +372,7 @@ func (b *AESGCMBarrier) ReloadKeyring(ctx context.Context) error {
 	}
 
 	// Read in the keyring
-	out, err := b.backend.Get(ctx, b.metaPrefix+keyringPath)
+	out, err := b.backend.Get(ctx, resolveSealStorageEntryPath(b.metaPrefix, keyringPath))
 	if err != nil {
 		return fmt.Errorf("failed to check for keyring: %w", err)
 	}
@@ -380,7 +380,25 @@ func (b *AESGCMBarrier) ReloadKeyring(ctx context.Context) error {
 	// Ensure that the keyring exists. This should never happen,
 	// and indicates something really bad has happened.
 	if out == nil {
-		return errors.New("keyring unexpectedly missing")
+		// check legacy location
+		out, err = b.backend.Get(ctx, legacyKeyringPath)
+		if err != nil {
+			return fmt.Errorf("failed to check for legacy keyring: %w", err)
+		}
+
+		if out == nil {
+			return errors.New("keyring unexpectedly missing")
+		}
+
+		newKeyringEntry := &physical.Entry{
+			Key:   resolveSealStorageEntryPath(b.metaPrefix, keyringPath),
+			Value: out.Value,
+		}
+
+		// migrate the keyring
+		if err = b.backend.Put(ctx, newKeyringEntry); err != nil {
+			return fmt.Errorf("failed to persist keyring in new location: %w", err)
+		}
 	}
 
 	// Verify the term is always just one
@@ -390,7 +408,7 @@ func (b *AESGCMBarrier) ReloadKeyring(ctx context.Context) error {
 	}
 
 	// Decrypt the barrier init key
-	plain, err := b.decrypt(b.metaPrefix+keyringPath, gcm, out.Value)
+	plain, err := b.decrypt(resolveSealStorageEntryPath(b.metaPrefix, keyringPath), gcm, out.Value)
 	defer memzero(plain)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {
@@ -501,7 +519,7 @@ func (b *AESGCMBarrier) Unseal(ctx context.Context, key []byte) error {
 	}
 
 	// Read in the keyring
-	out, err := b.backend.Get(ctx, b.metaPrefix+keyringPath)
+	out, err := b.backend.Get(ctx, resolveSealStorageEntryPath(b.metaPrefix, keyringPath))
 	if err != nil {
 		return fmt.Errorf("failed to check for keyring: %w", err)
 	}
@@ -516,7 +534,7 @@ func (b *AESGCMBarrier) Unseal(ctx context.Context, key []byte) error {
 	}
 
 	// Decrypt the barrier init key
-	plain, err := b.decrypt(b.metaPrefix+keyringPath, gcm, out.Value)
+	plain, err := b.decrypt(resolveSealStorageEntryPath(b.metaPrefix, keyringPath), gcm, out.Value)
 	defer memzero(plain)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {

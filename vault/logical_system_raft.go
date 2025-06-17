@@ -378,7 +378,7 @@ func (b *SystemBackend) handleRaftBootstrapChallengeWrite() framework.OperationF
 			return nil, err
 		}
 
-		sealConfig, err := b.Core.seal.BarrierConfig(ctx, namespace.RootNamespace)
+		sealConfig, err := b.Core.seal.BarrierConfig(ctx)
 		if err != nil {
 			return nil, err
 		}
