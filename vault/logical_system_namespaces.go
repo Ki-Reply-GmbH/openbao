@@ -414,16 +414,6 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		var sealConfig *SealConfig
-		switch len(sealConfigs) {
-		case 0:
-		case 1:
-			// for now we only use a single seal config
-			sealConfig = sealConfigs[0]
-		default:
-			return logical.ErrorResponse("cannot specify more than one namespace seal, got: %d", len(sealConfigs)), logical.ErrInvalidRequest
-		}
-
 		entry, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, name, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			ns.CustomMetadata = metadata
 			return ns, nil

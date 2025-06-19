@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -72,7 +73,7 @@ func (c *Core) teardownSealManager() error {
 }
 
 // TODO(wslabosz): add logs
-func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace) error {
+func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
 	sealConfig.StoredShares = 1
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
@@ -101,9 +102,11 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 	sm.sealsByNamespace[ns.UUID] = map[string]Seal{"default": defaultSeal}
 	sm.unlockInformationByNamespace[ns.UUID] = map[string]*unlockInformation{}
-	err := defaultSeal.SetConfig(ctx, sealConfig)
-	if err != nil {
-		return fmt.Errorf("failed to set barrier config: %w", err)
+	if writeToStorage {
+		err := defaultSeal.SetConfig(ctx, sealConfig)
+		if err != nil {
+			return fmt.Errorf("failed to set barrier config: %w", err)
+		}
 	}
 
 	return nil
@@ -462,4 +465,32 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	}
 
 	return nsSealKeyShares, nil
+}
+
+func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
+	// Get the storage path for this namespace's seal config
+	sealConfigPath := sm.core.NamespaceView(ns).SubView(sealConfigPath).Prefix()
+
+	// Get access via the parent barrier
+	storage := sm.StorageAccessForPath(sealConfigPath)
+	configBytes, err := storage.Get(ctx, sealConfigPath)
+	if err != nil {
+		return false, err
+	}
+
+	// No seal config found - unsealed namespace
+	if configBytes == nil {
+		return false, nil
+	}
+
+	var sealConfig SealConfig
+	if err := json.Unmarshal(configBytes, &sealConfig); err != nil {
+		return false, fmt.Errorf("failed to decode namespace seal config: %w", err)
+	}
+
+	if err := sm.SetSeal(ctx, &sealConfig, ns, false); err != nil {
+		return true, err
+	}
+
+	return true, nil
 }
