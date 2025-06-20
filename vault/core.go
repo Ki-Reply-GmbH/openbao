@@ -306,9 +306,8 @@ type Core struct {
 
 	// generateRootProgress holds the shares until we reach enough
 	// to verify the root key
-	generateRootConfig   *GenerateRootConfig
-	generateRootProgress [][]byte
-	generateRootLock     sync.Mutex
+	namespaceRootGens map[string]*NamespaceRootGeneration
+	namespaceGenLock  sync.Mutex
 
 	// These variables holds the config and shares we have until we reach
 	// enough to verify the appropriate root key. Note that the same lock is
@@ -789,6 +788,12 @@ type CoreConfig struct {
 	NumRollbackWorkers int
 }
 
+type NamespaceRootGeneration struct {
+	Config   *GenerateRootConfig
+	Progress [][]byte
+	Lock     sync.Mutex
+}
+
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
 // not exist.
 func (c *CoreConfig) GetServiceRegistration() sr.ServiceRegistration {
@@ -964,6 +969,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		numRollbackWorkers:             conf.NumRollbackWorkers,
 		impreciseLeaseRoleTracking:     conf.ImpreciseLeaseRoleTracking,
 		detectDeadlocks:                detectDeadlocks,
+		namespaceRootGens:              make(map[string]*NamespaceRootGeneration),
 	}
 
 	c.standbyStopCh.Store(make(chan struct{}))
@@ -2780,7 +2786,7 @@ func (c *Core) adjustSealConfigDuringMigration(existBarrierSealConfig, existReco
 }
 
 func (c *Core) unsealKeyToRootKeyPostUnseal(ctx context.Context, combinedKey []byte) ([]byte, error) {
-	return c.unsealKeyToRootKey(ctx, c.seal, combinedKey, true, false)
+	return c.unsealKeyToRootKey(ctx, c.seal, combinedKey, false, false)
 }
 
 func (c *Core) unsealKeyToRootKeyPreUnseal(ctx context.Context, seal Seal, combinedKey []byte) ([]byte, error) {
