@@ -152,11 +152,22 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 	var fingerprint string
 	switch {
 	case len(otp) > 0:
-		if (len(otp) != TokenLength+TokenPrefixLength && !c.DisableSSCTokens()) ||
-			(len(otp) != TokenLength+OldTokenPrefixLength && c.DisableSSCTokens()) {
-			return errors.New("OTP string is wrong length")
+		var expectedLength int
+		if ns.UUID == namespace.RootNamespaceUUID {
+			expectedLength = TokenLength
+		} else {
+			expectedLength = NSTokenLength
 		}
 
+		if c.DisableSSCTokens() {
+			expectedLength += OldTokenPrefixLength
+		} else {
+			expectedLength += TokenPrefixLength
+		}
+
+		if len(otp) != expectedLength {
+			return errors.New("OTP string is wrong length")
+		}
 	case len(pgpKey) > 0:
 		fingerprints, err := pgpkeys.GetFingerprints([]string{pgpKey}, nil)
 		if err != nil {

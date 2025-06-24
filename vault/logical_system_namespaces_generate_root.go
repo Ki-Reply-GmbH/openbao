@@ -105,9 +105,9 @@ func (b *SystemBackend) handleNamespaceGenerateRootInit() framework.OperationFun
 		default:
 			genned = true
 			if b.Core.DisableSSCTokens() {
-				otp, err = base62.Random(TokenLength + OldTokenPrefixLength)
+				otp, err = base62.Random(NSTokenLength + OldTokenPrefixLength)
 			} else {
-				otp, err = base62.Random(TokenLength + TokenPrefixLength)
+				otp, err = base62.Random(NSTokenLength + TokenPrefixLength)
 			}
 			if err != nil {
 				return handleError(err)
@@ -168,9 +168,9 @@ func (b *SystemBackend) namespaceGenerateRootStatus(ctx context.Context, ns *nam
 	}
 	var otpLength int
 	if b.Core.DisableSSCTokens() {
-		otpLength = TokenLength + OldTokenPrefixLength
+		otpLength = NSTokenLength + OldTokenPrefixLength
 	} else {
-		otpLength = TokenLength + TokenPrefixLength
+		otpLength = NSTokenLength + TokenPrefixLength
 	}
 
 	response := make(map[string]interface{})
