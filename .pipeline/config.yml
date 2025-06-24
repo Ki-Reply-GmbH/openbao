@@ -18,3 +18,5 @@ steps:
     containerImageName: 'openbao'
   sapCumulusUpload:
     pipelineId: 'aba91353-e96f-4812-9482-1f49832e7521'
+  sonarExecuteScan:
+    serverUrl: 'https://sonar.tools.sap'
