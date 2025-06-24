@@ -1,0 +1,20 @@
+general:
+  buildTool: 'golang'
+  productiveBranch: 'sync'
+  vaultPath: 'piper/sap-project-apeirora'
+  vaultBasePath: 'piper/sap-project-apeirora'
+  vaultPipelineName: 'openbao'
+  vaultServerUrl: 'https://vault.tools.sap'
+  vaultNamespace: 'ies/hyperspace/pipelines'
+  nativeBuild: true
+stages:
+  Release:
+    sapDownloadArtifact: false
+steps:
+  sapCallStagingService:
+    url: 'https://staging.repositories.cloud.sap/stage/api'
+    profile: 'group-apeirora-l29mw-default'
+  kanikoExecute:
+    containerImageName: 'openbao'
+  sapCumulusUpload:
+    pipelineId: 'aba91353-e96f-4812-9482-1f49832e7521'
