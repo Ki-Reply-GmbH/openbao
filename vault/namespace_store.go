@@ -1084,7 +1084,7 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 
-	unlock, err := ns.lockWithInvalidation(ctx, false)
+	unlock, err := ns.lockWithInvalidation(ctx, true)
 	if err != nil {
 		return err
 	}
@@ -1104,7 +1104,7 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 	}
 
 	if namespaceToSeal.Tainted {
-		return errors.New("unable to seal tainted or actively deleting namespace")
+		return errors.New("unable to seal tainted namespace")
 	}
 
 	return ns.core.sealManager.SealNamespace(namespaceToSeal)
@@ -1115,13 +1115,17 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key []byte) error {
 	defer metrics.MeasureSince([]string{"namespace", "unseal_namespace"}, time.Now())
 
-	ns.lock.Lock()
-	defer ns.lock.Unlock()
+	unlock, err := ns.lockWithInvalidation(ctx, true)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 
 	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
 	if err != nil {
 		return err
 	}
+
 	if namespaceToUnseal == nil {
 		return nil
 	}

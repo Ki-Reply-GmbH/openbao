@@ -20,7 +20,6 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 )
@@ -36,16 +35,16 @@ var (
 
 // autoSeal is a Seal implementation that contains logic for encrypting and
 // decrypting stored keys via an underlying AutoSealAccess implementation, as
-// well as logic related to recovery keys and barrier config.
+// well as logic related to recovery keys and sealConfig.
 type autoSeal struct {
 	seal.Access
 
-	barrierType wrapping.WrapperType
-	core        *Core
-	logger      log.Logger
-	metaPrefix  string
+	wType      wrapping.WrapperType
+	core       *Core
+	logger     log.Logger
+	metaPrefix string
 
-	barrierConfig  atomic.Pointer[SealConfig]
+	config         atomic.Pointer[SealConfig]
 	recoveryConfig atomic.Pointer[SealConfig]
 	configAccess   StorageAccess
 
@@ -61,18 +60,14 @@ func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
 		Access: lowLevel,
 	}
 
-	// Having the wrapper type in a field is just a convenience since Seal.BarrierType()
+	// Having the wrapper type in a field is just a convenience since Seal.Type()
 	// does not return an error.
 	var err error
-	ret.barrierType, err = ret.Type(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	return ret, nil
+	ret.wType, err = ret.Type(context.Background())
+	return ret, err
 }
 
-func (d *autoSeal) SealWrapable() bool {
+func (d *autoSeal) Wrapable() bool {
 	return true
 }
 
@@ -113,8 +108,8 @@ func (d *autoSeal) Finalize(ctx context.Context) error {
 	return d.Access.Finalize(ctx)
 }
 
-func (d *autoSeal) BarrierType() wrapping.WrapperType {
-	return d.barrierType
+func (d *autoSeal) WrapperType() wrapping.WrapperType {
+	return d.wType
 }
 
 func (d *autoSeal) GetShamirWrapper() (*aeadwrapper.ShamirWrapper, error) {
@@ -200,8 +195,8 @@ func (d *autoSeal) UpgradeKeys(ctx context.Context) error {
 	return nil
 }
 
-func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
-	if config := d.barrierConfig.Load(); config != nil {
+func (d *autoSeal) Config(ctx context.Context) (*SealConfig, error) {
+	if config := d.config.Load(); config != nil {
 		return config.Clone(), nil
 	}
 
@@ -210,7 +205,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (
 	}
 
 	sealType := "barrier"
-	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+sealConfigPath)
 	if err != nil {
 		d.logger.Error("failed to read seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
@@ -237,45 +232,45 @@ func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (
 		return nil, fmt.Errorf("%q seal validation failed: %w", sealType, err)
 	}
 
-	if conf.Type != d.BarrierType().String() {
-		d.logger.Error("barrier seal type does not match loaded type", "seal_type", conf.Type, "loaded_type", d.BarrierType())
-		return nil, fmt.Errorf("barrier seal type of %q does not match loaded type of %q", conf.Type, d.BarrierType())
+	if conf.Type != d.WrapperType().String() {
+		d.logger.Error("seal type does not match loaded type", "seal_type", conf.Type, "loaded_type", d.WrapperType())
+		return nil, fmt.Errorf("seal type of %q does not match loaded type of %q", conf.Type, d.WrapperType())
 	}
 
-	d.SetCachedBarrierConfig(conf)
+	d.SetCachedConfig(conf)
 	return conf.Clone(), nil
 }
 
-func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig, ns *namespace.Namespace) error {
+func (d *autoSeal) SetConfig(ctx context.Context, conf *SealConfig) error {
 	if err := d.checkCore(); err != nil {
 		return err
 	}
 
 	if conf == nil {
-		d.barrierConfig.Store(nil)
+		d.config.Store(nil)
 		return nil
 	}
 
-	conf.Type = d.BarrierType().String()
+	conf.Type = d.WrapperType().String()
 
 	// Encode the seal configuration
 	buf, err := json.Marshal(conf)
 	if err != nil {
-		return fmt.Errorf("failed to encode barrier seal configuration: %w", err)
+		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+sealConfigPath, buf); err != nil {
 		d.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
 
-	d.SetCachedBarrierConfig(conf.Clone())
+	d.SetCachedConfig(conf.Clone())
 
 	return nil
 }
 
-func (d *autoSeal) SetCachedBarrierConfig(config *SealConfig) {
-	d.barrierConfig.Store(config)
+func (d *autoSeal) SetCachedConfig(config *SealConfig) {
+	d.config.Store(config)
 }
 
 func (d *autoSeal) SetConfigAccess(barrier SecurityBarrier) {
@@ -315,7 +310,7 @@ func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 		return nil, fmt.Errorf("failed to decode %q seal configuration: %w", sealType, err)
 	}
 
-	// Check for a valid seal configuration
+	// Check for a valid recovery seal configuration
 	if err := conf.ValidateRecovery(); err != nil {
 		d.logger.Error("invalid seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("%q seal validation failed: %w", sealType, err)

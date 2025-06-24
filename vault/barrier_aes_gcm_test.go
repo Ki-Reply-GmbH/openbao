@@ -618,10 +618,13 @@ func TestBarrier_persistKeyring_Context(t *testing.T) {
 			barrier := NewAESGCMBarrier(backend, "").(*TransactionalAESGCMBarrier)
 			key, err := barrier.GenerateKey(rand.Reader)
 			require.NoError(t, err)
+
 			err = barrier.Initialize(context.Background(), key, nil, rand.Reader)
 			require.NoError(t, err)
+
 			err = barrier.Unseal(context.Background(), key)
 			require.NoError(t, err)
+
 			k := barrier.keyring.TermKey(1)
 			k.Encryptions = 0
 			k.InstallTime = time.Now().Add(-24 * 366 * time.Hour)

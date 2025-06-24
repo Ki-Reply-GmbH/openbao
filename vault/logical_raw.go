@@ -52,7 +52,7 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 
 	// These paths use the "upper" barrier, which is the direct physical layer
 	// for the root namespace.
-	specialPath := rest == barrierSealConfigPath || rest == recoverySealConfigPath
+	specialPath := rest == sealConfigPath || rest == recoverySealConfigPath
 
 	// Fast-path root, we do not need a lookup into the seal manager.
 	if ns.ID == namespace.RootNamespaceID {

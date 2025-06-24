@@ -130,7 +130,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 	if recovery {
 		expType = c.seal.RecoveryType()
 	} else {
-		expType = c.seal.BarrierType().String()
+		expType = c.seal.WrapperType().String()
 	}
 
 	newConf := &SealConfig{
@@ -170,7 +170,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 	if recovery {
 		sealConf, err = c.seal.RecoveryConfig(context.Background())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background())
+		sealConf, err = c.seal.Config(context.Background())
 	}
 	require.NoError(t, err)
 	require.NotNil(t, sealConf)
@@ -241,7 +241,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 	if recovery {
 		sealConf, err = c.seal.RecoveryConfig(context.Background())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background())
+		sealConf, err = c.seal.Config(context.Background())
 	}
 	require.NoError(t, err)
 
