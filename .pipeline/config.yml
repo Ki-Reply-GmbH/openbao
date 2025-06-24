@@ -1,6 +1,6 @@
 general:
   buildTool: 'golang'
-  productiveBranch: 'sync'
+  productiveBranch: 'openbao-main'
   vaultPath: 'piper/sap-project-apeirora'
   vaultBasePath: 'piper/sap-project-apeirora'
   vaultPipelineName: 'openbao'
