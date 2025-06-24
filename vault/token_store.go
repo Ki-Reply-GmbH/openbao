@@ -71,6 +71,10 @@ const (
 	// any namespace information
 	TokenLength = 24
 
+	// NSTokenLength is the size of tokens we are currently generating, for
+	// sealed Namespaces
+	NSTokenLength = 31
+
 	// MaxNsIdLength is the maximum namespace ID length (5 characters prepended by a ".")
 	MaxNsIdLength = 6
 
