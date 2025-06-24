@@ -96,8 +96,7 @@ func testBarrier(t *testing.T, b SecurityBarrier) {
 	require.NoError(t, err)
 
 	// Reseal should prevent any updates
-	err = b.Seal()
-	require.NoError(t, err)
+	require.NoError(t, b.Seal())
 
 	// Modify the key
 	key[0]++
