@@ -3900,7 +3900,7 @@ func (ts *TokenStore) gaugeCollector(ctx context.Context) ([]metricsutil.GaugeLa
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -3959,7 +3959,7 @@ func (ts *TokenStore) gaugeCollectorByPolicy(ctx context.Context) ([]metricsutil
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -4021,7 +4021,7 @@ func (ts *TokenStore) gaugeCollectorByTtl(ctx context.Context) ([]metricsutil.Ga
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
@@ -4093,7 +4093,7 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 	}
 
 	rootContext := namespace.RootContext(ctx)
-	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return []metricsutil.GaugeLabelValues{}, err
 	}
