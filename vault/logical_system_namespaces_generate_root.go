@@ -238,8 +238,17 @@ func (b *SystemBackend) namespaceGenerateRootUpdate(ctx context.Context, ns *nam
 	if err != nil {
 		return nil, err
 	}
+	resp := &logical.GenerateRootStatusResponse{
+		Complete:       result.Progress == result.Required,
+		Nonce:          nonce,
+		Progress:       result.Progress,
+		Required:       result.Required,
+		Started:        true,
+		EncodedToken:   result.EncodedToken,
+		PGPFingerprint: result.PGPFingerprint,
+	}
 	response := make(map[string]interface{})
-	response["generateRootStatus"] = result
+	response["generateRootStatus"] = resp
 
 	return &logical.Response{Data: response}, nil
 }
