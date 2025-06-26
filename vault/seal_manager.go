@@ -14,6 +14,7 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -21,6 +22,25 @@ import (
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 )
+
+type RekeyStatus struct {
+	Nonce                string
+	Started              bool
+	T                    int
+	N                    int
+	Progress             int
+	Required             int
+	PGPFingerprints      []string
+	Backup               bool
+	VerificationRequired bool
+	VerificationNonce    string
+}
+
+type namespaceRekeyConfigs struct {
+	barrierRekeyConfig  *SealConfig
+	recoveryRekeyConfig *SealConfig
+	lock                sync.RWMutex
+}
 
 // SealManager is used to provide storage for the seals.
 // It's a singleton that associates seals (configs) to the namespaces.
@@ -35,6 +55,7 @@ type SealManager struct {
 	// unlockInformation is a map of distinct (named) seals
 	sealsByNamespace             map[string]map[string]*Seal
 	unlockInformationByNamespace map[string]map[string]*unlockInformation
+	rekeyConfigsByNamespace      map[string]map[string]*namespaceRekeyConfigs
 	barrierByNamespace           *radix.Tree
 	barrierByStoragePath         *radix.Tree
 
@@ -48,6 +69,7 @@ func NewSealManager(core *Core, logger hclog.Logger) (*SealManager, error) {
 		core:                         core,
 		sealsByNamespace:             make(map[string]map[string]*Seal),
 		unlockInformationByNamespace: make(map[string]map[string]*unlockInformation),
+		rekeyConfigsByNamespace:      make(map[string]map[string]*namespaceRekeyConfigs),
 		barrierByNamespace:           radix.New(),
 		barrierByStoragePath:         radix.New(),
 		logger:                       logger,
@@ -110,6 +132,13 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 	sm.sealsByNamespace[ns.UUID] = map[string]*Seal{"default": &defaultSeal}
 	sm.unlockInformationByNamespace[ns.UUID] = map[string]*unlockInformation{}
+	sm.rekeyConfigsByNamespace[ns.UUID] = map[string]*namespaceRekeyConfigs{
+		"default": {
+			barrierRekeyConfig:  nil,
+			recoveryRekeyConfig: nil,
+			lock:                sync.RWMutex{},
+		},
+	}
 
 	if writeToStorage {
 		err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
@@ -503,6 +532,242 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	}
 
 	return nsSealKeyShares, nil
+}
+
+// RekeyInit will either initialize the rekey of barrier or recovery key.
+func (sm *SealManager) RekeyInit(ctx context.Context, rekeyConfig *SealConfig, ns *namespace.Namespace, recovery bool) error {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	// Verify that any kind of seal exists for a namespace
+	nsSeal := *sm.sealsByNamespace[ns.UUID]["default"]
+	if nsSeal == nil {
+		return errors.New("cannot rekey unsealable namespace")
+	}
+
+	// Check if the seal configuration is valid
+	if err := rekeyConfig.Validate(); err != nil {
+		sm.logger.Error("invalid rekey seal configuration", "error", err)
+		return fmt.Errorf("invalid rekey seal configuration: %w", err)
+	}
+
+	// Initialize the nonce
+	nonce, err := uuid.GenerateUUID()
+	if err != nil {
+		return fmt.Errorf("error generating nonce for procedure: %w", err)
+	}
+
+	if recovery {
+		err = sm.recoveryRekeyInit(rekeyConfig, nsSeal, ns.UUID, nonce)
+	} else {
+		err = sm.barrierRekeyInit(rekeyConfig, nsSeal, ns.UUID, nonce)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if sm.logger.IsInfo() {
+		sm.logger.Info("rekey initialized for namespace", "namespace", ns.Path, "nonce", nonce, "shares", rekeyConfig.SecretShares, "threshold", rekeyConfig.SecretThreshold, "validation_required", rekeyConfig.VerificationRequired)
+	}
+
+	return nil
+}
+
+// barrierRekeyInit validates the rekeyConfig and initializes the rekey of barrier key.
+func (sm *SealManager) barrierRekeyInit(rekeyConfig *SealConfig, seal Seal, nsUUID, nonce string) error {
+	nsRekeyConfigs := sm.rekeyConfigsByNamespace[nsUUID]["default"]
+	nsRekeyConfigs.lock.Lock()
+	defer nsRekeyConfigs.lock.Unlock()
+
+	// Prevent multiple concurrent re-keys
+	if nsRekeyConfigs.barrierRekeyConfig != nil {
+		return errors.New("rekey already in progress")
+	}
+
+	if rekeyConfig.StoredShares != 1 {
+		sm.logger.Warn("stored keys supported, forcing rekey shares/threshold to 1")
+		rekeyConfig.StoredShares = 1
+	}
+
+	if seal.BarrierType() != wrapping.WrapperTypeShamir {
+		rekeyConfig.SecretShares = 1
+		rekeyConfig.SecretThreshold = 1
+
+		if len(rekeyConfig.PGPKeys) > 0 {
+			return errors.New("pgp key encryption not supported when using stored keys")
+		}
+		if rekeyConfig.Backup {
+			return errors.New("key backup not supported when using stored keys")
+		}
+	}
+
+	if seal.RecoveryKeySupported() {
+		if rekeyConfig.VerificationRequired {
+			return errors.New("requiring verification not supported when rekeying the barrier key with recovery keys")
+		}
+		sm.logger.Debug("using recovery seal configuration to rekey barrier key")
+	}
+
+	// Copy the configuration
+	nsRekeyConfigs.barrierRekeyConfig = rekeyConfig.Clone()
+	nsRekeyConfigs.barrierRekeyConfig.Nonce = nonce
+
+	return nil
+}
+
+// recoveryRekeyInit validates the rekeyConfig and initializes the rekey of recovery key.
+func (sm *SealManager) recoveryRekeyInit(rekeyConfig *SealConfig, seal Seal, nsUUID, nonce string) error {
+	nsRekeyConfigs := sm.rekeyConfigsByNamespace[nsUUID]["default"]
+	nsRekeyConfigs.lock.Lock()
+	defer nsRekeyConfigs.lock.Unlock()
+
+	// Prevent multiple concurrent re-keys
+	if nsRekeyConfigs.recoveryRekeyConfig != nil {
+		return errors.New("rekey already in progress")
+	}
+
+	if !seal.RecoveryKeySupported() {
+		return errors.New("recovery keys not supported")
+	}
+
+	if rekeyConfig.StoredShares > 0 {
+		return errors.New("stored shares not supported by recovery key")
+	}
+
+	// Copy the configuration
+	nsRekeyConfigs.recoveryRekeyConfig = rekeyConfig.Clone()
+	nsRekeyConfigs.recoveryRekeyConfig.Nonce = nonce
+
+	return nil
+}
+
+// RekeyStatus is used to read and return status of the currently active rekey
+// attempt of the rekey operation of a given namespace.
+func (sm *SealManager) RekeyStatus(ctx context.Context, ns *namespace.Namespace, recovery bool) (*RekeyStatus, error) {
+	// Get the rekey configuration
+	rekeySealConfig, err := sm.rekeyConfig(ns, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the rekey threshold
+	sealThreshold, err := sm.rekeyThreshold(ctx, ns, false)
+	if err != nil {
+		return nil, err
+	}
+
+	rekeyStatus := &RekeyStatus{
+		Started:  true,
+		T:        0,
+		N:        0,
+		Required: sealThreshold,
+	}
+
+	if rekeySealConfig != nil {
+		// Get the progress
+		started, progress, err := sm.rekeyProgress(ns, false, false)
+		if err != nil {
+			return nil, err
+		}
+
+		rekeyStatus.Nonce = rekeySealConfig.Nonce
+		rekeyStatus.Started = started
+		rekeyStatus.T = rekeySealConfig.SecretThreshold
+		rekeyStatus.N = rekeySealConfig.SecretShares
+		rekeyStatus.Progress = progress
+		rekeyStatus.VerificationRequired = rekeySealConfig.VerificationRequired
+		rekeyStatus.VerificationNonce = rekeySealConfig.VerificationNonce
+		if len(rekeySealConfig.PGPKeys) != 0 {
+			pgpFingerprints, err := pgpkeys.GetFingerprints(rekeySealConfig.PGPKeys, nil)
+			if err != nil {
+				return nil, err
+			}
+			rekeyStatus.PGPFingerprints = pgpFingerprints
+			rekeyStatus.Backup = rekeySealConfig.Backup
+		}
+	}
+
+	return rekeyStatus, nil
+}
+
+// rekeyConfig is used to read the rekey configuration of given namespace.
+func (sm *SealManager) rekeyConfig(ns *namespace.Namespace, recovery bool) (*SealConfig, error) {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	nsRekeyConfigs, ok := sm.rekeyConfigsByNamespace[ns.UUID]["default"]
+	if !ok {
+		return nil, fmt.Errorf("namespace %q is not a sealable namespace", ns.Path)
+	}
+
+	nsRekeyConfigs.lock.Lock()
+	defer nsRekeyConfigs.lock.Unlock()
+
+	if recovery {
+		if nsRekeyConfigs.recoveryRekeyConfig.Clone() != nil {
+			return nsRekeyConfigs.recoveryRekeyConfig.Clone(), nil
+		}
+	}
+	if nsRekeyConfigs.barrierRekeyConfig.Clone() != nil {
+		return nsRekeyConfigs.barrierRekeyConfig.Clone(), nil
+	}
+
+	return nil, nil
+}
+
+// rekeyThreshold returns the secret threshold for the provided namespace
+// current seal config. This threshold can either be the barrier or recovery
+// key threshold, depending on which one the rekey operation is being performed on.
+func (sm *SealManager) rekeyThreshold(ctx context.Context, ns *namespace.Namespace, recovery bool) (int, error) {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	nsSeal := *sm.sealsByNamespace[ns.UUID]["default"]
+	if nsSeal == nil {
+		return 0, errors.New("cannot rekey unsealable namespace")
+	}
+
+	var config *SealConfig
+	var err error
+	// If we are rekeying the recovery key, or if the seal supports
+	// recovery keys and we are rekeying the barrier key, we use the
+	// recovery config as the threshold instead.
+	if recovery || nsSeal.RecoveryKeySupported() {
+		config, err = nsSeal.RecoveryConfig(ctx)
+	} else {
+		config, err = nsSeal.BarrierConfig(ctx, ns)
+	}
+
+	if err != nil {
+		return 0, fmt.Errorf("unable to look up config: %w", err)
+	}
+	if config == nil {
+		return 0, ErrNotInit
+	}
+
+	return config.SecretThreshold, nil
+}
+
+// rekeyProgress is used to return the rekey progress of the given namespace (num shares).
+func (sm *SealManager) rekeyProgress(ns *namespace.Namespace, recovery, verification bool) (bool, int, error) {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	rekeyConfig, err := sm.rekeyConfig(ns, recovery)
+	if err != nil {
+		return false, 0, err
+	}
+
+	if rekeyConfig == nil {
+		return false, 0, errors.New("rekey operation not in progress")
+	}
+
+	if verification {
+		return len(rekeyConfig.VerificationKey) > 0, len(rekeyConfig.VerificationProgress), nil
+	}
+
+	return true, len(rekeyConfig.RekeyProgress), nil
 }
 
 func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, error) {

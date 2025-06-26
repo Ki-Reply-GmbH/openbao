@@ -31,6 +31,74 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 		},
 	}
 
+	rekeyRequestFieldsSchema := map[string]*framework.FieldSchema{
+		"name": namespaceFieldsSchema["name"],
+		"secret_shares": {
+			Type:        framework.TypeInt,
+			Required:    true,
+			Description: "Specifies the number of shares to split the root key into.",
+		},
+		"secret_threshold": {
+			Type:        framework.TypeInt,
+			Required:    true,
+			Description: "Specifies the number of shares required to reconstruct the root key.",
+		},
+		"pgp_keys": {
+			Type:        framework.TypeStringSlice,
+			Description: "Specifies an array of PGP public keys used to encrypt the output unseal keys.",
+		},
+		"backup": {
+			Type:        framework.TypeBool,
+			Description: "Specifies if using PGP-encrypted keys, whether OpenBao should also store a plaintext backup of the said keys.",
+		},
+		"require_verification": {
+			Type:        framework.TypeBool,
+			Description: "Enables verification which after successful authorization with the current unseal keys, ensures the new unseal keys are returned but the root key is not actually rotated.",
+		},
+	}
+
+	rekeyStatusSchema := map[string]*framework.FieldSchema{
+		"nonce": {
+			Type:     framework.TypeString,
+			Required: true,
+		},
+		"started": {
+			Type:     framework.TypeBool,
+			Required: true,
+		},
+		"t": {
+			Type:     framework.TypeInt,
+			Required: true,
+		},
+		"n": {
+			Type:     framework.TypeInt,
+			Required: true,
+		},
+		"progress": {
+			Type:     framework.TypeInt,
+			Required: true,
+		},
+		"required": {
+			Type:     framework.TypeInt,
+			Required: true,
+		},
+		"pgp_fingerprints": {
+			Type:     framework.TypeCommaStringSlice,
+			Required: true,
+		},
+		"backup": {
+			Type:     framework.TypeBool,
+			Required: true,
+		},
+		"verification_required": {
+			Type:     framework.TypeBool,
+			Required: true,
+		},
+		"verification_nonce": {
+			Type: framework.TypeString,
+		},
+	}
+
 	sealStatusSchema := map[string]*framework.FieldSchema{
 		"type": {
 			Type:     framework.TypeString,
@@ -100,7 +168,7 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Summary:  "Provides information about the namespace backend encryption key.",
-					Callback: b.handleNamespaceKeyStatus,
+					Callback: b.handleNamespaceKeyStatus(),
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Fields: map[string]*framework.FieldSchema{
@@ -124,6 +192,41 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-seal"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["namespaces-seal"][1]),
+		},
+		{
+			Pattern: "namespaces/(?P<name>.+)/rekey/init",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+				OperationVerb:   "rekey",
+			},
+			Fields: rekeyRequestFieldsSchema,
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Summary:  "Read status of a namespace key rekey attempt",
+					Callback: b.handleNamespaceRekeyBarrierRead(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields:      rekeyStatusSchema,
+						}},
+					},
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Initialize a new rekey attempt of the namespace key.",
+					Callback: b.handleNamespaceRekeyBarrierInit(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields:      rekeyStatusSchema,
+						}},
+					},
+				},
+			},
+
+			// TODO: add
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-rekey"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces-rekey"][1]),
 		},
 		{
 			Pattern: "namespaces/(?P<name>.+)/seal-status",
@@ -225,40 +328,152 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 	}
 }
 
+// createNamespaceRekeyStatusResponse returns back a rekey status properties.
+func createNamespaceRekeyStatusResponse(rekeyStatus *RekeyStatus) map[string]any {
+	resp := map[string]any{
+		"nonce":                 rekeyStatus.Nonce,
+		"started":               rekeyStatus.Started,
+		"t":                     rekeyStatus.T,
+		"n":                     rekeyStatus.N,
+		"progress":              rekeyStatus.Progress,
+		"required":              rekeyStatus.Required,
+		"pgp_fingerprints":      rekeyStatus.PGPFingerprints,
+		"backup":                rekeyStatus.Backup,
+		"verification_required": rekeyStatus.VerificationRequired,
+	}
+
+	if rekeyStatus.VerificationNonce != "" {
+		resp["verification_nonce"] = rekeyStatus.VerificationNonce
+	}
+
+	return resp
+}
+
 // handleNamespaceKeyStatus handles the "/sys/namespaces/<name>/key-status" endpoint
 // to return status information about the namespace-owned backend key.
-func (b *SystemBackend) handleNamespaceKeyStatus(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	name := namespace.Canonicalize(data.Get("name").(string))
-	if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
-		return nil, errors.New("name must not contain /")
-	}
+func (b *SystemBackend) handleNamespaceKeyStatus() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := namespace.Canonicalize(data.Get("name").(string))
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
+		}
 
-	ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
-	if err != nil {
-		return handleError(err)
-	}
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		if err != nil {
+			return handleError(err)
+		}
 
-	if ns == nil {
-		return nil, fmt.Errorf("namespace %q doesn't exist", name)
-	}
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", name)
+		}
 
-	barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
-	if barrier == nil {
-		return nil, fmt.Errorf("namespace %q doesn't have a barrier setup", ns.Path)
-	}
+		barrier := b.Core.sealManager.NamespaceBarrier(ns.Path)
+		if barrier == nil {
+			return nil, fmt.Errorf("namespace %q doesn't have a barrier setup", ns.Path)
+		}
 
-	info, err := barrier.ActiveKeyInfo()
-	if err != nil {
-		return handleError(err)
-	}
+		info, err := barrier.ActiveKeyInfo()
+		if err != nil {
+			return handleError(err)
+		}
 
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"term":         info.Term,
-			"install_time": info.InstallTime.Format(time.RFC3339Nano),
-			"encryptions":  info.Encryptions,
-		},
-	}, nil
+		return &logical.Response{
+			Data: map[string]interface{}{
+				"term":         info.Term,
+				"install_time": info.InstallTime.Format(time.RFC3339Nano),
+				"encryptions":  info.Encryptions,
+			},
+		}, nil
+	}
+}
+
+// handleNamespaceRekeyBarrierInit handles the POST "/sys/namespaces/<name>/rekey/init"
+// endpoint to initialize a new namespace barrier rekey attempt.
+func (b *SystemBackend) handleNamespaceRekeyBarrierInit() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := namespace.Canonicalize(data.Get("name").(string))
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", name)
+		}
+
+		rekeyConfig := &SealConfig{}
+		secretShares, ok := data.GetOk("secret_shares")
+		if ok {
+			rekeyConfig.SecretShares = secretShares.(int)
+		}
+
+		secretThreshold, ok := data.GetOk("secret_threshold")
+		if ok {
+			rekeyConfig.SecretThreshold = secretThreshold.(int)
+		}
+
+		pgpKeys, ok := data.GetOk("pgp_keys")
+		if ok {
+			rekeyConfig.PGPKeys = pgpKeys.([]string)
+		}
+
+		backup, ok := data.GetOk("backup")
+		if ok {
+			rekeyConfig.Backup = backup.(bool)
+		}
+
+		verificationReq, ok := data.GetOk("require_verification")
+		if ok {
+			rekeyConfig.VerificationRequired = verificationReq.(bool)
+		}
+
+		err = b.Core.sealManager.RekeyInit(ctx, rekeyConfig, ns, false)
+		if err != nil {
+			return handleError(err)
+		}
+
+		rekeyStatus, err := b.Core.sealManager.RekeyStatus(ctx, ns, false)
+		if err != nil {
+			return handleError(err)
+		}
+
+		return &logical.Response{
+			Data: createNamespaceRekeyStatusResponse(rekeyStatus),
+		}, nil
+	}
+}
+
+// handleNamespaceRekeyBarrierRead handles the GET "/sys/namespaces/<name>/rekey/init"
+// endpoint to read current namespace rekey attempt status.
+func (b *SystemBackend) handleNamespaceRekeyBarrierRead() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := namespace.Canonicalize(data.Get("name").(string))
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, name)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", name)
+		}
+
+		rekeyStatus, err := b.Core.sealManager.RekeyStatus(ctx, ns, false)
+		if err != nil {
+			return handleError(err)
+		}
+
+		return &logical.Response{
+			Data: createNamespaceRekeyStatusResponse(rekeyStatus),
+		}, nil
+	}
 }
 
 // handleNamespaceSealStatus handles the "/sys/namespaces/<name>/seal-status" endpoint
