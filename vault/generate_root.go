@@ -47,14 +47,6 @@ func (g generateStandardRootToken) authenticate(ctx context.Context, c *Core, co
 		return fmt.Errorf("root key verification failed: %w", err)
 	}
 
-	// 	rootKey, err = c.sealManager.unsealKeyToRootKey(ctx, c.seal, combinedKey, false)
-	// 	if err != nil {
-	// 		return fmt.Errorf("unable to authenticate: %w", err)
-	// 	}
-	// 	if err = c.barrier.VerifyRoot(rootKey); err != nil {
-	// 		return fmt.Errorf("root key verification failed: %w", err)
-	// 	}
-
 	return nil
 }
 
