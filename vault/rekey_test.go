@@ -126,7 +126,7 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 	// If recovery key is supported, set newConf
 	// to be a recovery seal config
 	if c.seal.RecoveryKeySupported() {
-		newConf.Type = c.seal.RecoveryType()
+		newConf.Type = c.seal.(AutoSeal).RecoveryType()
 	}
 
 	err = c.RekeyInit(newConf, recovery)
@@ -155,7 +155,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// Start a rekey
 	var expType string
 	if recovery {
-		expType = c.seal.RecoveryType()
+		expType = c.seal.(AutoSeal).RecoveryType()
 	} else {
 		expType = c.seal.BarrierType().String()
 	}
@@ -211,9 +211,9 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	// SealConfig should update
 	var sealConf *SealConfig
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.(AutoSeal).RecoveryConfig(context.Background(), c.PhysicalAccess())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background())
+		sealConf, err = c.seal.BarrierConfig(context.Background(), c.PhysicalAccess())
 	}
 	if err != nil {
 		t.Fatalf("seal config retrieval error: %v", err)
@@ -312,9 +312,9 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 	// SealConfig should update
 	if recovery {
-		sealConf, err = c.seal.RecoveryConfig(context.Background())
+		sealConf, err = c.seal.(AutoSeal).RecoveryConfig(context.Background(), c.PhysicalAccess())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background())
+		sealConf, err = c.seal.BarrierConfig(context.Background(), c.PhysicalAccess())
 	}
 	if err != nil {
 		t.Fatalf("err: %v", err)

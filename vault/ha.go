@@ -570,10 +570,7 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		// everything is sane. If we have no sanity in the barrier, we actually
 		// seal, as there's little we can do.
 		{
-			c.seal.SetBarrierConfig(activeCtx, nil)
-			if c.seal.RecoveryKeySupported() {
-				c.seal.SetRecoveryConfig(activeCtx, nil)
-			}
+			c.SealAccess().ClearCaches()
 
 			if err := c.performKeyUpgrades(activeCtx); err != nil {
 				c.logger.Error("error performing key upgrades", "error", err)
@@ -956,11 +953,10 @@ func (c *Core) reloadRootKey(ctx context.Context) error {
 }
 
 func (c *Core) reloadShamirKey(ctx context.Context) error {
-	_ = c.seal.SetBarrierConfig(ctx, nil)
-	if cfg, _ := c.seal.BarrierConfig(ctx); cfg == nil {
+	c.seal.PurgeCachedBarrierConfig()
+	if cfg, _ := c.seal.BarrierConfig(ctx, c.PhysicalAccess()); cfg == nil {
 		return nil
 	}
-	var shamirKey []byte
 	switch c.seal.StoredKeysSupported() {
 	case seal.StoredKeysSupportedGeneric:
 		return nil
@@ -972,15 +968,16 @@ func (c *Core) reloadShamirKey(ctx context.Context) error {
 		if entry == nil {
 			return nil
 		}
-		shamirKey = entry.Value
+		shamirWrapper, err := c.seal.(ShamirSeal).GetShamirWrapper()
+		if err != nil {
+			return err
+		}
+		return shamirWrapper.SetAesGcmKeyBytes(entry.Value)
 	case seal.StoredKeysNotSupported:
 		return errors.New("legacy shamir seals are not supported by OpenBao")
+	default:
+		return nil
 	}
-	shamirWrapper, err := c.seal.GetShamirWrapper()
-	if err != nil {
-		return err
-	}
-	return shamirWrapper.SetAesGcmKeyBytes(shamirKey)
 }
 
 func (c *Core) performKeyUpgrades(ctx context.Context) error {

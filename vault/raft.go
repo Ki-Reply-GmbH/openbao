@@ -686,7 +686,7 @@ func (c *Core) raftSnapshotRestoreCallback(grabLock bool, sealNode bool) func(co
 				// unseal again. If the auto-unseal mechanism has changed then
 				// there isn't anything we can do but seal.
 				c.logger.Info("failed to perform key upgrades, reloading using auto seal")
-				keys, err := c.seal.GetStoredKeys(ctx)
+				keys, err := c.seal.GetStoredKeys(ctx, c.PhysicalAccess())
 				if err != nil {
 					c.logger.Error("raft snapshot restore failed to get stored keys", "error", err)
 					return err
@@ -928,7 +928,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		// false.
 		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !c.isRaftHAOnly() {
 			c.raftInfo.Store(raftInfo)
-			if err := c.seal.SetBarrierConfig(ctx, raftInfo.leaderBarrierConfig); err != nil {
+			if err := c.seal.SetBarrierConfig(ctx, c.PhysicalAccess(), raftInfo.leaderBarrierConfig, c.isRaftUnseal()); err != nil {
 				return err
 			}
 

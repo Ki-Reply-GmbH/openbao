@@ -4599,9 +4599,9 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 
 	var sealConfig *SealConfig
 	if core.SealAccess().RecoveryKeySupported() {
-		sealConfig, err = core.SealAccess().RecoveryConfig(ctx)
+		sealConfig, err = core.SealAccess().RecoveryConfig(ctx, core.PhysicalAccess())
 	} else {
-		sealConfig, err = core.SealAccess().BarrierConfig(ctx)
+		sealConfig, err = core.SealAccess().BarrierConfig(ctx, core.PhysicalAccess())
 	}
 	if err != nil {
 		return nil, err

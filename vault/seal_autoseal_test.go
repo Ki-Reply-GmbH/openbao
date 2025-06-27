@@ -90,25 +90,24 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	autoSeal.SetCore(core)
 	pBackend := newTestBackend(t)
 	core.physical = pBackend
 
 	ctx := context.Background()
 
 	inkeys := [][]byte{[]byte("grist"), []byte("house")}
-	if err := autoSeal.SetStoredKeys(ctx, inkeys); err != nil {
+	if err := autoSeal.SetStoredKeys(ctx, core.PhysicalAccess(), inkeys); err != nil {
 		t.Fatalf("SetStoredKeys: want no error, got %v", err)
 	}
 
 	inRecoveryKey := []byte("falernum")
-	if err := autoSeal.SetRecoveryKey(ctx, inRecoveryKey); err != nil {
+	if err := autoSeal.SetRecoveryKey(ctx, core.PhysicalAccess(), inRecoveryKey); err != nil {
 		t.Fatalf("SetRecoveryKey: want no error, got %v", err)
 	}
 
 	check := func() {
 		// The values of the stored keys should never change.
-		outkeys, err := autoSeal.GetStoredKeys(ctx)
+		outkeys, err := autoSeal.GetStoredKeys(ctx, core.PhysicalAccess())
 		if err != nil {
 			t.Fatalf("GetStoredKeys: want no error, got %v", err)
 		}
@@ -117,7 +116,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 		}
 
 		// The value of the recovery key should also never change.
-		outRecoveryKey, err := autoSeal.RecoveryKey(ctx)
+		outRecoveryKey, err := autoSeal.RecoveryKey(ctx, core.PhysicalAccess())
 		if err != nil {
 			t.Fatalf("RecoveryKey: want no error, got %v", err)
 		}
@@ -161,7 +160,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 
 	// Call UpgradeKeys before changing the encryption key and verify
 	// nothing has changed.
-	if err := autoSeal.UpgradeKeys(ctx); err != nil {
+	if err := autoSeal.UpgradeKeys(ctx, core.PhysicalAccess()); err != nil {
 		t.Fatalf("UpgradeKeys: want no error, got %v", err)
 	}
 	check()
@@ -170,7 +169,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	// keys and recovery key has been re-encrypted with the new encryption
 	// key.
 	changeKey("primanti")
-	if err := autoSeal.UpgradeKeys(ctx); err != nil {
+	if err := autoSeal.UpgradeKeys(ctx, core.PhysicalAccess()); err != nil {
 		t.Fatalf("UpgradeKeys: want no error, got %v", err)
 	}
 	check()
@@ -202,9 +201,8 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	autoSeal.SetCore(core)
 	core.seal = autoSeal
-	autoSeal.StartHealthCheck()
+	autoSeal.StartHealthCheck(core)
 	defer autoSeal.StopHealthCheck()
 	setErr(errors.New("disconnected"))
 

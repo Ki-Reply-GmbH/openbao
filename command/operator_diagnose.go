@@ -410,11 +410,12 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		defer func(seal *vault.Seal) {
 			sealType := diagnose.CapitalizeFirstLetter((*seal).BarrierType().String())
 			finalizeSealContext, finalizeSealSpan := diagnose.StartSpan(ctx, "Finalize "+sealType+" Seal")
-			err = (*seal).Finalize(finalizeSealContext)
-			if err != nil {
-				diagnose.Fail(finalizeSealContext, "Error finalizing seal.")
-				diagnose.Advise(finalizeSealContext, "This likely means that the barrier is still in use; therefore, finalizing the seal timed out.")
-				finalizeSealSpan.End()
+			if (*seal).BarrierType() != wrapping.WrapperTypeShamir {
+				err = (*seal).(vault.AutoSeal).Finalize(finalizeSealContext)
+				if err != nil {
+					diagnose.Fail(finalizeSealContext, "Error finalizing seal.")
+					diagnose.Advise(finalizeSealContext, "This likely means that the barrier is still in use; therefore, finalizing the seal timed out.")
+				}
 			}
 			finalizeSealSpan.End()
 		}(&seal)

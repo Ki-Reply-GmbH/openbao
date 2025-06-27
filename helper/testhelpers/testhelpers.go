@@ -170,7 +170,7 @@ func AttemptUnsealCore(c *vault.TestCluster, core *vault.TestClusterCore) error 
 		return nil
 	}
 
-	core.SealAccess().ClearCaches(context.Background())
+	core.SealAccess().ClearCaches()
 	if err := core.UnsealWithStoredKeys(context.Background()); err != nil {
 		return err
 	}

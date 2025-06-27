@@ -52,36 +52,29 @@ const (
 )
 
 type Seal interface {
-	SetCore(*Core)
-	Init(context.Context) error
-	Finalize(context.Context) error
 	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
-	SealWrapable() bool
-	SetStoredKeys(context.Context, [][]byte) error
-	GetStoredKeys(context.Context) ([][]byte, error)
-	BarrierType() wrapping.WrapperType                  // SealAccess
-	BarrierConfig(context.Context) (*SealConfig, error) // SealAccess
-	SetBarrierConfig(context.Context, *SealConfig) error
+	SetStoredKeys(context.Context, physical.Backend, [][]byte) error
+	GetStoredKeys(context.Context, physical.Backend) ([][]byte, error)
+	BarrierType() wrapping.WrapperType                                    // SealAccess
+	BarrierConfig(context.Context, physical.Backend) (*SealConfig, error) // SealAccess
+	SetBarrierConfig(context.Context, physical.Backend, *SealConfig, bool) error
+	PurgeCachedBarrierConfig()
 	SetCachedBarrierConfig(*SealConfig)
 	RecoveryKeySupported() bool // SealAccess
-	RecoveryType() string
-	RecoveryConfig(context.Context) (*SealConfig, error) // SealAccess
-	RecoveryKey(context.Context) ([]byte, error)
-	SetRecoveryConfig(context.Context, *SealConfig) error
-	SetCachedRecoveryConfig(*SealConfig)
-	SetRecoveryKey(context.Context, []byte) error
-	VerifyRecoveryKey(context.Context, []byte) error // SealAccess
-	GetAccess() seal.Access                          // SealAccess
+	GetAccess() seal.Access     // SealAccess
+}
+
+type ShamirSeal interface {
+	Seal
 	GetShamirWrapper() (*aeadwrapper.ShamirWrapper, error)
 }
 
 type defaultSeal struct {
 	access seal.Access
 	config atomic.Value
-	core   *Core
 }
 
-var _ Seal = (*defaultSeal)(nil)
+var _ ShamirSeal = (*defaultSeal)(nil)
 
 func NewDefaultSeal(lowLevel seal.Access) Seal {
 	ret := &defaultSeal{
@@ -91,35 +84,8 @@ func NewDefaultSeal(lowLevel seal.Access) Seal {
 	return ret
 }
 
-func (d *defaultSeal) SealWrapable() bool {
-	return false
-}
-
-func (d *defaultSeal) checkCore() error {
-	if d.core == nil {
-		return errors.New("seal does not have a core set")
-	}
-	return nil
-}
-
 func (d *defaultSeal) GetAccess() seal.Access {
 	return d.access
-}
-
-func (d *defaultSeal) SetAccess(access seal.Access) {
-	d.access = access
-}
-
-func (d *defaultSeal) SetCore(core *Core) {
-	d.core = core
-}
-
-func (d *defaultSeal) Init(ctx context.Context) error {
-	return nil
-}
-
-func (d *defaultSeal) Finalize(ctx context.Context) error {
-	return nil
 }
 
 func (d *defaultSeal) BarrierType() wrapping.WrapperType {
@@ -134,35 +100,28 @@ func (d *defaultSeal) RecoveryKeySupported() bool {
 	return false
 }
 
-func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.access, keys)
+func (d *defaultSeal) SetStoredKeys(ctx context.Context, storage physical.Backend, keys [][]byte) error {
+	return writeStoredKeys(ctx, storage, d.access, keys)
 }
 
-func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	keys, err := readStoredKeys(ctx, d.core.physical, d.access)
-	return keys, err
+func (d *defaultSeal) GetStoredKeys(ctx context.Context, storage physical.Backend) ([][]byte, error) {
+	return readStoredKeys(ctx, storage, d.access)
 }
 
-func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
+func (d *defaultSeal) BarrierConfig(ctx context.Context, storage physical.Backend) (*SealConfig, error) {
 	cfg := d.config.Load().(*SealConfig)
 	if cfg != nil {
 		return cfg.Clone(), nil
 	}
 
-	if err := d.checkCore(); err != nil {
-		return nil, err
-	}
-
 	// Fetch the core configuration
-	pe, err := d.core.physical.Get(ctx, barrierSealConfigPath)
+	pe, err := storage.Get(ctx, barrierSealConfigPath)
 	if err != nil {
-		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
 	}
 
 	// If the seal configuration is missing, we are not initialized
 	if pe == nil {
-		d.core.logger.Info("seal configuration missing, not initialized")
 		return nil, nil
 	}
 
@@ -170,7 +129,6 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 
 	// Decode the barrier entry
 	if err := jsonutil.DecodeJSON(pe.Value, &conf); err != nil {
-		d.core.logger.Error("failed to decode seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to decode seal configuration: %w", err)
 	}
 
@@ -180,13 +138,11 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 		conf.Type = d.BarrierType().String()
 	case d.BarrierType().String():
 	default:
-		d.core.logger.Error("barrier seal type does not match expected type", "barrier_seal_type", conf.Type, "loaded_seal_type", d.BarrierType())
 		return nil, fmt.Errorf("barrier seal type of %q does not match expected type of %q", conf.Type, d.BarrierType())
 	}
 
 	// Check for a valid seal configuration
 	if err := conf.Validate(); err != nil {
-		d.core.logger.Error("invalid seal configuration", "error", err)
 		return nil, fmt.Errorf("seal validation failed: %w", err)
 	}
 
@@ -194,24 +150,13 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	return conf.Clone(), nil
 }
 
-func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) error {
-	if err := d.checkCore(); err != nil {
-		return err
-	}
-
-	// Provide a way to wipe out the cached value (also prevents actually
-	// saving a nil config)
-	if config == nil {
-		d.config.Store((*SealConfig)(nil))
-		return nil
-	}
-
+func (d *defaultSeal) SetBarrierConfig(ctx context.Context, storage physical.Backend, config *SealConfig, isRaftUnseal bool) error {
 	config.Type = d.BarrierType().String()
 
 	// If we are doing a raft unseal we do not want to persist the barrier config
 	// because storage isn't setup yet.
-	if d.core.isRaftUnseal() {
-		d.config.Store(config.Clone())
+	if isRaftUnseal {
+		d.SetCachedBarrierConfig(config.Clone())
 		return nil
 	}
 
@@ -227,8 +172,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 		Value: buf,
 	}
 
-	if err := d.core.physical.Put(ctx, pe); err != nil {
-		d.core.logger.Error("failed to write seal configuration", "error", err)
+	if err := storage.Put(ctx, pe); err != nil {
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
 
@@ -237,35 +181,12 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 	return nil
 }
 
+func (d *defaultSeal) PurgeCachedBarrierConfig() {
+	d.config.Store((*SealConfig)(nil))
+}
+
 func (d *defaultSeal) SetCachedBarrierConfig(config *SealConfig) {
 	d.config.Store(config)
-}
-
-func (d *defaultSeal) RecoveryType() string {
-	return RecoveryTypeUnsupported
-}
-
-func (d *defaultSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
-	return nil, errors.New("recovery not supported")
-}
-
-func (d *defaultSeal) RecoveryKey(ctx context.Context) ([]byte, error) {
-	return nil, errors.New("recovery not supported")
-}
-
-func (d *defaultSeal) SetRecoveryConfig(ctx context.Context, config *SealConfig) error {
-	return errors.New("recovery not supported")
-}
-
-func (d *defaultSeal) SetCachedRecoveryConfig(config *SealConfig) {
-}
-
-func (d *defaultSeal) VerifyRecoveryKey(ctx context.Context, key []byte) error {
-	return errors.New("recovery not supported")
-}
-
-func (d *defaultSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
-	return errors.New("recovery not supported")
 }
 
 func (d *defaultSeal) GetShamirWrapper() (*aeadwrapper.ShamirWrapper, error) {

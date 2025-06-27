@@ -105,7 +105,7 @@ func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
 	}
 
 	// Verify the seal configuration
-	sealConf, err := c.seal.BarrierConfig(ctx)
+	sealConf, err := c.seal.BarrierConfig(ctx, c.PhysicalAccess())
 	if err != nil {
 		return false, err
 	}
@@ -244,10 +244,12 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		}()
 	}
 
-	err = c.seal.Init(ctx)
-	if err != nil {
-		c.logger.Error("failed to initialize seal", "error", err)
-		return nil, fmt.Errorf("error initializing seal: %w", err)
+	if c.seal.BarrierType() != wrapping.WrapperTypeShamir {
+		err = c.seal.(AutoSeal).Init(ctx)
+		if err != nil {
+			c.logger.Error("failed to initialize seal", "error", err)
+			return nil, fmt.Errorf("error initializing seal: %w", err)
+		}
 	}
 
 	barrierKey, barrierKeyShares, err := c.generateShares(barrierConfig)
@@ -292,7 +294,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		}
 	}()
 
-	err = c.seal.SetBarrierConfig(ctx, barrierConfig)
+	err = c.seal.SetBarrierConfig(ctx, c.PhysicalAccess(), barrierConfig, c.isRaftUnseal())
 	if err != nil {
 		c.logger.Error("failed to save barrier configuration", "error", err)
 		return nil, fmt.Errorf("barrier configuration saving failed: %w", err)
@@ -307,7 +309,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	switch c.seal.StoredKeysSupported() {
 	case seal.StoredKeysSupportedShamirRoot:
 		keysToStore := [][]byte{barrierKey}
-		shamirWrapper, err := c.seal.GetShamirWrapper()
+		shamirWrapper, err := c.seal.(ShamirSeal).GetShamirWrapper()
 		if err != nil {
 			return nil, err
 		}
@@ -315,14 +317,14 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 			c.logger.Error("failed to set seal key", "error", err)
 			return nil, fmt.Errorf("failed to set seal key: %w", err)
 		}
-		if err := c.seal.SetStoredKeys(ctx, keysToStore); err != nil {
+		if err := c.seal.SetStoredKeys(ctx, c.PhysicalAccess(), keysToStore); err != nil {
 			c.logger.Error("failed to store keys", "error", err)
 			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
 		results.SecretShares = sealKeyShares
 	case seal.StoredKeysSupportedGeneric:
 		keysToStore := [][]byte{barrierKey}
-		if err := c.seal.SetStoredKeys(ctx, keysToStore); err != nil {
+		if err := c.seal.SetStoredKeys(ctx, c.PhysicalAccess(), keysToStore); err != nil {
 			c.logger.Error("failed to store keys", "error", err)
 			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
@@ -348,7 +350,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	// disabled. When using recovery keys they are stored in the barrier, so
 	// this must happen post-unseal.
 	if c.seal.RecoveryKeySupported() {
-		err = c.seal.SetRecoveryConfig(ctx, recoveryConfig)
+		err = c.seal.(AutoSeal).SetRecoveryConfig(ctx, c.PhysicalAccess(), recoveryConfig)
 		if err != nil {
 			c.logger.Error("failed to save recovery configuration", "error", err)
 			return nil, fmt.Errorf("recovery configuration saving failed: %w", err)
@@ -361,7 +363,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 				return nil, err
 			}
 
-			err = c.seal.SetRecoveryKey(ctx, recoveryKey)
+			err = c.seal.(AutoSeal).SetRecoveryKey(ctx, c.PhysicalAccess(), recoveryKey)
 			if err != nil {
 				return nil, err
 			}
@@ -440,7 +442,7 @@ func (c *Core) UnsealWithStoredKeys(ctx context.Context) error {
 	}
 
 	c.Logger().Info("stored unseal keys supported, attempting fetch")
-	keys, err := c.seal.GetStoredKeys(ctx)
+	keys, err := c.seal.GetStoredKeys(ctx, c.PhysicalAccess())
 	if err != nil {
 		return NewNonFatalError(fmt.Errorf("fetching stored unseal keys failed: %w", err))
 	}

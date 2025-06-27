@@ -22,13 +22,12 @@ func TestDefaultSeal_Config(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
 
 	defSeal := NewDefaultSeal(nil)
-	defSeal.SetCore(core)
-	err := defSeal.SetBarrierConfig(context.Background(), bc)
+	err := defSeal.SetBarrierConfig(context.Background(), core.PhysicalAccess(), bc, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	newBc, err := defSeal.BarrierConfig(context.Background())
+	newBc, err := defSeal.BarrierConfig(context.Background(), core.PhysicalAccess())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,8 +37,7 @@ func TestDefaultSeal_Config(t *testing.T) {
 
 	// Now, test without the benefit of the cached value in the seal
 	defSeal = NewDefaultSeal(nil)
-	defSeal.SetCore(core)
-	newBc, err = defSeal.BarrierConfig(context.Background())
+	newBc, err = defSeal.BarrierConfig(context.Background(), core.PhysicalAccess())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -65,7 +65,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	// Check the seal configuration
-	outConf, err := c.seal.BarrierConfig(context.Background())
+	outConf, err := c.seal.BarrierConfig(context.Background(), c.PhysicalAccess())
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -73,7 +73,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("bad: %v", outConf)
 	}
 	if recoveryConf != nil {
-		outConf, err := c.seal.RecoveryConfig(context.Background())
+		outConf, err := c.seal.(AutoSeal).RecoveryConfig(context.Background(), c.PhysicalAccess())
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -121,7 +121,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	// Check the seal configuration
-	outConf, err = c.seal.BarrierConfig(context.Background())
+	outConf, err = c.seal.BarrierConfig(context.Background(), c.PhysicalAccess())
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -129,7 +129,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("bad: %v expect: %v", outConf, barrierConf)
 	}
 	if recoveryConf != nil {
-		outConf, err = c.seal.RecoveryConfig(context.Background())
+		outConf, err = c.seal.(AutoSeal).RecoveryConfig(context.Background(), c.PhysicalAccess())
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -162,7 +162,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	// Check the seal configuration
-	outConf, err = c2.seal.BarrierConfig(context.Background())
+	outConf, err = c2.seal.BarrierConfig(context.Background(), c2.PhysicalAccess())
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -170,7 +170,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("bad: %v expect: %v", outConf, barrierConf)
 	}
 	if recoveryConf != nil {
-		outConf, err = c2.seal.RecoveryConfig(context.Background())
+		outConf, err = c2.seal.(AutoSeal).RecoveryConfig(context.Background(), c2.PhysicalAccess())
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}

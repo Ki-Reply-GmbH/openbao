@@ -2002,12 +2002,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 		c.requestResponseCallback = opts.RequestResponseCallback
 	}
 
-	// Set this in case the Seal was manually set before the core was
-	// created
-	if localConfig.Seal != nil {
-		localConfig.Seal.SetCore(c)
-	}
-
 	return cleanupFunc, c, localConfig, handler
 }
 
@@ -2138,7 +2132,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		t.Fatal(err)
 	}
 
-	cfg, err := leader.Core.seal.BarrierConfig(ctx)
+	cfg, err := leader.Core.seal.BarrierConfig(ctx, leader.Core.PhysicalAccess())
 	if err != nil {
 		t.Fatal(err)
 	}
