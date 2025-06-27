@@ -980,6 +980,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		numRollbackWorkers:             conf.NumRollbackWorkers,
 		impreciseLeaseRoleTracking:     conf.ImpreciseLeaseRoleTracking,
 		detectDeadlocks:                detectDeadlocks,
+		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
 		namespaceRootGens:              make(map[string]*NamespaceRootGeneration),
 	}
 
