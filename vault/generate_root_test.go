@@ -22,8 +22,7 @@ func TestCore_NS_GenerateRoot_Lifecycle(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "test1/"}
 	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
-	keys := keysPerNamespace[ns.Path]
-	testCore_GenerateRoot_Lifecycle_Common(t, c, keys, ns)
+	testCore_GenerateRoot_Lifecycle_Common(t, c, keysPerNamespace[ns.Path], ns)
 }
 
 func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
@@ -181,7 +180,7 @@ func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [
 
 	// Provide the root (invalid)
 	for _, key := range keys {
-		_, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rgconf.Nonce, GenerateStandardRootTokenStrategy, namespace.RootNamespace)
+		_, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rgconf.Nonce, GenerateStandardRootTokenStrategy, ns)
 	}
 	if err == nil {
 		t.Fatal("expected error")
@@ -197,8 +196,7 @@ func TestCore_NS_GenerateRoot_Update_OTP(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "test1/"}
 	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
-	keys := keysPerNamespace[ns.Path]
-	testCore_GenerateRoot_Update_OTP_Common(t, c, keys, ns)
+	testCore_GenerateRoot_Update_OTP_Common(t, c, keysPerNamespace[ns.Path], ns)
 }
 
 func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
@@ -297,8 +295,7 @@ func TestCore_NS_GenerateRoot_Update_PGP(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{Path: "test1/"}
 	keysPerNamespace := TestCoreCreateSealedNamespaces(t, c, ns)
-	keys := keysPerNamespace[ns.Path]
-	testCore_GenerateRoot_Update_PGP_Common(t, c, keys, ns)
+	testCore_GenerateRoot_Update_PGP_Common(t, c, keysPerNamespace[ns.Path], ns)
 }
 
 func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byte, ns *namespace.Namespace) {
