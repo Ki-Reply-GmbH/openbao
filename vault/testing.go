@@ -373,7 +373,7 @@ func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.
 	}
 }
 
-// TestCoreCreateSealedNamespaces creates sealed namespaces with 1 key share and returns the
+// TestCoreCreateSealedNamespaces creates sealed namespaces with 3 key shares and returns the
 // key for each created namespace in a map.
 func TestCoreCreateSealedNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) map[string][][]byte {
 	t.Helper()
