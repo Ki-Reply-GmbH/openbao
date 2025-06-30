@@ -185,8 +185,6 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 	}
 	barrierSealed := c.barrier.Sealed()
 	if !barrierSealed && c.recoveryMode {
-		// TODO(lge): Check needed for none root namespace??? Current opinion no because
-		// non namespace root generation is protected via auth which means barrier is unsealed
 		return errors.New("attempt to generate recovery operation token when already unsealed")
 	}
 	if c.standby && !c.recoveryMode {

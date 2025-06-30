@@ -989,7 +989,7 @@ func (ts *TokenStore) rootToken(ctx context.Context, ns *namespace.Namespace) (*
 	if ns.UUID == namespace.RootNamespaceUUID {
 		te := &logical.TokenEntry{
 			Policies:     []string{"root"},
-			Path:         view.Prefix() + "auth/token/root",
+			Path:         "auth/token/root",
 			DisplayName:  "root",
 			CreationTime: time.Now().Unix(),
 			NamespaceID:  ns.ID,
@@ -1000,16 +1000,15 @@ func (ts *TokenStore) rootToken(ctx context.Context, ns *namespace.Namespace) (*
 		}
 		return te, nil
 	} else {
-		// TODO Generate Namespace Root Token but idk how xD
 		te := &logical.TokenEntry{
 			Policies:     []string{"root"},
-			Path:         view.Prefix() + "auth/token/root",
-			DisplayName:  ns.Path + "_root",
+			Path:         view.Prefix() + "auth/token",
+			DisplayName:  ns.ID + "_root",
 			CreationTime: time.Now().Unix(),
 			NamespaceID:  ns.ID,
 			Type:         logical.TokenTypeService,
 		}
-		if err := ts.create(ctx, te, true /* persist */); err != nil {
+		if err := ts.create(ctx, te, true /* p ersist */); err != nil {
 			return nil, err
 		}
 		return te, nil
