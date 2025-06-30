@@ -33,8 +33,6 @@ type NamespaceGenerateRootCommand struct {
 	flagDecode      string
 	flagOTP         string
 	flagGenerateOTP bool
-
-	testStdin io.Reader // for tests
 }
 
 func (c *NamespaceGenerateRootCommand) Synopsis() string {
@@ -281,9 +279,6 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 
 		// Pull our fake stdin if needed
 		stdin := (io.Reader)(os.Stdin)
-		if c.testStdin != nil {
-			stdin = c.testStdin
-		}
 		if c.flagNonInteractive {
 			stdin = bytes.NewReader(nil)
 		}
