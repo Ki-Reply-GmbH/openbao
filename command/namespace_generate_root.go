@@ -372,9 +372,6 @@ func (c *NamespaceGenerateRootCommand) decode(client *api.Client, encoded, otp s
 	if encoded == "-" {
 		// Pull our fake stdin if needed
 		stdin := (io.Reader)(os.Stdin)
-		if c.testStdin != nil {
-			stdin = c.testStdin
-		}
 		if c.flagNonInteractive {
 			stdin = bytes.NewReader(nil)
 		}
