@@ -231,7 +231,11 @@ func (c *NamespaceGenerateRootCommand) init(client *api.Client, otp, pgpKey stri
 		return 2
 	}
 
-	status, _ := c.extractResponse(secret)
+	status, err := c.extractResponse(secret)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
+		return 2
+	}
 
 	switch Format(c.UI) {
 	case "table":
@@ -245,10 +249,14 @@ func (c *NamespaceGenerateRootCommand) init(client *api.Client, otp, pgpKey stri
 // endpoint. If this is the last unseal, this function outputs it.
 func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, namespacePath string) int {
 	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath + "/generate-root/attempt")
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error while getting root generation status: %s", err))
+		return 2
+	}
 
 	status, err := c.extractResponse(secret)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
+		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return 2
 	}
 
@@ -391,10 +399,14 @@ func (c *NamespaceGenerateRootCommand) decode(client *api.Client, encoded, otp s
 	}
 
 	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath + "/generate-root/attempt")
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error while getting root generation status: %s", err))
+		return 2
+	}
 
 	status, err := c.extractResponse(secret)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
+		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return 2
 	}
 
@@ -417,10 +429,14 @@ func (c *NamespaceGenerateRootCommand) decode(client *api.Client, encoded, otp s
 
 func (c *NamespaceGenerateRootCommand) status(client *api.Client, namespacePath string) int {
 	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath + "/generate-root/attempt")
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error initializing root generation: %s", err))
+		return 2
+	}
 
 	status, err := c.extractResponse(secret)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
+		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return 2
 	}
 	if err != nil {
@@ -437,10 +453,14 @@ func (c *NamespaceGenerateRootCommand) status(client *api.Client, namespacePath 
 
 func (c *NamespaceGenerateRootCommand) generateOTP(client *api.Client, namespacePath string) (string, int) {
 	secret, err := client.Logical().Read("sys/namespaces/" + namespacePath + "/generate-root/attempt")
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error initializing root generation: %s", err))
+		return "", 2
+	}
 
 	status, err := c.extractResponse(secret)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error getting root generation status: %s", err))
+		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return "", 2
 	}
 
