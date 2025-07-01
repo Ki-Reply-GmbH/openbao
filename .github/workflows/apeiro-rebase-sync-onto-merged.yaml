@@ -1,0 +1,76 @@
+name: Apeiro_ Rebase sync branch onto merged
+#
+# This workflow will be executed to specific times (see cron scheduie) but can also be manually triggered.
+#
+# For authentication this workflow uses a GitHub App called "openbao-sync" that must be installed into this repository.
+# (In case of permission changes that App may need to be re-approved by repository maintainers.)
+# 
+# Credentials are stored in repository variables and secrets.
+#
+
+on:
+  workflow_dispatch:
+  schedule:
+  # see https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule
+    # Since existing PRs will be automatically closed in this version, you may want to run this workflow more often.
+    # run job at least two  times per week -> humans need to approve two PRs per week
+    - cron: '0 3 * * 1,4' # runs at 03:00, only on Monday and Thursday.
+    # optional: run every workday -> there will be also a new PR per day that needs review and approval!
+    - cron: '0 3 * * 2,3,5' # runs at 03:00, only on Tuesday, Wednesday and Friday. Only used for demonstration. (It should be sufficent to run this workflow only two times per week.)
+    
+jobs:
+  sync-and-create-pr:
+    name: Rebase sync branch onto merged and create pull request
+    # use ubuntu-latest runner in github and linux runner in SAP GitHub Enterprise
+    runs-on: linux # ubuntu-latest doesn't work in SAP GitHub (no runners with that tag available -> endless queued state)
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+        group: refs/heads/openbao-sync-updates
+        cancel-in-progress: true
+    steps:
+    - name: Determine current datetime
+      run: echo "CURRENT_DATETIME=$(TZ=Europe/Berlin date +%Y-%m-%d-T%H-%M-%S)" >> $GITHUB_ENV
+    
+    - name: Checkout ApeiroRA 
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Delete existing openbao-sync-updates branch to close last PR if it already exists
+      continue-on-error: true
+      run: |
+        git push origin --delete openbao-sync-updates
+   
+    - name: Rebase sync branch onto merged branch and prefer sync in case of merge conflicts
+      # git rebase -X ours merged: in case of conflicts, prefer existing code in merged
+      # git rebase -X theirs merged: in case of conflicts, prefer current branch openbao-sync-updates baased on sync
+      run: |
+        git fetch --all
+        git checkout -b merged origin/merged
+        git checkout -b openbao-sync-updates origin/sync
+        git config user.name "GitHub Action" 
+        git config user.email "<>"
+        git rebase -X theirs merged 
+        git push -f -u origin openbao-sync-updates
+        
+
+    - name: Generate GH App token
+      id: generate-token
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ vars.OPENBAO_SYNC_APP_ID }}
+        # Important: Private Key must be in PKCS#8 format, not in OpenSSh format!
+        private-key: ${{ secrets.OPENBAO_SYNC_APP_PRIVATE_KEY }}
+        owner: ApeiroRA # owner (user or organization) of repository  
+        github-api-url:  https://github.tools.sap/api/v3/
+        
+    - name: Create pull request 
+      # Note: The creation will fail when there is no change (any commit) between openbao-sync-updates and current SAP sync branch!
+      continue-on-error: true
+      run: |
+        echo ${{ steps.generate-token.outputs.token }} | gh auth login --with-token -p https --hostname github.tools.sap
+        gh repo set-default https://x-access-token:${{ steps.generate-token.outputs.token }}@github.tools.sap/${{ vars.APEIRO_OPENBAO_REPO_NAME }}
+        gh pr create -B merged -H openbao-sync-updates --title 'Rebase OpenBao-Sync created at ${{ env.CURRENT_DATETIME }} into _merged_ branch' --body 'PR opened by a workflow <br> IMPORTANT: Please use the **rebase** option instead of merge to keep the history clean!'
+  

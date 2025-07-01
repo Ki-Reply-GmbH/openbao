@@ -1,9 +1,9 @@
-name: "CodeQL SAST Scan"
+name: "Apeiro_ CodeQL SAST Scan"
 on:
   push:
-    branches: [sync] # A push to one of these branches triggers a scan (of the pushed commit).
+    branches: [merged] # A push to one of these branches triggers a scan (of the pushed commit).
   pull_request:
-    branches: [sync] # A PR that targets these branches triggers a scan of the tip of that PR.
+    branches: [merged] # A PR that targets these branches triggers a scan of the tip of that PR.
   # It is also recommended to schedule a scan for the case that CodeQL was updated and may discover new types of vulnerabilities.
   # You should schedule a weekly scan at a random time:
   schedule:
