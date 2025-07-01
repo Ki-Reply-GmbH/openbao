@@ -13,7 +13,6 @@ name: Apeiro_ Mirror OpenBao OpenSource into ApeiroRA with forcedpush
 
 on:
   workflow_dispatch:
-  push:
   schedule:
   # see https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule
   # Since existing PRs will be automatically closed in this version, you may want to run this workflow more often.
