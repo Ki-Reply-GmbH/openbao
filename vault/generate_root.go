@@ -311,22 +311,28 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		}
 	}
 
-	// Store this key
 	nsRootGen.Progress = append(nsRootGen.Progress, key)
 	progress := len(nsRootGen.Progress)
 
-	seal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
-	sealConfig, err := (*seal).BarrierConfig(ctx, ns)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get barrier config: %w", err)
+	var threshold int
+	if ns.UUID == namespace.RootNamespaceUUID {
+		threshold = config.SecretThreshold
+	} else {
+		seal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
+		sealConfig, err := (*seal).BarrierConfig(ctx, ns)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get barrier config: %w", err)
+		}
+		threshold = sealConfig.SecretThreshold
 	}
-	if len(nsRootGen.Progress) < sealConfig.SecretThreshold {
+
+	if progress < threshold {
 		if c.logger.IsDebug() {
-			c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", sealConfig.SecretThreshold)
+			c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", threshold)
 		}
 		return &GenerateRootResult{
 			Progress:       progress,
-			Required:       sealConfig.SecretThreshold,
+			Required:       threshold,
 			PGPFingerprint: nsRootGen.Config.PGPFingerprint,
 		}, nil
 	}
