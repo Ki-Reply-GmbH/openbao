@@ -355,7 +355,7 @@ func (c *NamespaceGenerateRootCommand) cancel(client *api.Client, namespacePath 
 		c.UI.Error(fmt.Sprintf("Error canceling root token generation: %s", err))
 		return 2
 	}
-	c.UI.Output(fmt.Sprintf("Success! Root token generation canceled for namespace: %q (if it was started)", namespacePath))
+	c.UI.Output(fmt.Sprintf("Cancelled any ongoing root token generation operations for namespace: %q", namespacePath))
 	return 0
 }
 
