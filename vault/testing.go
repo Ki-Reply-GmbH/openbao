@@ -391,8 +391,7 @@ func TestCoreCreateSealedNamespaces(t testing.T, core *Core, namespaces ...*name
 		parentCtx := namespace.ContextWithNamespace(ctx, parent)
 		err = core.namespaceStore.SetNamespace(parentCtx, ns)
 		require.NoError(t, err)
-		sm := core.sealManager
-		err = sm.SetSeal(ctx, sealConfig, ns, true)
+		err = core.sealManager.SetSeal(ctx, sealConfig, ns, true)
 		require.NoError(t, err)
 		nsSealKeyShares, err := core.sealManager.InitializeBarrier(ctx, ns)
 		require.NoError(t, err)

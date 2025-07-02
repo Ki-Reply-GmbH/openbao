@@ -154,7 +154,7 @@ func (b *SystemBackend) namespaceGenerateRootStatus(ctx context.Context, ns *nam
 		return handleError(err)
 	}
 	if barrierConfig == nil {
-		return nil, fmt.Errorf("No barrier found for namespace %q", ns.Path)
+		return nil, fmt.Errorf("no barrier found for namespace %q", ns.Path)
 	}
 
 	generationConfig, err := b.Core.GenerateRootConfiguration(ns)
@@ -173,23 +173,21 @@ func (b *SystemBackend) namespaceGenerateRootStatus(ctx context.Context, ns *nam
 		otpLength = NSTokenLength + TokenPrefixLength
 	}
 
-	response := make(map[string]interface{})
-
-	status := &logical.GenerateRootStatusResponse{
-		Started:   false,
-		Progress:  progress,
-		Required:  barrierConfig.SecretThreshold,
-		Complete:  false,
-		OTPLength: otpLength,
-		OTP:       otp,
+	response := map[string]interface{}{
+		"complete":   false,
+		"progress":   progress,
+		"required":   barrierConfig.SecretThreshold,
+		"started":    false,
+		"otp_length": otpLength,
+		"otp":        otp,
 	}
+
 	if generationConfig != nil {
-		status.Nonce = generationConfig.Nonce
-		status.Started = true
-		status.PGPFingerprint = generationConfig.PGPFingerprint
+		response["nonce"] = generationConfig.Nonce
+		response["started"] = true
+		response["pgp_fingerprint"] = generationConfig.PGPFingerprint
 	}
 
-	response["generateRootStatus"] = status
 	return &logical.Response{Data: response}, nil
 }
 
@@ -208,8 +206,15 @@ func (b *SystemBackend) handleNamespaceGenerateRootUpdate() framework.OperationF
 			return nil, fmt.Errorf("namespace %q doesn't exist", name)
 		}
 
-		nonce := data.Get("nonce").(string)
-		key := data.Get("key").(string)
+		nonce := ""
+		key := ""
+
+		if dataNonce, ok := data.GetOk("nonce"); ok {
+			nonce = dataNonce.(string)
+		}
+		if dataKey, ok := data.GetOk("key"); ok {
+			key = dataKey.(string)
+		}
 
 		if nonce == "" {
 			return logical.ErrorResponse("nonce is required"), logical.ErrInvalidRequest
@@ -238,19 +243,16 @@ func (b *SystemBackend) namespaceGenerateRootUpdate(ctx context.Context, ns *nam
 	if err != nil {
 		return nil, err
 	}
-	resp := &logical.GenerateRootStatusResponse{
-		Complete:       result.Progress == result.Required,
-		Nonce:          nonce,
-		Progress:       result.Progress,
-		Required:       result.Required,
-		Started:        true,
-		EncodedToken:   result.EncodedToken,
-		PGPFingerprint: result.PGPFingerprint,
-	}
-	response := make(map[string]interface{})
-	response["generateRootStatus"] = resp
 
-	return &logical.Response{Data: response}, nil
+	return &logical.Response{Data: map[string]interface{}{
+		"complete":        result.Progress == result.Required,
+		"nonce":           nonce,
+		"progress":        result.Progress,
+		"required":        result.Required,
+		"started":         true,
+		"encoded_token":   result.EncodedToken,
+		"pgp_fingerprint": result.PGPFingerprint,
+	}}, nil
 }
 
 func (b *SystemBackend) handleNamespaceGenerateRootCancel() framework.OperationFunc {

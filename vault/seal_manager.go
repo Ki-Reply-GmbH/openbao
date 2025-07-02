@@ -63,7 +63,7 @@ func (c *Core) setupSealManager() error {
 	c.sealManager, err = NewSealManager(c, sealLogger)
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
-	c.sealManager.barrierByStoragePath.Insert("core/seal-config", nil)
+	c.sealManager.barrierByStoragePath.Insert(barrierSealConfigPath, nil)
 	coreSeal := c.seal
 	c.sealManager.sealsByNamespace[namespace.RootNamespaceUUID] = map[string]*Seal{"default": &coreSeal}
 	return err

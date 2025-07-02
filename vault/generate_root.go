@@ -79,6 +79,12 @@ type GenerateRootConfig struct {
 	Strategy       GenerateRootStrategy
 }
 
+func (config GenerateRootConfig) Copy() GenerateRootConfig {
+	conf := new(GenerateRootConfig)
+	*conf = config
+	return *conf
+}
+
 // GenerateRootResult holds the result of a root generation update
 // command
 type GenerateRootResult struct {
@@ -99,8 +105,8 @@ func (c *Core) GenerateRootProgress(ns *namespace.Namespace) (int, error) {
 		return 0, consts.ErrStandby
 	}
 
-	c.namespaceGenLock.Lock()
-	defer c.namespaceGenLock.Unlock()
+	c.namespaceRootGenLock.Lock()
+	defer c.namespaceRootGenLock.Unlock()
 
 	if c.namespaceRootGens[ns.UUID] == nil {
 		return 0, nil
@@ -121,22 +127,18 @@ func (c *Core) GenerateRootConfiguration(ns *namespace.Namespace) (*GenerateRoot
 		return nil, consts.ErrStandby
 	}
 
-	c.namespaceGenLock.Lock()
-	defer c.namespaceGenLock.Unlock()
+	c.namespaceRootGenLock.Lock()
+	defer c.namespaceRootGenLock.Unlock()
 
 	if c.namespaceRootGens[ns.UUID] == nil {
 		return nil, nil
 	}
 
-	// Copy the config if any
-	var conf *GenerateRootConfig
+	config := c.namespaceRootGens[ns.UUID].Config.Copy()
+	config.OTP = ""
+	config.Strategy = nil
 
-	conf = new(GenerateRootConfig)
-	*conf = *c.namespaceRootGens[ns.UUID].Config
-	conf.OTP = ""
-	conf.Strategy = nil
-
-	return conf, nil
+	return &config, nil
 }
 
 // GenerateRootInit is used to initialize the root generation settings
@@ -174,8 +176,8 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 		return errors.New("otp or pgp_key parameter must be provided")
 	}
 
-	c.namespaceGenLock.Lock()
-	defer c.namespaceGenLock.Unlock()
+	c.namespaceRootGenLock.Lock()
+	defer c.namespaceRootGenLock.Unlock()
 
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
@@ -281,8 +283,8 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, consts.ErrStandby
 	}
 
-	c.namespaceGenLock.Lock()
-	defer c.namespaceGenLock.Unlock()
+	c.namespaceRootGenLock.Lock()
+	defer c.namespaceRootGenLock.Unlock()
 
 	nsRootGen, exists := c.namespaceRootGens[ns.UUID]
 	if !exists {
@@ -313,34 +315,20 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	nsRootGen.Progress = append(nsRootGen.Progress, key)
 	progress := len(nsRootGen.Progress)
 
-	if ns.UUID == namespace.RootNamespaceUUID {
-		// Check if we don't have enough keys to unlock
-		if len(nsRootGen.Progress) < config.SecretThreshold {
-			if c.logger.IsDebug() {
-				c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", config.SecretThreshold)
-			}
-			return &GenerateRootResult{
-				Progress:       progress,
-				Required:       config.SecretThreshold,
-				PGPFingerprint: nsRootGen.Config.PGPFingerprint,
-			}, nil
+	seal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
+	sealConfig, err := (*seal).BarrierConfig(ctx, ns)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get barrier config: %w", err)
+	}
+	if len(nsRootGen.Progress) < sealConfig.SecretThreshold {
+		if c.logger.IsDebug() {
+			c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", sealConfig.SecretThreshold)
 		}
-	} else {
-		seal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
-		sealConfig, err := (*seal).BarrierConfig(ctx, ns)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get barrier config: %w", err)
-		}
-		if len(nsRootGen.Progress) < sealConfig.SecretThreshold {
-			if c.logger.IsDebug() {
-				c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", sealConfig.SecretThreshold)
-			}
-			return &GenerateRootResult{
-				Progress:       progress,
-				Required:       sealConfig.SecretThreshold,
-				PGPFingerprint: nsRootGen.Config.PGPFingerprint,
-			}, nil
-		}
+		return &GenerateRootResult{
+			Progress:       progress,
+			Required:       sealConfig.SecretThreshold,
+			PGPFingerprint: nsRootGen.Config.PGPFingerprint,
+		}, nil
 	}
 
 	// Combine the key parts
@@ -418,8 +406,8 @@ func (c *Core) GenerateRootCancel(ns *namespace.Namespace) error {
 		return consts.ErrStandby
 	}
 
-	c.namespaceGenLock.Lock()
-	defer c.namespaceGenLock.Unlock()
+	c.namespaceRootGenLock.Lock()
+	defer c.namespaceRootGenLock.Unlock()
 
 	// Clear any progress or config
 	delete(c.namespaceRootGens, ns.UUID)

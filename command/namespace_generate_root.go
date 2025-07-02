@@ -36,7 +36,7 @@ type NamespaceGenerateRootCommand struct {
 }
 
 func (c *NamespaceGenerateRootCommand) Synopsis() string {
-	return "List child namespaces"
+	return "Generate a new root token for a sealed namespace"
 }
 
 func (c *NamespaceGenerateRootCommand) Help() string {

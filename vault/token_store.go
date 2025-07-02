@@ -986,33 +986,23 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 func (ts *TokenStore) rootToken(ctx context.Context, ns *namespace.Namespace) (*logical.TokenEntry, error) {
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 	view := ts.core.NamespaceView(ns)
-	if ns.UUID == namespace.RootNamespaceUUID {
-		te := &logical.TokenEntry{
-			Policies:     []string{"root"},
-			Path:         "auth/token/root",
-			DisplayName:  "root",
-			CreationTime: time.Now().Unix(),
-			NamespaceID:  ns.ID,
-			Type:         logical.TokenTypeService,
-		}
-		if err := ts.create(ctx, te, true /* persist */); err != nil {
-			return nil, err
-		}
-		return te, nil
-	} else {
-		te := &logical.TokenEntry{
-			Policies:     []string{"root"},
-			Path:         view.Prefix() + "auth/token",
-			DisplayName:  ns.ID + "_root",
-			CreationTime: time.Now().Unix(),
-			NamespaceID:  ns.ID,
-			Type:         logical.TokenTypeService,
-		}
-		if err := ts.create(ctx, te, true /* p ersist */); err != nil {
-			return nil, err
-		}
-		return te, nil
+	var te *logical.TokenEntry
+	te = &logical.TokenEntry{
+		Policies:     []string{"root"},
+		Path:         view.Prefix() + "auth/token/root",
+		CreationTime: time.Now().Unix(),
+		NamespaceID:  ns.ID,
+		Type:         logical.TokenTypeService,
 	}
+	if ns.UUID == namespace.RootNamespaceUUID {
+		te.DisplayName = "root"
+	} else {
+		te.DisplayName = ns.ID + "_root"
+	}
+	if err := ts.create(ctx, te, true /* persist */); err != nil {
+		return nil, err
+	}
+	return te, nil
 }
 
 func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

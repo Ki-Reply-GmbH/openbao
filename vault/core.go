@@ -306,8 +306,8 @@ type Core struct {
 
 	// generateRootProgress holds the shares until we reach enough
 	// to verify the root key
-	namespaceRootGens map[string]*NamespaceRootGeneration
-	namespaceGenLock  sync.Mutex
+	namespaceRootGens    map[string]*NamespaceRootGeneration
+	namespaceRootGenLock sync.Mutex
 
 	// These variables holds the config and shares we have until we reach
 	// enough to verify the appropriate root key. Note that the same lock is
