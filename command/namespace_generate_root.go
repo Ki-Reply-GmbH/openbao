@@ -229,7 +229,7 @@ func (c *NamespaceGenerateRootCommand) init(client *api.Client, otp, pgpKey stri
 		return 2
 	}
 
-	status, err := c.extractResponse(secret)
+	status, err := c.extractResponse(secret.Data)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return 2
@@ -252,7 +252,7 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 		return 2
 	}
 
-	status, err := c.extractResponse(secret)
+	status, err := c.extractResponse(secret.Data)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return 2
@@ -340,7 +340,7 @@ func (c *NamespaceGenerateRootCommand) provide(client *api.Client, key string, n
 		c.UI.Error(fmt.Sprintf("Error posting unseal key: %s", err))
 		return 2
 	}
-	status, err = c.extractResponse(secret)
+	status, err = c.extractResponse(secret.Data)
 	switch Format(c.UI) {
 	case "table":
 		return c.printStatus(status)
@@ -396,7 +396,7 @@ func (c *NamespaceGenerateRootCommand) decode(client *api.Client, encoded, otp s
 		return 2
 	}
 
-	status, err := c.extractResponse(secret)
+	status, err := c.extractResponse(secret.Data)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return 2
@@ -426,7 +426,7 @@ func (c *NamespaceGenerateRootCommand) status(client *api.Client, namespacePath 
 		return 2
 	}
 
-	status, err := c.extractResponse(secret)
+	status, err := c.extractResponse(secret.Data)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return 2
@@ -450,7 +450,7 @@ func (c *NamespaceGenerateRootCommand) generateOTP(client *api.Client, namespace
 		return "", 2
 	}
 
-	status, err := c.extractResponse(secret)
+	status, err := c.extractResponse(secret.Data)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error while extracting root generation status: %s", err))
 		return "", 2
@@ -496,9 +496,8 @@ func (c *NamespaceGenerateRootCommand) printStatus(status *NamespaceGenerateRoot
 	return 0
 }
 
-func (c *NamespaceGenerateRootCommand) extractResponse(secret *api.Secret) (*NamespaceGenerateRootResponse, error) {
-	generateRootStatus := secret.Data["generateRootStatus"].(map[string]interface{})
-	jsonStatus, err := json.Marshal(generateRootStatus)
+func (c *NamespaceGenerateRootCommand) extractResponse(data map[string]interface{}) (*NamespaceGenerateRootResponse, error) {
+	jsonStatus, err := json.Marshal(data)
 	if err != nil {
 		return &NamespaceGenerateRootResponse{}, nil
 	}
