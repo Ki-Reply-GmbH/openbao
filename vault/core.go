@@ -304,11 +304,10 @@ type Core struct {
 	// unlockInfo has the keys provided to Unseal until the threshold number of parts is available, as well as the operation nonce
 	unlockInfo *unlockInformation
 
-	// generateRootProgress holds the shares until we reach enough
-	// to verify the root key
-	generateRootConfig   *GenerateRootConfig
-	generateRootProgress [][]byte
-	generateRootLock     sync.Mutex
+	// generateRootProgress holds the shares for each namespace
+	// until we reach enough to verify the root key
+	namespaceRootGens    map[string]*NamespaceRootGeneration
+	namespaceRootGenLock sync.Mutex
 
 	// These variables holds the config and shares we have until we reach
 	// enough to verify the appropriate root key. Note that the same lock is
@@ -800,6 +799,12 @@ type CoreConfig struct {
 	UnsafeCrossNamespaceIdentity bool
 }
 
+type NamespaceRootGeneration struct {
+	Config   *GenerateRootConfig
+	Progress [][]byte
+	Lock     sync.Mutex
+}
+
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
 // not exist.
 func (c *CoreConfig) GetServiceRegistration() sr.ServiceRegistration {
@@ -976,6 +981,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		impreciseLeaseRoleTracking:     conf.ImpreciseLeaseRoleTracking,
 		detectDeadlocks:                detectDeadlocks,
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
+		namespaceRootGens:              make(map[string]*NamespaceRootGeneration),
 	}
 
 	c.standbyStopCh.Store(make(chan struct{}))
