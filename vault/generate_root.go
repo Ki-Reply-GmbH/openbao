@@ -339,7 +339,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	// Combine the key parts
 	var combinedKey []byte
-	if config.SecretThreshold == 1 {
+	if threshold == 1 {
 		combinedKey = nsRootGen.Progress[0]
 		nsRootGen.Progress = nil
 	} else {
@@ -381,7 +381,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	results := &GenerateRootResult{
 		Progress:       progress,
-		Required:       config.SecretThreshold,
+		Required:       threshold,
 		EncodedToken:   encodedToken,
 		PGPFingerprint: nsRootGen.Config.PGPFingerprint,
 	}
