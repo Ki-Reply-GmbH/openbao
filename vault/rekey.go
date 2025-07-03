@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -85,7 +84,7 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 	if recovery || c.seal.RecoveryKeySupported() {
 		config, err = c.seal.RecoveryConfig(ctx)
 	} else {
-		config, err = c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+		config, err = c.seal.BarrierConfig(ctx)
 	}
 	if err != nil {
 		return 0, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("unable to look up config: %w", err).Error())
@@ -337,7 +336,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 		existingConfig, err = c.seal.RecoveryConfig(ctx)
 		useRecovery = true
 	} else {
-		existingConfig, err = c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+		existingConfig, err = c.seal.BarrierConfig(ctx)
 	}
 	if err != nil {
 		return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing config: %w", err).Error())
@@ -406,7 +405,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 			if err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to setup unseal key: %w", err).Error())
 			}
-			cfg, err := c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+			cfg, err := c.seal.BarrierConfig(ctx)
 			if err != nil {
 				return nil, logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to setup test barrier config: %w", err).Error())
 			}
@@ -548,7 +547,7 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 
 	if len(newSealKey) > 0 {
 		err := c.barrier.Put(ctx, &logical.StorageEntry{
-			Key:   shamirKekPath,
+			Key:   resolveSealStorageEntryPath("", shamirKekPath),
 			Value: newSealKey,
 		})
 		if err != nil {
@@ -559,7 +558,7 @@ func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logic
 
 	c.barrierRekeyConfig.VerificationKey = nil
 
-	if err := c.seal.SetBarrierConfig(ctx, c.barrierRekeyConfig, namespace.RootNamespace); err != nil {
+	if err := c.seal.SetBarrierConfig(ctx, c.barrierRekeyConfig); err != nil {
 		c.logger.Error("error saving rekey seal configuration", "error", err)
 		return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to save rekey seal configuration: %w", err).Error())
 	}

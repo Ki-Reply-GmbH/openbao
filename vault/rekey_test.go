@@ -12,7 +12,6 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
@@ -214,7 +213,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	if recovery {
 		sealConf, err = c.seal.RecoveryConfig(context.Background())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
+		sealConf, err = c.seal.BarrierConfig(context.Background())
 	}
 	if err != nil {
 		t.Fatalf("seal config retrieval error: %v", err)
@@ -315,7 +314,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	if recovery {
 		sealConf, err = c.seal.RecoveryConfig(context.Background())
 	} else {
-		sealConf, err = c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
+		sealConf, err = c.seal.BarrierConfig(context.Background())
 	}
 	if err != nil {
 		t.Fatalf("err: %v", err)
