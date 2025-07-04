@@ -151,12 +151,12 @@ base64 encoded. Defaults to "pem".`,
 			},
 			"revoked_certs": {
 				Type: framework.TypeSlice,
-				Description: `A list of maps containing the keys serial_number (string), revocation_time (string), 
+				Description: `A list of maps containing the keys serial_number (string), revocation_time (string),
 and extensions (map with keys id (string), critical (bool), value (string))`,
 			},
 			"extensions": {
 				Type: framework.TypeSlice,
-				Description: `A list of maps containing extensions with keys id (string), critical (bool), 
+				Description: `A list of maps containing extensions with keys id (string), critical (bool),
 value (string)`,
 			},
 		},
@@ -179,7 +179,7 @@ value (string)`,
 		},
 
 		HelpSynopsis: `Generate and sign a CRL based on the provided parameters.`,
-		HelpDescription: `Given a list of revoked certificates and other parameters, 
+		HelpDescription: `Given a list of revoked certificates and other parameters,
 return a signed CRL based on the parameter values.`,
 	}
 }
@@ -522,7 +522,7 @@ func parseExtAsn1ObjectId(entry map[string]interface{}) (asn1.ObjectIdentifier, 
 
 	// Parse out dot notation
 	oidParts := strings.Split(oidStr, ".")
-	oid := make(asn1.ObjectIdentifier, len(oidParts), len(oidParts))
+	oid := make(asn1.ObjectIdentifier, len(oidParts))
 	for i := range oidParts {
 		oidIntVal, err := strconv.Atoi(oidParts[i])
 		if err != nil {
