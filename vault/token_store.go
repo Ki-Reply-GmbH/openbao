@@ -986,8 +986,7 @@ func (ts *TokenStore) SaltID(ctx context.Context, id string) (string, error) {
 func (ts *TokenStore) rootToken(ctx context.Context, ns *namespace.Namespace) (*logical.TokenEntry, error) {
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 	view := ts.core.NamespaceView(ns)
-	var te *logical.TokenEntry
-	te = &logical.TokenEntry{
+	te := &logical.TokenEntry{
 		Policies:     []string{"root"},
 		Path:         view.Prefix() + "auth/token/root",
 		CreationTime: time.Now().Unix(),

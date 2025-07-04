@@ -304,7 +304,7 @@ type Core struct {
 	// unlockInfo has the keys provided to Unseal until the threshold number of parts is available, as well as the operation nonce
 	unlockInfo *unlockInformation
 
-	// generateRootProgress holds the shares for each namespace
+	// namespaceRootGens holds the shares for each namespace
 	// until we reach enough to verify the root key
 	namespaceRootGens    map[string]*NamespaceRootGeneration
 	namespaceRootGenLock sync.Mutex
@@ -799,6 +799,8 @@ type CoreConfig struct {
 	UnsafeCrossNamespaceIdentity bool
 }
 
+// NamespaceRootGeneration manages the configuration and progress of an ongoing
+// root token generation process for a namespace.
 type NamespaceRootGeneration struct {
 	Config   *GenerateRootConfig
 	Progress [][]byte

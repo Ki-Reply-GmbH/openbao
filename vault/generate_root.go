@@ -79,12 +79,6 @@ type GenerateRootConfig struct {
 	Strategy       GenerateRootStrategy
 }
 
-func (config GenerateRootConfig) Copy() GenerateRootConfig {
-	conf := new(GenerateRootConfig)
-	*conf = config
-	return *conf
-}
-
 // GenerateRootResult holds the result of a root generation update
 // command
 type GenerateRootResult struct {
@@ -130,11 +124,12 @@ func (c *Core) GenerateRootConfiguration(ns *namespace.Namespace) (*GenerateRoot
 	c.namespaceRootGenLock.Lock()
 	defer c.namespaceRootGenLock.Unlock()
 
-	if c.namespaceRootGens[ns.UUID] == nil {
+	namespaceRootGen, ok := c.namespaceRootGens[ns.UUID]
+	if !ok {
 		return nil, nil
 	}
 
-	config := c.namespaceRootGens[ns.UUID].Config.Copy()
+	config := *namespaceRootGen.Config
 	config.OTP = ""
 	config.Strategy = nil
 
@@ -267,6 +262,18 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, ErrNotInit
 	}
 
+	var threshold int
+	if ns.UUID == namespace.RootNamespaceUUID {
+		threshold = config.SecretThreshold
+	} else {
+		seal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
+		sealConfig, err := (*seal).BarrierConfig(ctx, ns)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get barrier config: %w", err)
+		}
+		threshold = sealConfig.SecretThreshold
+	}
+
 	// Ensure we are already unsealed
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
@@ -313,18 +320,6 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	nsRootGen.Progress = append(nsRootGen.Progress, key)
 	progress := len(nsRootGen.Progress)
-
-	var threshold int
-	if ns.UUID == namespace.RootNamespaceUUID {
-		threshold = config.SecretThreshold
-	} else {
-		seal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
-		sealConfig, err := (*seal).BarrierConfig(ctx, ns)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get barrier config: %w", err)
-		}
-		threshold = sealConfig.SecretThreshold
-	}
 
 	if progress < threshold {
 		if c.logger.IsDebug() {
