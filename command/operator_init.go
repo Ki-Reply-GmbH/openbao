@@ -368,14 +368,10 @@ func newMachineInit(req *api.InitRequest, resp *api.InitResponse) *machineInit {
 	init := &machineInit{}
 
 	init.UnsealKeysHex = make([]string, len(resp.Keys))
-	for i, v := range resp.Keys {
-		init.UnsealKeysHex[i] = v
-	}
+	copy(init.UnsealKeysHex, resp.Keys)
 
 	init.UnsealKeysB64 = make([]string, len(resp.KeysB64))
-	for i, v := range resp.KeysB64 {
-		init.UnsealKeysB64[i] = v
-	}
+	copy(init.UnsealKeysB64, resp.KeysB64)
 
 	// If we don't get a set of keys back, it means that we are storing the keys,
 	// so the key shares and threshold has been set to 1.
@@ -388,14 +384,10 @@ func newMachineInit(req *api.InitRequest, resp *api.InitResponse) *machineInit {
 	}
 
 	init.RecoveryKeysHex = make([]string, len(resp.RecoveryKeys))
-	for i, v := range resp.RecoveryKeys {
-		init.RecoveryKeysHex[i] = v
-	}
+	copy(init.RecoveryKeysHex, resp.RecoveryKeys)
 
 	init.RecoveryKeysB64 = make([]string, len(resp.RecoveryKeysB64))
-	for i, v := range resp.RecoveryKeysB64 {
-		init.RecoveryKeysB64[i] = v
-	}
+	copy(init.RecoveryKeysB64, resp.RecoveryKeysB64)
 
 	init.RecoveryShares = req.RecoveryShares
 	init.RecoveryThreshold = req.RecoveryThreshold

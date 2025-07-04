@@ -246,9 +246,7 @@ func (t *MountTable) shallowClone() *MountTable {
 		Entries: make([]*MountEntry, len(t.Entries)),
 	}
 
-	for i, e := range t.Entries {
-		mt.Entries[i] = e
-	}
+	copy(mt.Entries, t.Entries)
 	return mt
 }
 
