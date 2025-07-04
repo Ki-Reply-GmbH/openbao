@@ -579,7 +579,7 @@ func computeIndexID(req *SendRequest) (string, error) {
 		return "", fmt.Errorf("failed to write token to hash input: %w", err)
 	}
 
-	return hex.EncodeToString(cryptoutil.Blake2b256Hash(string(b.Bytes()))), nil
+	return hex.EncodeToString(cryptoutil.Blake2b256Hash(b.String())), nil
 }
 
 // HandleCacheClear returns a handlerFunc that can perform cache clearing operations.
