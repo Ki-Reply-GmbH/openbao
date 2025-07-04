@@ -204,7 +204,7 @@ func compareCertBundleToParsedCertBundle(cbut *CertBundle, pcbut *ParsedCertBund
 	if err != nil {
 		return fmt.Errorf("error when getting subject key id: %s", err)
 	}
-	if bytes.Compare(subjKeyID, pcbut.Certificate.SubjectKeyId) != 0 {
+	if !bytes.Equal(subjKeyID, pcbut.Certificate.SubjectKeyId) {
 		return fmt.Errorf("parsed bundle private key does not match subject key id\nGot\n%#v\nExpected\n%#v\nCert\n%#v", subjKeyID, pcbut.Certificate.SubjectKeyId, *pcbut.Certificate)
 	}
 
