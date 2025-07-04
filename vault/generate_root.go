@@ -232,8 +232,12 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 
 // GenerateRootUpdate is used to provide a new key part
 func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string, strategy GenerateRootStrategy, ns *namespace.Namespace) (*GenerateRootResult, error) {
+	barrier, found := c.sealManager.barrierByNamespace.Get(ns.Path)
+	if !found {
+		return nil, fmt.Errorf("barrier not found for namespace: %q", ns.Path)
+	}
 	// Verify the key length
-	min, max := c.barrier.KeyLength()
+	min, max := barrier.(SecurityBarrier).KeyLength()
 	max += shamir.ShareOverhead
 	if len(key) < min {
 		return nil, &ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
@@ -245,13 +249,18 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	// Get the seal configuration
 	var config *SealConfig
 	var err error
-	if c.seal.RecoveryKeySupported() {
-		config, err = c.seal.RecoveryConfig(ctx)
+
+	seal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
+	if err != nil {
+		return nil, fmt.Errorf("failed to get barrier config: %w", err)
+	}
+	if (*seal).RecoveryKeySupported() {
+		config, err = (*seal).RecoveryConfig(ctx)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		config, err = c.seal.BarrierConfig(ctx, namespace.RootNamespace)
+		config, err = (*seal).BarrierConfig(ctx, namespace.RootNamespace)
 		if err != nil {
 			return nil, err
 		}
@@ -260,18 +269,6 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	// Ensure the barrier is initialized
 	if config == nil {
 		return nil, ErrNotInit
-	}
-
-	var threshold int
-	if ns.UUID == namespace.RootNamespaceUUID {
-		threshold = config.SecretThreshold
-	} else {
-		seal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
-		sealConfig, err := (*seal).BarrierConfig(ctx, ns)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get barrier config: %w", err)
-		}
-		threshold = sealConfig.SecretThreshold
 	}
 
 	// Ensure we are already unsealed
@@ -321,20 +318,20 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	nsRootGen.Progress = append(nsRootGen.Progress, key)
 	progress := len(nsRootGen.Progress)
 
-	if progress < threshold {
+	if progress < config.SecretThreshold {
 		if c.logger.IsDebug() {
-			c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", threshold)
+			c.logger.Debug("cannot generate root, not enough keys", "keys", progress, "threshold", config.SecretThreshold)
 		}
 		return &GenerateRootResult{
 			Progress:       progress,
-			Required:       threshold,
+			Required:       config.SecretThreshold,
 			PGPFingerprint: nsRootGen.Config.PGPFingerprint,
 		}, nil
 	}
 
 	// Combine the key parts
 	var combinedKey []byte
-	if threshold == 1 {
+	if config.SecretThreshold == 1 {
 		combinedKey = nsRootGen.Progress[0]
 		nsRootGen.Progress = nil
 	} else {
@@ -376,7 +373,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	results := &GenerateRootResult{
 		Progress:       progress,
-		Required:       threshold,
+		Required:       config.SecretThreshold,
 		EncodedToken:   encodedToken,
 		PGPFingerprint: nsRootGen.Config.PGPFingerprint,
 	}
