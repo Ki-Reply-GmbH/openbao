@@ -260,7 +260,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 			return nil, err
 		}
 	} else {
-		config, err = (*seal).BarrierConfig(ctx, namespace.RootNamespace)
+		config, err = (*seal).BarrierConfig(ctx, ns)
 		if err != nil {
 			return nil, err
 		}
