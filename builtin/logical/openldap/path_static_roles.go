@@ -430,7 +430,7 @@ func (s *staticAccount) NextRotationTime() time.Time {
 // be invalidated.
 func (s *staticAccount) PasswordTTL() time.Duration {
 	next := s.NextRotationTime()
-	ttl := next.Sub(time.Now()).Round(time.Second)
+	ttl := time.Until(next).Round(time.Second)
 	if ttl < 0 {
 		ttl = time.Duration(0)
 	}
@@ -471,17 +471,17 @@ This path lets you manage the static roles that can be created with this
 backend. Static Roles are associated with a single LDAP entry, and manage the
 password based on a rotation period, automatically rotating the password.
 
-The "username" parameter is required and configures the username for the LDAP entry. 
-This is helpful to provide a usable name when distinguished name (DN) isn't used 
-directly for authentication. If DN not provided, "username" will be used for LDAP 
-subtree search, rooted at the "userdn" configuration value. The name attribute to use 
+The "username" parameter is required and configures the username for the LDAP entry.
+This is helpful to provide a usable name when distinguished name (DN) isn't used
+directly for authentication. If DN not provided, "username" will be used for LDAP
+subtree search, rooted at the "userdn" configuration value. The name attribute to use
 when searching for the user can be configured with the "userattr" configuration value.
 
-The "dn" parameter is optional and configures the distinguished name to use 
-when managing the existing entry. If the "dn" parameter is set, it will take 
+The "dn" parameter is optional and configures the distinguished name to use
+when managing the existing entry. If the "dn" parameter is set, it will take
 precedence over the "username" when LDAP searches are performed.
 
-The "rotation_period' parameter is required and configures how often, in seconds, 
+The "rotation_period' parameter is required and configures how often, in seconds,
 the credentials should be automatically rotated by OpenBao.  The minimum is 5 seconds (5s).
 `
 

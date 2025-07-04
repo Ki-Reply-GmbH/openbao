@@ -1438,7 +1438,7 @@ func (i *IdentityStore) getKeysCacheControlHeader() (string, error) {
 		expireAt := nextRun.(time.Time)
 		if expireAt.After(now) {
 			i.Logger().Debug("use nextRun value for Cache Control header", "nextRun", nextRun)
-			expireInSeconds := expireAt.Sub(time.Now()).Seconds()
+			expireInSeconds := time.Until(expireAt).Seconds()
 			return fmt.Sprintf("max-age=%.0f", expireInSeconds), nil
 		}
 	}

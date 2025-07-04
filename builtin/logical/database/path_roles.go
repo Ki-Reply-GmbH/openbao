@@ -834,7 +834,7 @@ func (s *staticAccount) NextRotationTime() time.Time {
 // be invalidated.
 func (s *staticAccount) CredentialTTL() time.Duration {
 	next := s.NextRotationTime()
-	ttl := next.Sub(time.Now()).Round(time.Second)
+	ttl := time.Until(next).Round(time.Second)
 	if ttl < 0 {
 		ttl = time.Duration(0)
 	}
@@ -908,7 +908,7 @@ and "}}" to be replaced.
 
   * "password" - The random password generated for the DB user. Populated if the
   static role's credential_type is 'password'.
-  
+
   * "public_key" - The public key generated for the DB user. Populated if the
   static role's credential_type is 'rsa_private_key'.
 
