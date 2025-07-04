@@ -44,11 +44,13 @@ jobs:
         git push origin --delete openbao-sync-updates
    
     - name: Rebase sync branch onto merged branch and prefer sync in case of merge conflicts
+      # both branches that are getting rebased or merged need to get checkout first
+      # since 'merged' branch is default branch, a checkout is not needed
+      #
       # git rebase -X ours merged: in case of conflicts, prefer existing code in merged
       # git rebase -X theirs merged: in case of conflicts, prefer current branch openbao-sync-updates baased on sync
       run: |
         git fetch --all
-        git checkout -b merged origin/merged
         git checkout -b openbao-sync-updates origin/sync
         git config user.name "GitHub Action" 
         git config user.email "<>"
