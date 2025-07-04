@@ -250,9 +250,9 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	var config *SealConfig
 	var err error
 
-	seal := c.sealManager.sealsByNamespace[ns.UUID]["default"]
-	if err != nil {
-		return nil, fmt.Errorf("failed to get barrier config: %w", err)
+	seal, found := c.sealManager.sealsByNamespace[ns.UUID]["default"]
+	if !found {
+		return nil, fmt.Errorf("no seal found for namespace")
 	}
 	if (*seal).RecoveryKeySupported() {
 		config, err = (*seal).RecoveryConfig(ctx)
