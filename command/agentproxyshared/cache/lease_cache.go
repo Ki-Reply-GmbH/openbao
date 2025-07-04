@@ -210,7 +210,7 @@ func (c *LeaseCache) checkCacheForRequest(id string) (*SendResponse, error) {
 		c.logger.Error("failed to parse cached response date", "error", err)
 		return nil, err
 	}
-	sendResp.CacheMeta.Age = time.Now().Sub(respTime)
+	sendResp.CacheMeta.Age = time.Since(respTime)
 
 	return sendResp, nil
 }

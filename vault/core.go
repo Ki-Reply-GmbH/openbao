@@ -3586,7 +3586,7 @@ func (c *Core) LogCompletedRequests(reqID string, statusCode int) {
 	reqData := v.(InFlightReqData)
 	c.logger.Log(logLevel, "completed_request",
 		"start_time", reqData.StartTime.Format(time.RFC3339),
-		"duration", fmt.Sprintf("%dms", time.Now().Sub(reqData.StartTime).Milliseconds()),
+		"duration", fmt.Sprintf("%dms", time.Since(reqData.StartTime).Milliseconds()),
 		"client_id", reqData.ClientID,
 		"client_address", reqData.ClientRemoteAddr, "status_code", statusCode, "request_path", reqData.ReqPath,
 		"request_method", reqData.Method)
