@@ -292,7 +292,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 
 	nsRootGen, exists := c.namespaceRootGens[ns.UUID]
 	if !exists {
-		return nil, fmt.Errorf("No current active root generation for namespace %s", ns.Path)
+		return nil, fmt.Errorf("no current active root generation for namespace %s", ns.Path)
 	}
 
 	// Ensure a generateRoot is in progress
