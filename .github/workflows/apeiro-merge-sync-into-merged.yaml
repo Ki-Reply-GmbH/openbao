@@ -10,13 +10,13 @@ name: Apeiro_ Merge sync branch into merged
 
 on:
   workflow_dispatch:
-  #schedule:
+  schedule:
   # see https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule
   # Since existing PRs will be automatically closed in this version, you may want to run this workflow more often.
     # run job at least two  times per week -> humans need to approve two PRs per week
-    #- cron: '0 3 * * 1,4' # runs at 03:00, only on Monday and Thursday.
+    - cron: '0 3 * * 1,4' # runs at 03:00, only on Monday and Thursday.
     # optional: run every workday -> there will be also a new PR per day that needs review and approval!
-    #- cron: '0 3 * * 2,3,5' # runs at 03:00, only on Tuesday, Wednesday and Friday. Only used for demonstration. (It should be sufficent to run this workflow only two times per week.)
+    - cron: '0 3 * * 2,3,5' # runs at 03:00, only on Tuesday, Wednesday and Friday. Only used for demonstration. (It should be sufficent to run this workflow only two times per week.)
     
 jobs:
   sync-and-create-pr:
@@ -45,9 +45,9 @@ jobs:
    
     - name: Merge sync into merged branch and prefer sync in case of merge conflicts
       # both branches that are getting rebased or merged need to get checkout first
-      # since 'merged' branch is default branch, a checkout is not needed
       run: |
-        git fetch --all
+        git fetch --all --prune
+        git checkout merged
         git checkout -b openbao-sync-updates origin/sync
         git config user.name "GitHub Action" 
         git config user.email "<>"

@@ -45,12 +45,12 @@ jobs:
    
     - name: Rebase main onto merged branch and prefer openbao-main in case of merge conflicts
       # both branches that are getting rebased or merged need to get checkout first
-      # since 'merged' branch is default branch, a checkout is not needed
       #
       # git rebase -X ours merged: in case of conflicts, prefer existing code in merged
       # git rebase -X theirs merged: in case of conflicts, prefer current branch openbao-main-updates based on openbao-main
       run: |
-        git fetch --all
+        git fetch --all --prune
+        git checkout merged
         git checkout -b openbao-main-updates origin/openbao-main
         git config user.name "GitHub Action" 
         git config user.email "<>"
