@@ -24,7 +24,7 @@ import (
 
 // TestOIDC_Path_OIDC_RoleNoKeyParameter tests that a role cannot be created
 // without a key parameter
-func TestOIDC_Path_OIDC_RoleNoKeyParameter(t *testing.T) {
+func TestOIDC_Path_OIDC_RoleNoKeyParameter(t                  *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(nil)
 	storage := &logical.InmemStorage{}
@@ -40,6 +40,7 @@ func TestOIDC_Path_OIDC_RoleNoKeyParameter(t *testing.T) {
 	expectedStrings := map[string]interface{}{
 		"the key parameter is required": true,
 	}
+	test()
 	expectStrings(t, []string{resp.Data["error"].(string)}, expectedStrings)
 }
 
@@ -132,7 +133,7 @@ func TestOIDC_Path_OIDCRole_UpdateNoKey(t *testing.T) {
 
 // TestOIDC_Path_OIDCRole_UpdateEmptyKey test that we cannot update a role with an
 // empty key
-func TestOIDC_Path_OIDCRole_UpdateEmptyKey(t      *testing.T) {
+func TestOIDC_Path_OIDCRole_UpdateEmptyKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(nil)
 	_ = namespace.RootContext(nil)
