@@ -461,10 +461,10 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	}
 
 	// Special case the root policy
-	if policyType == PolicyTypeACL && name == "root" && ns.ID == namespace.RootNamespaceID {
+	if policyType == PolicyTypeACL && name == "root" {
 		p := &Policy{
 			Name:      "root",
-			namespace: namespace.RootNamespace,
+			namespace: ns,
 		}
 		if cache != nil {
 			cache.Add(index, p)
