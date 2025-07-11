@@ -824,8 +824,8 @@ func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error 
 		return errors.New("unable to seal root namespace")
 	}
 
-	if namespaceToSeal.Tainted || namespaceToSeal.IsDeleting {
-		return errors.New("unable to seal tainted or actively deleting namespace")
+	if namespaceToSeal.Tainted {
+		return errors.New("unable to seal tainted namespace")
 	}
 
 	return ns.core.sealManager.SealNamespace(namespaceToSeal)
