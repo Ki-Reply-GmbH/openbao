@@ -178,8 +178,6 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, err
 		}
 
-		ns.core.policyStore.policyTypeMap.Store(ns.core.policyStore.cacheKey(&namespace, "root"), PolicyTypeACL)
-
 		isSealed, err := ns.core.sealManager.RegisterNamespace(ctx, &namespace)
 		if err != nil {
 			return false, fmt.Errorf("failed to register namespace %s with seal manager: %w", namespace.ID, err)
