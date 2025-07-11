@@ -205,7 +205,11 @@ func NewPolicyStore(ctx context.Context, core *Core, baseView BarrierView, syste
 	}
 
 	// Special-case root; doesn't exist on disk but does need to be found
-	ps.policyTypeMap.Store(ps.cacheKey(namespace.RootNamespace, "root"), PolicyTypeACL)
+	if err := ps.loadNamespaceRootPolicies(ctx); err != nil {
+		return nil, err
+	}
+	// ps.policyTypeMap.Store(ps.cacheKey(namespace.RootNamespace, "root"), PolicyTypeACL)
+
 	return ps, nil
 }
 
@@ -461,10 +465,10 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	}
 
 	// Special case the root policy
-	if policyType == PolicyTypeACL && name == "root" && ns.ID == namespace.RootNamespaceID {
+	if policyType == PolicyTypeACL && name == "root" {
 		p := &Policy{
 			Name:      "root",
-			namespace: namespace.RootNamespace,
+			namespace: ns,
 		}
 		if cache != nil {
 			cache.Add(index, p)
@@ -785,6 +789,20 @@ func (ps *PolicyStore) loadDefaultPolicies(ctx context.Context) error {
 	// Load the response wrapping policy into the namespace
 	if err := ps.loadACLPolicy(ctx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
 		return fmt.Errorf("failed to load response wrapping policy: %w", err)
+	}
+
+	return nil
+}
+
+// loadNamespaceRootPolicies loads root policies for all namespaces
+func (ps *PolicyStore) loadNamespaceRootPolicies(ctx context.Context) error {
+	allNS, err := ps.core.namespaceStore.ListAllNamespaces(ctx, true, false)
+	if err != nil {
+		return err
+	}
+
+	for _, ns := range allNS {
+		ps.policyTypeMap.Store(ps.cacheKey(ns, "root"), PolicyTypeACL)
 	}
 
 	return nil

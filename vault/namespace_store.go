@@ -380,7 +380,7 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namesp
 	// so create a new context with the newly created child namespace.
 	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone(false))
 
-	if err := ns.initializeNamespacePolicies(nsCtx); err != nil {
+	if err := ns.initializeNamespacePolicies(nsCtx, entry); err != nil {
 		return err
 	}
 
@@ -392,10 +392,11 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namesp
 }
 
 // initializeNamespacePolicies loads the default policies for the namespace store.
-func (ns *NamespaceStore) initializeNamespacePolicies(ctx context.Context) error {
+func (ns *NamespaceStore) initializeNamespacePolicies(ctx context.Context, namespace *namespace.Namespace) error {
 	if err := ns.core.policyStore.loadDefaultPolicies(ctx); err != nil {
 		return fmt.Errorf("error creating default policies: %w", err)
 	}
+	ns.core.policyStore.policyTypeMap.Store(ns.core.policyStore.cacheKey(namespace, "root"), PolicyTypeACL)
 	return nil
 }
 
