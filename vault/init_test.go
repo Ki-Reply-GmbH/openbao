@@ -56,7 +56,8 @@ func testCore_NewTestCoreLicensing(t *testing.T, seal Seal) (*Core, *CoreConfig)
 }
 
 func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, recoveryConf *SealConfig) {
-	init, err := c.Initialized(context.Background())
+	ctx := namespace.RootContext(context.Background())
+	init, err := c.Initialized(ctx)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -66,7 +67,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	// Check the seal configuration
-	outConf, err := c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
+	outConf, err := c.seal.Config(ctx)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -74,7 +75,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("bad: %v", outConf)
 	}
 	if recoveryConf != nil {
-		outConf, err := c.seal.RecoveryConfig(context.Background())
+		outConf, err := c.seal.RecoveryConfig(ctx)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -83,7 +84,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		}
 	}
 
-	res, err := c.Initialize(context.Background(), &InitParams{
+	res, err := c.Initialize(ctx, &InitParams{
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
@@ -91,7 +92,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("err: %v", err)
 	}
 
-	if c.seal.BarrierType() == wrapping.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares {
+	if c.seal.WrapperType() == wrapping.WrapperTypeShamir && len(res.SecretShares) != barrierConf.SecretShares {
 		t.Fatalf("Bad: got\n%#v\nexpected conf matching\n%#v\n", *res, *barrierConf)
 	}
 	if recoveryConf != nil {
@@ -104,7 +105,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("Bad: %#v", res)
 	}
 
-	_, err = c.Initialize(context.Background(), &InitParams{
+	_, err = c.Initialize(ctx, &InitParams{
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
@@ -112,7 +113,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("err: %v", err)
 	}
 
-	init, err = c.Initialized(context.Background())
+	init, err = c.Initialized(ctx)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -122,7 +123,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	// Check the seal configuration
-	outConf, err = c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
+	outConf, err = c.seal.Config(ctx)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -130,7 +131,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("bad: %v expect: %v", outConf, barrierConf)
 	}
 	if recoveryConf != nil {
-		outConf, err = c.seal.RecoveryConfig(context.Background())
+		outConf, err = c.seal.RecoveryConfig(ctx)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -145,7 +146,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("err: %v", err)
 	}
 
-	_, err = c2.Initialize(context.Background(), &InitParams{
+	_, err = c2.Initialize(ctx, &InitParams{
 		BarrierConfig:  barrierConf,
 		RecoveryConfig: recoveryConf,
 	})
@@ -153,7 +154,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("err: %v", err)
 	}
 
-	init, err = c2.Initialized(context.Background())
+	init, err = c2.Initialized(ctx)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -163,7 +164,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	// Check the seal configuration
-	outConf, err = c2.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
+	outConf, err = c2.seal.Config(ctx)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -171,7 +172,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 		t.Fatalf("bad: %v expect: %v", outConf, barrierConf)
 	}
 	if recoveryConf != nil {
-		outConf, err = c2.seal.RecoveryConfig(context.Background())
+		outConf, err = c2.seal.RecoveryConfig(ctx)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}

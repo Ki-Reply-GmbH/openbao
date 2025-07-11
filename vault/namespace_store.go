@@ -253,8 +253,9 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *namespace
 
 	// TODO: might want to support calling (*SealManager).SetSeal here
 	if new {
-		ns.initializeNamespace(ctx, namespace)
+		return ns.initializeNamespace(ctx, namespace)
 	}
+
 	return nil
 }
 
