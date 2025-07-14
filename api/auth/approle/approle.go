@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -57,7 +58,7 @@ const (
 // WithWrappingToken LoginOption.
 //
 // Supported options: WithMountPath, WithWrappingToken
-func NewAppRoleAuth(roleID string, secretID *SecretID, opts ...LoginOption) (*AppRoleAuth, error) {
+func NewAppRoleAuth(roleID                 string, secretID *SecretID, opts ...LoginOption) (*AppRoleAuth, error) {
 	if roleID == "" {
 		return nil, errors.New("no role ID provided for login")
 	}
@@ -173,7 +174,7 @@ func (a *AppRoleAuth) readSecretIDFromFile() (string, error) {
 	defer secretIDFile.Close()
 
 	limitedReader := io.LimitReader(secretIDFile, 1000)
-	secretIDBytes, err := io.ReadAll(limitedReader)
+	secretIDBytes, err := ioutil.ReadAll(limitedReader)
 	if err != nil {
 		return "", fmt.Errorf("unable to read secret ID: %w", err)
 	}
