@@ -424,8 +424,10 @@ func TestNamespaceStore_ExternalKeyTypeAllowed(t *testing.T) {
 		{baz, "awskms", false},
 	}
 
+	ctx := context.Background()
+
 	for _, tc := range tcs {
-		err := s.ExternalKeyTypeAllowed(tc.namespace, tc.ty)
+		err := s.ExternalKeyTypeAllowed(ctx, tc.namespace, tc.ty)
 		if tc.wantErr {
 			require.NoError(t, err, fmt.Sprintf(
 				"Type %q should not be allowed in namespace %q, but was", tc.ty, tc.namespace.Path))

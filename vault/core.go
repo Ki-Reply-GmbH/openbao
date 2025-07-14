@@ -55,6 +55,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/vault/cluster"
+	externalkeys "github.com/openbao/openbao/vault/external_keys"
 	"github.com/openbao/openbao/vault/quotas"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
@@ -381,6 +382,9 @@ type Core struct {
 
 	// identityStore is used to manage client entities
 	identityStore *IdentityStore
+
+	// externalKeys is used to manage External Keys
+	externalKeys *externalkeys.Registry
 
 	// metricsCh is used to stop the metrics streaming
 	metricsCh chan struct{}
@@ -2316,6 +2320,8 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 
 	c.updateLockedUserEntries()
 
+	c.setupExternalKeys()
+
 	if err := c.startRollback(); err != nil {
 		return err
 	}
@@ -2348,7 +2354,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		if err := c.startForwarding(ctx); err != nil {
 			return err
 		}
-
 	}
 
 	c.clusterParamsLock.Lock()
@@ -2519,6 +2524,9 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.teardownLoginMFA(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA: %w", err))
+	}
+	if err := c.teardownExternalKeys(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down external keys: %w", err))
 	}
 	if err := c.teardownNamespaceStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))
@@ -3145,6 +3153,49 @@ func (c *Core) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace
 	return c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, reqPath)
 }
 
+// externalKeysNamespacer implements [externalkeys.Namespacer] to
+// integrate the External Keys registry with the namespace store.
+type externalKeysNamespacer struct {
+	core *Core
+}
+
+func (n *externalKeysNamespacer) View(ns *namespace.Namespace) logical.Storage {
+	return NamespaceView(n.core.barrier, ns)
+}
+
+func (n *externalKeysNamespacer) ParentOf(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+	path, ok := namespace.ParentOf(ns.Path)
+	if !ok {
+		return nil, fmt.Errorf("namespace has no parent")
+	}
+	return n.core.namespaceStore.GetNamespaceByPath(ctx, path)
+}
+
+func (n *externalKeysNamespacer) TypeAllowed(ctx context.Context, ns *namespace.Namespace, ty string) error {
+	return n.core.namespaceStore.ExternalKeyTypeAllowed(ctx, ns, ty)
+}
+
+func (c *Core) setupExternalKeys() {
+	namespacer := &externalKeysNamespacer{c}
+
+	config := c.rawConfig.Load().(*server.Config).ExternalKeys
+	logger := c.baseLogger.Named("external-keys")
+	c.AddLogger(logger)
+
+	c.externalKeys = externalkeys.NewRegistry(logger, config, namespacer)
+}
+
+func (c *Core) teardownExternalKeys() error {
+	registry := c.externalKeys
+	c.externalKeys = nil
+
+	if registry != nil {
+		registry.Finalize()
+	}
+
+	return nil
+}
+
 func (c *Core) setupQuotas(ctx context.Context) error {
 	if c.quotaManager == nil {
 		return nil
@@ -3620,12 +3671,20 @@ func (c *Core) ReloadIntrospectionEndpointEnabled() {
 }
 
 func (c *Core) ReloadExternalKeys() {
-	conf := c.rawConfig.Load()
-	if conf == nil {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	if c.Sealed() || c.externalKeys == nil {
 		return
 	}
-	// TODO(satoqz): Reload all affected external key configs.
-	// externalKeyStanzas := conf.(*server.Config).ExternalKeys
+
+	config := c.rawConfig.Load()
+	if config == nil {
+		return
+	}
+
+	externalKeysConfig := config.(*server.Config).ExternalKeys
+	c.externalKeys.HandleServerConfigUpdate(c.activeContext, externalKeysConfig)
 }
 
 type PeerNode struct {

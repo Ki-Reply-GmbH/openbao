@@ -983,7 +983,11 @@ func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, target *names
 // Key type is allowed in the given namespace. An External Key type is only
 // allowed if the namespace itself and all of its ancestors (excluding the root
 // namespace) allow it.
-func (ns *NamespaceStore) ExternalKeyTypeAllowed(n *namespace.Namespace, ty string) error {
+func (ns *NamespaceStore) ExternalKeyTypeAllowed(ctx context.Context, n *namespace.Namespace, ty string) error {
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return err
+	}
+
 	if n.ID == namespace.RootNamespaceID {
 		return nil
 	}
@@ -999,8 +1003,7 @@ func (ns *NamespaceStore) ExternalKeyTypeAllowed(n *namespace.Namespace, ty stri
 		if slices.Contains(other.ExternalKeyTypes, ty) {
 			return false // Continue walking.
 		} else {
-			err = fmt.Errorf("namespace %q is not allowed to use external key type %q",
-				other.Path, ty)
+			err = fmt.Errorf("namespace %q cannot use external key of this type", other.Path)
 			return true // Stop walking.
 		}
 	})

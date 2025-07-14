@@ -581,12 +581,19 @@ func (b *SystemBackend) handleNamespaceExternalKeysWrite() framework.OperationFu
 			return n, nil
 		}
 
-		if _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, callback); err != nil {
+		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, callback)
+		if err != nil {
 			return handleError(err)
 		}
 
-		// TODO(satoqz): Call into the External Keys registry to recursively kill off
-		// any cached clients/connections for types that are now disabled.
+		// Refresh the namespace in context to account for updates:
+		ctx = namespace.ContextWithNamespace(ctx, ns)
+
+		// Call into the External Keys registry to kill off any clients for types
+		// that have been removed:
+		if err := b.Core.externalKeys.HandleNamespaceUpdate(ctx); err != nil {
+			return handleError(err)
+		}
 
 		return nil, nil
 	}
