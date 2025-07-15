@@ -294,10 +294,6 @@ func (t *MountTable) findByBackendUUID(ctx context.Context, backendUUID string) 
 	return t.find(ctx, func(me *MountEntry) bool { return me.BackendAwareUUID == backendUUID })
 }
 
-func (t *MountTable) findByNamespaceID(ctx context.Context, namespaceID string) (*MountEntry, error) {
-	return t.find(ctx, func(me *MountEntry) bool { return me.NamespaceID == namespaceID })
-}
-
 func (t *MountTable) findAllNamespaceMounts(ctx context.Context) ([]*MountEntry, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
