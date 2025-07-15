@@ -371,10 +371,6 @@ func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheck
 
 	var permissions *ACLPermissions
 
-	// ns, err := namespace.FromContext(ctx)
-	// if err != nil {
-	// 	return
-	// }
 	path := ns.Path + req.Path
 
 	// The request path should take care of this already but this is useful for
