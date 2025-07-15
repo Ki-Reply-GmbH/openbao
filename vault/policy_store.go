@@ -208,7 +208,6 @@ func NewPolicyStore(ctx context.Context, core *Core, baseView BarrierView, syste
 	if err := ps.loadNamespaceRootPolicies(ctx); err != nil {
 		return nil, err
 	}
-	// ps.policyTypeMap.Store(ps.cacheKey(namespace.RootNamespace, "root"), PolicyTypeACL)
 
 	return ps, nil
 }
