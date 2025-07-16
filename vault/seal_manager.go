@@ -312,7 +312,8 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 
 // UnsealNamespace will try to unseal the barrier of the given namespace using
 // the passed key fragment together with potentially previously sent key
-// fragments. Returns an error if the namespace does not have a barrier.
+// fragments. Returns true if the namespace was unsealed. Returns an error if
+// the namespace does not have a barrier.
 func (sm *SealManager) UnsealNamespace(ctx context.Context, ns *namespace.Namespace, key []byte) (bool, error) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
@@ -372,6 +373,8 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 		return false, err
 	}
 
+	sm.resetUnsealProgress(ns)
+
 	sm.logger.Info("unsealed namespace", "namespace", ns.Path)
 
 	return true, nil
@@ -398,6 +401,16 @@ func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bo
 	// Store this key
 	info.Parts = append(info.Parts, key)
 	return true, nil
+}
+
+// resetUnsealProgress resets/clears the unlock information for the given namespace
+func (sm *SealManager) resetUnsealProgress(ns *namespace.Namespace) {
+	nsUnlockInfo := sm.unlockInformationByNamespace[ns.UUID]
+	if nsUnlockInfo == nil {
+		return
+	}
+
+	nsUnlockInfo["default"] = nil
 }
 
 // getUnsealKey uses key fragments recorded by recordUnsealPart and
