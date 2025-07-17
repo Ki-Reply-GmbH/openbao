@@ -80,6 +80,8 @@ func (c *Core) teardownSealManager() error {
 }
 
 // TODO(wslabosz): add logs
+// SetSeal constructs the namespace's barrier using the passed seal config.
+// Optionally it also writes the seal config to storage.
 func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
 	sealConfig.StoredShares = 1
 	if err := sealConfig.Validate(); err != nil {
@@ -123,6 +125,9 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	return nil
 }
 
+// StorageAccessForPath returns a StorageAccess for the given storage path. This
+// allows writing to the path with the correct encryption barrier (including no
+// barrier)
 func (sm *SealManager) StorageAccessForPath(path string) StorageAccess {
 	_, v, _ := sm.barrierByStoragePath.LongestPrefix(path)
 	if v == nil {
@@ -211,6 +216,9 @@ func (sm *SealManager) SecretProgress(ns *namespace.Namespace, lock bool) (int, 
 	}
 }
 
+// GetSealStatus returns the seal status of the given namespace. lock should be
+// false if the caller is already holding the read statelock (such as calls
+// originating from switchedLockHandleRequest).
 func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespace, lock bool) (*SealStatusResponse, error) {
 	// Verify that any kind of seal exists for a namespace
 	seals, ok := sm.sealsByNamespace[ns.UUID]
@@ -257,7 +265,9 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 	return s, nil
 }
 
-// UnsealNamespace unseals the barrier of the given namespace
+// UnsealNamespace will try to unseal the barrier of the given namespace using
+// the passed key fragment together with potentially previously sent key
+// fragments. Returns an error if the namespace does not have a barrier.
 func (sm *SealManager) UnsealNamespace(ctx context.Context, ns *namespace.Namespace, key []byte) error {
 	v, exists := sm.barrierByNamespace.Get(ns.Path)
 	if !exists {
@@ -268,6 +278,8 @@ func (sm *SealManager) UnsealNamespace(ctx context.Context, ns *namespace.Namesp
 	return sm.unsealFragment(ctx, ns, s, key)
 }
 
+// unsealFragment records the given key fragment and tries to unseal the
+// namespace barrier, if the threshold has been met
 func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespace, barrier SecurityBarrier, key []byte) error {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
@@ -450,6 +462,8 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) error {
 	return nil
 }
 
+// InitializeBarrier uses the previously stored seal to create and store a new
+// barrier for the namespace. It returns the namespace shamir key shares.
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
 	nsSeal := *sm.sealsByNamespace[ns.UUID]["default"]
 
@@ -553,6 +567,9 @@ func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, err
 	return sealConfigs, nil
 }
 
+// RegisterNamespace tries to load the seal config of the given namespace from
+// storage and registers the namespace with the SealManager. The barrier remains
+// sealed.
 func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
 	// Get the storage path for this namespace's seal config
 	sealConfigPath := sm.core.NamespaceView(ns).SubView(barrierSealConfigPath).Prefix()
@@ -606,6 +623,7 @@ var (
 	_ StorageAccess = (*secureStorageAccess)(nil)
 )
 
+// directStorageAccess implements StorageAccess for a physical (unencrypted) backend
 type directStorageAccess struct {
 	physical physical.Backend
 }
@@ -637,6 +655,7 @@ func (p *directStorageAccess) ListPage(ctx context.Context, prefix string, after
 	return p.physical.ListPage(ctx, prefix, after, limit)
 }
 
+// secureStorageAccess implements StorageAccess for a (encrypted) SecurityBarrier
 type secureStorageAccess struct {
 	barrier SecurityBarrier
 }
