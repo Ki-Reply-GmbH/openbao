@@ -148,8 +148,12 @@ func (b *SystemBackend) handleNamespaceGenerateRootStatus() framework.OperationF
 }
 
 func (b *SystemBackend) namespaceGenerateRootStatus(ctx context.Context, ns *namespace.Namespace, otp string) (*logical.Response, error) {
-	seal := b.Core.sealManager.sealsByNamespace[ns.UUID]["default"]
-	barrierConfig, err := (*seal).BarrierConfig(ctx, ns)
+	seal, found := b.Core.sealManager.sealsByNamespace[ns.UUID]["default"]
+	if !found {
+		return handleError(errors.New("no seal found for namespace"))
+	}
+
+	barrierConfig, err := seal.Config(ctx)
 	if err != nil {
 		return handleError(err)
 	}

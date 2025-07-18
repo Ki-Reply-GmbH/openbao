@@ -442,11 +442,7 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namesp
 		return err
 	}
 
-	if err := ns.createMounts(nsCtx); err != nil {
-		return err
-	}
-
-	return nil
+	return ns.createMounts(nsCtx)
 }
 
 // initializeNamespacePolicies loads the default policies for the namespace store.
@@ -910,7 +906,13 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	if err != nil {
 		return err
 	}
-	defer unlock()
+
+	releaseNsLock := true
+	defer func() {
+		if releaseNsLock {
+			unlock()
+		}
+	}()
 
 	namespaceToUnseal, err := ns.getNamespaceByPathLocked(ctx, path, false)
 	if err != nil {
@@ -928,6 +930,8 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 	if err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key); err != nil {
 		return err
 	}
+	releaseNsLock = false
+	unlock()
 
 	// If namespace is still sealed meaning we do not have enough shards yet, return early
 	if ns.core.IsNSSealed(namespaceToUnseal) {
