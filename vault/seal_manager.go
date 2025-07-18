@@ -95,7 +95,6 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 	barrier := NewAESGCMBarrier(sm.core.physical, metaPrefix)
 
-	// barrier.Initialize(ctx context.Context, rootKey []byte, sealKey []byte, random io.Reader)
 	sm.barrierByNamespace.Insert(ns.Path, barrier)
 	sm.barrierByStoragePath.Insert(metaPrefix, barrier)
 	parentBarrier := sm.ParentNamespaceBarrier(ns)
@@ -143,7 +142,9 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 		if descendantNamespace == nil {
 			errs = errors.Join(errs, fmt.Errorf("namespace not found for path: %s", p))
 		}
-		sm.core.namespaceStore.clearNamespacePolicies(ctx, descendantNamespace, false)
+		if err := sm.core.namespaceStore.clearNamespacePolicies(ctx, descendantNamespace, false); err != nil {
+			errs = errors.Join(errs, err)
+		}
 		if err := sm.core.namespaceStore.UnloadNamespaceCredentials(ctx, descendantNamespace); err != nil {
 			errs = errors.Join(errs, err)
 		}
@@ -520,6 +521,8 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 }
 
 func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
+	ctx = namespace.ContextWithNamespace(ctx, ns)
+
 	// Get the storage path for this namespace's seal config
 	sealConfigPath := sm.core.NamespaceView(ns).SubView(sealConfigPath).Prefix()
 
