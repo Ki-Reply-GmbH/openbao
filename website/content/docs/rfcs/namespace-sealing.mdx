@@ -8,7 +8,7 @@ description: |-
 
 ## Summary
 
-Introduce a per-namespace sealing mechanism to extend OpenBaos multi-tenancy capabilities. Using Barrier + Keyring functionality, we want to create a mechanism to enable per-tenant encryption, which lets a tenant control their own encryption keys. By implementing per-namespace encryption, OpenBao can provide a more robust and flexible multi-tenancy solution, addressing the current limitations and offering tenants more significant control over their data security and availability.
+Introduce a per-namespace sealing mechanism to extend OpenBao's tenant separation capabilities. Expanding the Barrier + Keyring functionality, we want to create a mechanism to enable per-tenant encryption, which lets a tenant control their own seal keys in their namespace. OpenBao can thus provide a more robust and flexible multi-tenancy solution, addressing the shared encryption limitations and offering tenants more significant control over their data security and availability.
 
 ## Problem Statement
 
@@ -22,25 +22,25 @@ To address these limitations, this RFC proposes implementing "Per-Namespace Seal
 
 * Independent Sealing: Tenants would be able to seal and unseal their namespaces independently without affecting other tenants' data availability.
 * Tenant-Controlled Encryption: Each namespace would have its own encryption keys, giving tenants full authority over the cryptographic security of their data.
-* Enhanced Namespace Lifecycle Management: Tenants would gain more control over the lifecycle of their namespace, including the ability to lock, unlock, seal, and unseal as needed.
+* Enhanced Namespace Lifecycle Management: Tenants would gain more control over the lifecycle of their namespace, including the ability to seal and unseal as needed.
 
 
 ## User-facing description
 
-### Creating a Sealed namespace
+### Creating a Sealed Namespace
 
 A sealed namespace is created by providing a special option to the namespace create API call.
 The default sealing method is [Shamir’s Secret Sharing Algorithm](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing). However, other [sealing configurations](https://openbao.org/docs/configuration/seal/) that are already supported for global sealing should also be supported for per-namespace sealing.
 
 ### Sealed Namespace
 
-Sealing an OpenBao Namespace pauses the Server's operations aimed at that namespace until a tenant operator decides to unseal it. Equal to global sealing, this means that a sealed namespace discards its in-memory namespace-root key (which is required to decrypt the dedicated namespace encryption key), which physically prevents responding to operations when sealed.
+Sealing an OpenBao Namespace pauses the Server's operations aimed at that namespace until a tenant operator decides to unseal it. Equal to global sealing, this means that a sealed namespace discards its in-memory namespace barrier keyring and namespace root key (which is required to decrypt the dedicated namespace barrier keyring), which physically prevents responding to operations when sealed.
 
 If an unsealing is in progress, sealing the namespace will reset the unsealing process. Users will have to re-enter their shares of the namespace key again.
 
 Sealing an already sealed namespace has no effect.
 
-Namespace sealing is optional. By default, namespaces are created without per-namespace sealing, and they are part of the global sealing/unsealing process. Namespace sealing only affects custom namespaces. The root namespace and namespaces without a sealing config are not affected.
+Namespace sealing is optional. By default, namespaces are created without per-namespace sealing and they are part of their parent namespace's sealing/unsealing process. Namespace sealing only affects new namespaces created with this option. The root namespace and existing namespaces without a sealing config are not affected.
 
 While it has some behavior in common, sealing is a distinct feature from locking/unlocking a namespace.
 
@@ -54,7 +54,7 @@ Once an OpenBao namespace is unsealed, it remains unsealed until one of these th
 
 * It is resealed via the API (see below).
 * The server is restarted.
-* OpenBao's storage layer encounters an unrecoverable error.
+* OpenBao's storage layer for the namespace encounters an unrecoverable error.
 
 ### Auto-Unsealing
 
@@ -116,18 +116,15 @@ A3[Share 3] -->|Recovers| B[Namespace Shamir's Key Encryption Key]
     RBE -->|Encrypts| ENSRK[Encrypted Namespace Root Key]
 ```
 
-With Per-Namespace Sealing, the responsibility of Root Barrier Keyring will be extended. Root Barrier Keyring will be used to encrypt the Shamirs Key Encryption Key (KEK) for a Namespace. This has the implication that a Namespace Shamirs KEK first needs to be decrypted (Global needs to be unsealed) before a namespace can be unsealed.
+With Per-Namespace Sealing, the responsibility of Root Barrier Keyring will be extended. The parent namespace's Barrier Keyring will be used to encrypt the sealed namespace's stored Shamirs Key Encryption Key (KEK). This has the implication that a Namespace Shamirs KEK first needs to be decrypted (implying that the parent or root namespace needs to be unsealed) before a namespace can be unsealed.
 
 ### Unsealing Process
-
-1. OpenBao will attempt an unblocking unseal of each sealed namespace (all namespaces with sealing config), skipping Shamir seals
-   - on success: namespace will work as expected and requests can be answered
-   - on fail: namespace remains sealed; returns applicable errors; status can be retrieved from namespace-status endpoint; periodic retry (as HSM can be temporarily unavailable etc.)
 
 1. OpenBao global unseal is successful
 2. OpenBao will attempt an unblocking unseal of each sealed namespace (all namespaces with sealing config), skipping Shamir seals
    - on success: namespace will work as expected and requests can be answered
-   - on fail: namespace remains sealed; returns applicable errors; status can be retrieved from namespace-status endpoint; periodic retry (as HSM can be temporarily unavailable etc.)3. For namespaces that could not be auto-unsealed (and do not have a sealing config), OpenBao allows manual shamir unseal via the respective namespace specific api endpoint.  
+   - on fail: namespace remains sealed; returns applicable errors; status can be retrieved from namespace-status endpoint; periodic retry (as HSM can be temporarily unavailable etc.)
+3. For namespaces that could not be auto-unsealed (and do not have a sealing config), OpenBao allows manual shamir unseal via the respective namespace specific api endpoint.  
    Note: OpenBao will not globally block if single Namespaces remain sealed
 4. When various namespace-barrier or namespace-root-key rotations have been performed, unseal will locally perform the rotation finalisation steps outlined in the rotation section below.
 
@@ -155,13 +152,13 @@ We do not need to change the existing root key entries, as they are unrelated. H
 
 | **Location** | **Description** |
 |------------ | -------------|
-|`namespaces/<ns-uuid>/core/seals/shamir-config` OR <br/>`namespaces/<ns-uuid>/core/seals/recovery-config` | It stores the configuration of the seal itself.<br/><br/>Can be shamir-config or config for auto-unseal mechanism.<br/><br/>This is a *raw* (unencrypted, from Barrier's PoV) storage entry, as it needs to be accessible in case of a sealed namespace. |
-|`namespaces/<ns-uuid>/core/seals/encrypted-ns-root` | Used for storing the encrypted namespace-root key.<br/><br/>This is a raw (unencrypted, from Barrier's PoV) storage entry; however, this raw entry is encrypted with the seal mechanism's key information. |
-|`namespaces/<ns-uuid>/core/seals/kek`<br/>(when applicable) | Storing a copy of the Shamir’s key for Shamir rekey operations and to restore raft snapshots.<br/><br/>This is a **barrier-encrypted** storage entry. |
-|`namespaces/<ns-uuid>/core/seals/autounseal-confi` | This allows for retrieval of the seal mechanisms and determining if configuration has changed since the last startup. <br /><br />This is a **barrier-encrypted** storage entry. |
-|`namespaces/<ns-uuid>/core/seals/barrier-keyrin` | We'll store a copy of the barrier keyring encrypted with that seal's current namespace-root key.<br/><br/>(Enables decryption of the current latest root key.) |
-|`namespaces/<ns-uuid>/core/seals/current-roo` | We'll store an encrypted copy of the seal's current namespace-root key<br/><br/>This is a **barrier-encrypted** storage entry. (Allows other nodes to rotate the barrier keyring keys.) |
-|`namespaces/<ns-uuid>/core/ns-root-ke` | It stores the cluster’s latest namespace specific root key.<br/><br/>This is a **barrier-encrypted** storage entry. |
+|`namespaces/<ns-uuid>/core/seals/<name>/shamir-config` OR <br/>`namespaces/<ns-uuid>/core/seals/<name>recovery-config` | It stores the configuration of the seal itself.<br/><br/>Can be shamir-config or config for auto-unseal mechanism.<br/><br/>This storage entry is encrypted with the parent namespace's barrier, as it needs to be readable during unsealing of the namespace. |
+|`namespaces/<ns-uuid>/core/seals/<name>/encrypted-root` | Used for storing the encrypted namespace-root key. |
+|`namespaces/<ns-uuid>/core/seals/<name>/kek`<br/>(when applicable) | Storing a copy of the Shamir’s key for Shamir rekey operations and to restore raft snapshots.<br/><br/>This is a **barrier-encrypted** storage entry. |
+|`namespaces/<ns-uuid>/core/seals/<name>/autounseal-config` | This allows for retrieval of the seal mechanisms and determining if configuration has changed since the last startup. <br /><br />This is a **barrier-encrypted** storage entry. |
+|`namespaces/<ns-uuid>/core/seals/<name>/barrier-keyring` | We'll store a copy of the barrier keyring encrypted with that seal's current namespace-root key.<br/><br/>(Enables decryption of the current latest root key.) |
+|`namespaces/<ns-uuid>/core/seals/<name>/current-root` | We'll store an encrypted copy of the seal's current namespace-root key<br/><br/>This is a **barrier-encrypted** storage entry. (Allows other nodes to rotate the barrier keyring keys.) |
+|`namespaces/<ns-uuid>/core/seals/<name>/latest-root` | It stores the cluster’s latest namespace specific root key.<br/><br/>This is a **barrier-encrypted** storage entry. |
 
 ### Namespace specific Keyring and Barrier
 
@@ -183,13 +180,13 @@ If a namespace is sealed, any requests to this namespace's resources should be h
 
 | **Method** | **Path**                |
 | ---------- | ----------------------- |
-| `POST`     | `/sys/namespaces/:path` |
+| `POST`     | `/sys/namespaces/:name` |
 
 ##### Additional Parameters
 
-The following Parameter will be added to the existing list of parameters:
+The following parameter will be added to the existing list of parameters:
 
-- seals (`[]map<string|string>: nil`) - A list containing maps of user-provided string to string key value pairs, containing sealing configuration.
+- seals (`map[string]map[string]interface{}: nil`) - A map containing maps of user-provided string to string key value pairs, containing sealing configuration. The outer key is the seal name.
 
 <details>
 
@@ -202,12 +199,14 @@ The following Parameter will be added to the existing list of parameters:
   "custom_metadata": {
     "foo": "bar"
   },
-  "seals": [{
-    "type": "shamir",
-    "name": "default",
-    "key_shares": 5,
-    "key_threshold": 3,
-  }]
+  "seals": {
+    "default": {
+      "type": "shamir",
+      "name": "default",
+      "key_shares": 5,
+      "key_threshold": 3,
+    }
+  }
 }
 ```
 
@@ -231,28 +230,30 @@ $ curl \
     "id": "1XFxHV",
     "path": "foo/",
     "uuid": "35c784cf-90b8-42a6-dd29-c8e33edfb4db"
-    unseal_keys: [
+    "unseal_keys": {
+      "default": [
         {
-            key: "sP/4C/fwIDjJmHEC2bi/1Pa43uKhsUQMmiB31GRzFc0R",
-            number: "1"
+            "key": "sP/4C/fwIDjJmHEC2bi/1Pa43uKhsUQMmiB31GRzFc0R",
+            "number": 1
         },
         {
-            key: "kHkw2xTBelbDFIMEgEC8NVX7NDSAZ",
-            number: "2"
+            "key": "kHkw2xTBelbDFIMEgEC8NVX7NDSAZ",
+            "number": 2
         },
         {
-            key: "+1+1ZnkQDfJFHDZPRq0wjFxEuEEHxDDOQxa8JJ/AYWcb",
-            number: "3"
+            "key": "+1+1ZnkQDfJFHDZPRq0wjFxEuEEHxDDOQxa8JJ/AYWcb",
+            "number": 3
         },
         {
-            key: "cewseNJTLovmFrgpyY+9Hi5OgJlJgGGCg7PZyiVdPwN0",
-            number: "4"
+            "key": "cewseNJTLovmFrgpyY+9Hi5OgJlJgGGCg7PZyiVdPwN0",
+            "number": 4
         },
         {
-            key: "wyd7rMGWX5fi0k36X4e+C4myt5CoTmJsHJ0rdYT7BQcF",
-            number: "5"
-        },
-    ],
+            "key": "wyd7rMGWX5fi0k36X4e+C4myt5CoTmJsHJ0rdYT7BQcF",
+            "number": 5
+         }
+       ]
+     }
   },
   "wrap_info": null,
   "warnings": null,
@@ -270,9 +271,11 @@ Note: [Parallel Unsealing](https://github.com/openbao/openbao/issues/1021) on na
 
 #### Sealing of a Namespace
 
+Sealing a namespace also seals all of it's children recursively.
+
 | **Method** | **Path**                     |
 | ---------- | ---------------------------- |
-| `PATCH`    | `/sys/namespaces/:path/seal` |
+| `POST`     | `/sys/namespaces/:name/seal` |
 
 <details>
 
@@ -283,7 +286,7 @@ Note: [Parallel Unsealing](https://github.com/openbao/openbao/issues/1021) on na
 ```bash
 $ curl \
   --header "X-Vault-Token: ..." \
-  --request PATCH \
+  --request POST \
   http://127.0.0.1:8200/v1/sys/namespaces/sealednamespace1/seal
 ```
 
@@ -293,11 +296,11 @@ $ curl \
 
 | **Method** | **Path**                       |
 | ---------- | ------------------------------ |
-| `PATCH`    | `/sys/namespaces/:path/unseal` |
+| `POST`     | `/sys/namespaces/:name/unseal` |
 
 ##### Additional Parameters
 
-- token (`string: nil`) - A Shamirs token.
+- key (`string: nil`) - A Shamir's key share.
 
 <details>
 
@@ -316,7 +319,7 @@ $ curl \
 ```bash
 $ curl \
   --header "X-Vault-Token: ..." \
-  --request PATCH \
+  --request POST \
   http://127.0.0.1:8200/v1/sys/namespaces/sealednamespace1/unseal
 { shamir tokens … }
 ```
@@ -331,7 +334,7 @@ Note: contrary to existing /sys/seal-status, the namespace specific endpoint is 
 
 | **Method** | **Path**           |
 | ---------- | ------------------ |
-| `GET`      | `/sys/namespaces/:path/seal-status` |
+| `GET`      | `/sys/namespaces/:name/seal-status` |
 
 <details>
 
@@ -387,16 +390,15 @@ However, this work is strictly disjoint from implementing per-namespaces sealing
 
 ### Downsides
 
-This will add another complex feature to OpenBao; however, this substantially increases competitiveness in the broader Vault Enterprise ecosystem.
+This will add another complex feature to OpenBao; however, this substantially increases competitiveness in the broader Vault Enterprise ecosystem and increase the security posture for tenant separation.
 
 ## Security Implications
 
-Per-Namespace encryption would increase tenant security, as there is no single key encrypting all of OpenBaos data.
+Per-Namespace encryption would increase tenant security, as there is no single key encrypting all of OpenBao's data.
 
 ## User/Developer Experience
 
 Users and system managers should expect the same experience as the non-namespace OpenBao. This should have interoperability with the broader Vault Enterprise-aware ecosystem.
-* 
 * Improved Security Isolation: Tenants can implement their own security policies and key management practices without relying on the global OpenBao configuration.
 * Compliance and Regulatory Requirements: Organizations with strict data sovereignty or compliance requirements can maintain full control over their encryption keys and data access.
 * In case of a leaked encryption key, affected namespaces can be sealed and rekeyed independently, minimizing the impact on other tenants.
