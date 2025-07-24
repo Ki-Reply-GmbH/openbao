@@ -106,7 +106,6 @@ This is the same for auto-unseal keys, swapping Shamir's recovery of the shard's
 
 ```mermaid
 graph LR
-RBE2[Root Barrier Keyring] -->|Encrypts| B[Shamir's Key Encryption Key]
 A1[Share 1] -->|Recovers| B[Namespace Shamir's Key Encryption Key]
 A2[Share 2] -->|Recovers| B[Namespace Shamir's Key Encryption Key]
 A3[Share 3] -->|Recovers| B[Namespace Shamir's Key Encryption Key]
@@ -116,43 +115,59 @@ A3[Share 3] -->|Recovers| B[Namespace Shamir's Key Encryption Key]
     RBE -->|Encrypts| ENSRK[Encrypted Namespace Root Key]
 ```
 
-With Per-Namespace Sealing, the responsibility of Root Barrier Keyring will be extended. The parent namespace's Barrier Keyring will be used to encrypt the sealed namespace's stored Shamirs Key Encryption Key (KEK). This has the implication that a Namespace Shamirs KEK first needs to be decrypted (implying that the parent or root namespace needs to be unsealed) before a namespace can be unsealed.
-
 ### Unsealing Process
 
 1. OpenBao global unseal is successful
 2. OpenBao will attempt an unblocking unseal of each sealed namespace (all namespaces with sealing config), skipping Shamir seals
    - on success: namespace will work as expected and requests can be answered
    - on fail: namespace remains sealed; returns applicable errors; status can be retrieved from namespace-status endpoint; periodic retry (as HSM can be temporarily unavailable etc.)
-3. For namespaces that could not be auto-unsealed (and do not have a sealing config), OpenBao allows manual shamir unseal via the respective namespace specific api endpoint.  
+3. For namespaces that are not configured with auto-unseal, OpenBao allows manual shamir unseal via the respective namespace specific api endpoint.
    Note: OpenBao will not globally block if single Namespaces remain sealed
 4. When various namespace-barrier or namespace-root-key rotations have been performed, unseal will locally perform the rotation finalisation steps outlined in the rotation section below.
 
 ### Encryption
 
 While namespaces logically can be used in a hierarchy, on storage level they are laid out in a flat list. This means we can encrypt each namespace individually and on a global level.
+```mermaid
+graph
+    subgraph "Root (sealed)"
 
-<img width="1433" alt="Image" src="https://github.com/user-attachments/assets/72c71f7c-6e5d-4173-96a9-f4943dd3497a" />
+        SS_Root["Shamir-1..5 🔑<br/>Key shares / Unseal Keys"] --> |unseal root| RK["root key 🔑"]
+        RK --> EK["encryption key 🔑"]
 
-At the level of the global sealing we use the root-key to encrypt the list of namespaces including their metadata and configuration. With access to this data, each individual namespace can be decrypted by auto-unseal or a tenant with the namespace-root-key.
+        %% Branching Point from the main Encryption Key
+        EK --> |encrypts| Branch{ }
+        style Branch fill:none,stroke:none,width:0,height:0
 
-For data this means, we encrypt it twice: first with the namespace encryption key, second with the root encryption key.
+        %% Path for Namespace 1 (Shamir unseal)
+        Branch ---> SC_NS1["Shamir config"]
+        subgraph "Namespace 1 (sealed)"
+            NSRK1["namespace-1<br/>root-key 🔑"] --> |encrypts| NSEK1["namespace<br/>encryption key 🔑"]
+        end
+        SC_NS1 --> NSRK1
+        SS_NS1["Shamir-1..5 🔑<br/>Key shares / Unseal Keys"] --> |unseal Namespace 1| NSRK1
 
-**Pros:**
-leaked namespace encryption keys are less of an issue as data at rest is still protected by root encryption key
+        %% Path for Namespace 2 (already unsealed)
+        Branch --> |"Namespace 2 is already<br/>unsealed as part of root"| NS2[Namespace 2]
 
-**Cons:**
-in backup/restore scenarios the root encryption key must be known
+        %% Path for Namespace 3 (KMS unseal)
+        Branch --> KMS["KMS<br/>KMS Configuration"]
+        subgraph "Namespace 3 (sealed)"
+            NSRK3["namespace-2<br/>root-key 🔑"] --> |encrypts| NSEK3["namespace<br/>encryption key 🔑"]
+        end
+        KMS --> |unseal Namespace 3| NSRK3
+    end
+```
+
+At the level of the global sealing we use the root-key to encrypt the list of namespaces including their metadata. The seal configuration of a namespace is encrypted by the barrier key of the next sealable namespace upward in the hierarchy. With access to this data, each individual namespace can be decrypted by auto-unseal or a tenant with the namespace-root-key.
 
 ### Storage Considerations
-
-We will introduce a new namespace scoped root key `ns-root-key`, which has similar responsibility as the root key on global level.
 
 We do not need to change the existing root key entries, as they are unrelated. However, we need namespace specific entries for keys and config. The idea is, to generally follow the storage logic of the [Parallel Unseal RFC](https://github.com/openbao/openbao/issues/1021), so we will be semantically in harmony with future changes to  global sealing mechanisms. Please note, this RFC does not support parallel unsealing of namespaces.
 
 | **Location** | **Description** |
 |------------ | -------------|
-|`namespaces/<ns-uuid>/core/seals/<name>/shamir-config` OR <br/>`namespaces/<ns-uuid>/core/seals/<name>recovery-config` | It stores the configuration of the seal itself.<br/><br/>Can be shamir-config or config for auto-unseal mechanism.<br/><br/>This storage entry is encrypted with the parent namespace's barrier, as it needs to be readable during unsealing of the namespace. |
+|`namespaces/<ns-uuid>/core/seals/<name>/shamir-config` OR <br/>`namespaces/<ns-uuid>/core/seals/<name>/recovery-config` | It stores the configuration of the seal itself.<br/><br/>Can be shamir-config or config for auto-unseal mechanism.<br/><br/>This storage entry is encrypted with the parent namespace's barrier, as it needs to be readable during unsealing of the namespace. |
 |`namespaces/<ns-uuid>/core/seals/<name>/encrypted-root` | Used for storing the encrypted namespace-root key. |
 |`namespaces/<ns-uuid>/core/seals/<name>/kek`<br/>(when applicable) | Storing a copy of the Shamir’s key for Shamir rekey operations and to restore raft snapshots.<br/><br/>This is a **barrier-encrypted** storage entry. |
 |`namespaces/<ns-uuid>/core/seals/<name>/autounseal-config` | This allows for retrieval of the seal mechanisms and determining if configuration has changed since the last startup. <br /><br />This is a **barrier-encrypted** storage entry. |
@@ -353,18 +368,17 @@ $ curl \
 
 ##### Additional Endpoints
 
-Furthermore, the following endpoints will need to be adjusted, so that they are (optionally) namespace aware, by providing X-Vault-Namespace and X-Vault-Token headers.
-
-- `/sys/generate-recovery-token`
-- `/sys/generate-root`
-- `/sys/key-status`
-- `/sys/rekey`
-- `/sys/rekey-recovery-key`
-- `/sys/rotate`
-- `/sys/rotate/config`
-- `/sys/seal`
-- `/sys/seal-status`
-- `/sys/unseal`
+Furthermore, the following endpoints will need to be implemented
+- `/sys/namespaces/:name/generate-recovery-token`
+- `/sys/namespaces/:name/generate-root`
+- `/sys/namespaces/:name/key-status`
+- `/sys/namespaces/:name/rekey`
+- `/sys/namespaces/:name/rekey-recovery-key`
+- `/sys/namespaces/:name/rotate`
+- `/sys/namespaces/:name/rotate/config`
+- `/sys/namespaces/:name/seal`
+- `/sys/namespaces/:name/seal-status`
+- `/sys/namespaces/:name/unseal`
 
 ### Policies
 
@@ -396,6 +410,8 @@ This will add another complex feature to OpenBao; however, this substantially in
 
 Per-Namespace encryption would increase tenant security, as there is no single key encrypting all of OpenBao's data.
 
+Since the data in a sealable namespace is encrypted using its own chain of keys (barrier key ring, root key, unseal key) and not double encrypted with that of the parent. Key leakage would mean a higher risk of data compromise.
+
 ## User/Developer Experience
 
 Users and system managers should expect the same experience as the non-namespace OpenBao. This should have interoperability with the broader Vault Enterprise-aware ecosystem.
@@ -406,18 +422,12 @@ Users and system managers should expect the same experience as the non-namespace
 ## Unresolved Questions
 
 * In OpenBao, Shamir's technique can be disabled, so the root key can be used directly for unsealing. Should there be a similar option for namespace (un)sealing)? (https://openbao.org/docs/internals/architecture/)
-* Terminology to decide on:
-  * Root Seal/Global Seal
-  * Key used to encrypt a namespace
-    * namespace-root-key (nsr-key)
-    * namespace-encryption-key
-    * namespace-key
-
+* How would namespace sealing works with [#1528](https://github.com/openbao/openbao/issues/1528)?
+* How should the case when the active node goes offline be handled?
 
 ## Related Issues
 
 _No response_
 
 ## Proof of Concept
-
-_No response_
+[Proof of concept branch (namespaces-seal)](https://github.com/openbao/openbao/tree/namespaces-seal) 
