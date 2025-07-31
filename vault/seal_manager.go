@@ -21,6 +21,13 @@ import (
 	"github.com/openbao/openbao/version"
 )
 
+// These variables hold the config and shares we have until we reach
+// enough to verify the appropriate root key.
+type rotationConfig struct {
+	barrierConfig  *SealConfig
+	recoveryConfig *SealConfig
+}
+
 // SealManager is used to provide storage for the seals.
 // It's a singleton that associates seals (configs) to the namespaces.
 // It is also responsible for managing the seal state on the namespaces.
@@ -34,6 +41,7 @@ type SealManager struct {
 	// unlockInformation is a map of distinct (named) seals
 	sealsByNamespace             map[string]map[string]Seal
 	unlockInformationByNamespace map[string]map[string]*unlockInformation
+	rotationConfigByNamespace    map[string]map[string]*rotationConfig
 	barrierByNamespace           *radix.Tree
 	barrierByStoragePath         *radix.Tree
 
@@ -47,6 +55,7 @@ func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 		core:                         core,
 		sealsByNamespace:             make(map[string]map[string]Seal),
 		unlockInformationByNamespace: make(map[string]map[string]*unlockInformation),
+		rotationConfigByNamespace:    make(map[string]map[string]*rotationConfig),
 		barrierByNamespace:           radix.New(),
 		barrierByStoragePath:         radix.New(),
 		logger:                       logger,
@@ -65,6 +74,13 @@ func (c *Core) setupSealManager() {
 
 	coreSeal := c.seal
 	c.sealManager.sealsByNamespace[namespace.RootNamespaceUUID] = map[string]Seal{"default": coreSeal}
+	c.sealManager.rotationConfigByNamespace[namespace.RootNamespaceUUID] = map[string]*rotationConfig{
+		// TODO: not sure it makes sense whatsoever
+		"default": {
+			barrierConfig:  c.barrierRekeyConfig,
+			recoveryConfig: c.recoveryRekeyConfig,
+		},
+	}
 }
 
 // teardownSealManager is used to remove seal manager
@@ -106,14 +122,30 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 	sm.sealsByNamespace[ns.UUID] = map[string]Seal{"default": defaultSeal}
 	sm.unlockInformationByNamespace[ns.UUID] = map[string]*unlockInformation{}
+	sm.rotationConfigByNamespace[ns.UUID] = map[string]*rotationConfig{
+		"default": {
+			barrierConfig:  nil,
+			recoveryConfig: nil,
+		},
+	}
+
 	if writeToStorage {
-		err := defaultSeal.SetConfig(ctx, sealConfig)
-		if err != nil {
+		if err := defaultSeal.SetConfig(ctx, sealConfig); err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}
 	}
 
 	return nil
+}
+
+// TODO:
+func (sm *SealManager) NamespaceSeal(ns *namespace.Namespace) Seal {
+	seals, ok := sm.sealsByNamespace[ns.UUID]
+	if !ok {
+		return nil
+	}
+
+	return seals["default"]
 }
 
 // StorageAccessForPath takes a path string and returns back a storage access interface
@@ -210,10 +242,9 @@ func (sm *SealManager) SecretProgress(ns *namespace.Namespace, lock bool) (int, 
 	}
 }
 
-func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespace, lock bool) (*SealStatusResponse, error) {
-	// Verify that any kind of seal exists for a namespace
-	seals, ok := sm.sealsByNamespace[ns.UUID]
-	if !ok {
+func (sm *SealManager) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResponse, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
 		return nil, nil
 	}
 
@@ -229,7 +260,11 @@ func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespac
 		return nil, nil
 	}
 
-	seal := seals["default"]
+	seal := sm.NamespaceSeal(ns)
+	if seal == nil {
+		return nil, errors.New("namespace not sealable")
+	}
+
 	// Verify the seal configuration
 	sealConf, err := seal.Config(ctx)
 	if err != nil {
@@ -293,7 +328,10 @@ func (sm *SealManager) unsealFragment(ctx context.Context, ns *namespace.Namespa
 		return err
 	}
 
-	seal := sm.sealsByNamespace[ns.UUID]["default"]
+	seal := sm.NamespaceSeal(ns)
+	if seal == nil {
+		return errors.New("namespace not sealable")
+	}
 
 	// getUnsealKey returns either a recovery key (in the case of an autoseal)
 	// or an unseal key (new-style shamir).
@@ -450,9 +488,9 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) error {
 }
 
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
-	nsSeal := sm.sealsByNamespace[ns.UUID]["default"]
+	nsSeal := sm.NamespaceSeal(ns)
 	if nsSeal == nil {
-		return nil, errors.New("namespace is not sealable")
+		return nil, errors.New("namespace not sealable")
 	}
 
 	sealConfig, err := nsSeal.Config(ctx)
