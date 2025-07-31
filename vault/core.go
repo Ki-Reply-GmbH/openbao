@@ -1408,7 +1408,9 @@ func (c *Core) Sealed() bool {
 	return c.sealed.Load()
 }
 
-// IsNSSealed checks if any namespace in namespace hierarchy is current sealed.
+// IsNSSealed checks if there's a namespace in upwards namespace
+// hierarchy that is currently sealed, which should only happen
+// if the current namespace is not sealable, but its ancestors are.
 func (c *Core) IsNSSealed(ns *namespace.Namespace) bool {
 	return c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path).Sealed()
 }
@@ -3296,7 +3298,7 @@ func (c *Core) isPrimary() bool {
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
 	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
-	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true, true)
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return err
 	}
@@ -3404,7 +3406,7 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 	}
 
 	// get all namespaces
-	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true, true)
+	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true, false)
 	if err != nil {
 		return err
 	}
