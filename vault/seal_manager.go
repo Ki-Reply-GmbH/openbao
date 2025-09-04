@@ -66,7 +66,7 @@ func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 }
 
 // setupSealManager is used to initialize the seal manager
-// when the vault is being unsealed.
+// with vault core creation.
 func (c *Core) setupSealManager() {
 	sealLogger := c.baseLogger.Named("seal")
 	c.AddLogger(sealLogger)
@@ -95,7 +95,8 @@ func (c *Core) teardownSealManager() error {
 	return nil
 }
 
-// TODO(wslabosz): add logs
+// SetSeal creates a seal using provided config and sets and initializes it
+// as a seal of a provided namespace, creating the barrier and persisting config.
 func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
@@ -171,7 +172,9 @@ func (sm *SealManager) SealNamespace(ctx context.Context, ns *namespace.Namespac
 		if s.Sealed() {
 			return false
 		}
-		descendantNamespace, err := sm.core.namespaceStore.getNamespaceByPathLocked(ctx, namespace.Canonicalize(p), false)
+		// path provided to 'getNamespaceByPathLocked' is empty
+		// as desired namespace is fully in context
+		descendantNamespace, err := sm.core.namespaceStore.getNamespaceByPathLocked(ctx, "", false)
 		if err != nil {
 			errs = errors.Join(errs, err)
 		}
@@ -265,6 +268,7 @@ func (sm *SealManager) namespaceUnlockInformation(nsUUID string) *unlockInformat
 	return info
 }
 
+// GetSealStatus returns back seal status of a namespace with unlock progress information.
 func (sm *SealManager) GetSealStatus(ctx context.Context, ns *namespace.Namespace) (*SealStatusResponse, error) {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
@@ -597,7 +601,13 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 		return nil, fmt.Errorf("failed to unseal namespace barrier: %w", err)
 	}
 
-	// TODO: Seal the barrier again
+	if err := sm.core.namespaceStore.initializeNamespace(ctx, nsBarrier, ns); err != nil {
+		return nil, fmt.Errorf("failed to initialize namespace: %w", err)
+	}
+
+	if err := sm.SealNamespace(ctx, ns); err != nil {
+		return nil, fmt.Errorf("failed to seal namespace barrier: %w", err)
+	}
 
 	results := &InitResult{
 		SecretShares: [][]byte{},
@@ -629,6 +639,8 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	return nsSealKeyShares, nil
 }
 
+// RegisterNamespace is used to register the seals (by looking up the seal configs)
+// of namespaces after core unseal
 func (sm *SealManager) RegisterNamespace(ctx context.Context, ns *namespace.Namespace) (bool, error) {
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 
