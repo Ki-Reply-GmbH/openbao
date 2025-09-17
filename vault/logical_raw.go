@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -48,6 +49,38 @@ func NewRawBackend(core *Core) *RawBackend {
 	return r
 }
 
+// determineBarrier returns StorageAccess based on the path provided to the request.
+// Returns error if provided path is invalid (e.g. namespace doesn't exist, or the path is broken).
+func (b *RawBackend) determineBarrier(ctx context.Context, path string) (StorageAccess, error) {
+	trimmedPath, ok := strings.CutPrefix(path, namespaceBarrierPrefix)
+	if !ok {
+		if trimmedPath == sealConfigPath {
+			return &directStorageAccess{physical: b.core.physical}, nil
+		}
+		return &secureStorageAccess{barrier: b.core.barrier}, nil
+	} else if trimmedPath == "" {
+		return &secureStorageAccess{barrier: b.core.barrier}, nil
+	}
+
+	namespaceUUID, entryPath, ok := strings.Cut(trimmedPath, "/")
+	if !ok {
+		return nil, errors.New("bad storage path: expected namespace uuid segment")
+	}
+	ns, err := b.core.namespaceStore.GetNamespace(ctx, namespaceUUID)
+	switch {
+	case err != nil:
+		return nil, err
+	case ns == nil:
+		return nil, errors.New("bad storage path: namespace does not exist")
+	default:
+		nsPath := ns.Path
+		if entryPath == sealConfigPath {
+			nsPath, _ = ns.ParentPath()
+		}
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(nsPath)}, nil
+	}
+}
+
 // handleRawRead is used to read directly from the barrier
 func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	path := data.Get("path").(string)
@@ -75,7 +108,11 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.determineBarrier(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+
 	valueBytes, err := barrier.Get(ctx, path)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
@@ -150,7 +187,10 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.determineBarrier(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
 
 	if req.Operation == logical.UpdateOperation {
 		// Check if this is an existing value with compression applied, if so, use the same compression (or no compression)
@@ -232,7 +272,11 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.determineBarrier(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+
 	if err := barrier.Delete(ctx, path); err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
@@ -264,7 +308,11 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+	barrier, err := b.determineBarrier(ctx, path)
+	if err != nil {
+		return handleErrorNoReadOnlyForward(err)
+	}
+
 	keys, err := barrier.ListPage(ctx, path, after, limit)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
@@ -275,7 +323,12 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 // existenceCheck checks if entry exists, used in handleRawWrite for update or create operations
 func (b *RawBackend) existenceCheck(ctx context.Context, request *logical.Request, data *framework.FieldData) (bool, error) {
 	path := data.Get("path").(string)
-	barrier := b.core.sealManager.StorageAccessForPath(path)
+
+	barrier, err := b.determineBarrier(ctx, path)
+	if err != nil {
+		return false, err
+	}
+
 	entry, err := barrier.Get(ctx, path)
 	if err != nil {
 		return false, err
