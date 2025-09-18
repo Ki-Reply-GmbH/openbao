@@ -51,6 +51,7 @@ const (
 type Seal interface {
 	SetCore(*Core)
 	Init(context.Context) error
+	MetaPrefix() string
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
@@ -118,6 +119,10 @@ func (d *defaultSeal) SetCore(core *Core) {
 
 func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
+}
+
+func (d *defaultSeal) MetaPrefix() string {
+	return d.metaPrefix
 }
 
 func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {
