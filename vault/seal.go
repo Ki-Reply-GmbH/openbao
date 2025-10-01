@@ -51,17 +51,16 @@ const (
 type Seal interface {
 	SetCore(*Core)
 	Init(context.Context) error
-	MetaPrefix() string
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
 	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
-	Wrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
 	WrapperType() wrapping.WrapperType           // SealAccess
 	Config(context.Context) (*SealConfig, error) // SealAccess
 	SetConfig(context.Context, *SealConfig) error
 	SetCachedConfig(*SealConfig)
+	SetConfigAccess(SecurityBarrier)
 	RecoveryKeySupported() bool // SealAccess
 	RecoveryType() string
 	RecoveryConfig(context.Context) (*SealConfig, error) // SealAccess
@@ -87,10 +86,6 @@ var _ Seal = (*defaultSeal)(nil)
 
 func NewDefaultSeal(lowLevel seal.Access) Seal {
 	return &defaultSeal{access: lowLevel}
-}
-
-func (d *defaultSeal) Wrapable() bool {
-	return false
 }
 
 func (d *defaultSeal) checkCore() error {
@@ -119,10 +114,6 @@ func (d *defaultSeal) SetCore(core *Core) {
 
 func (d *defaultSeal) Init(ctx context.Context) error {
 	return nil
-}
-
-func (d *defaultSeal) MetaPrefix() string {
-	return d.metaPrefix
 }
 
 func (d *defaultSeal) SetMetaPrefix(metaPrefix string) {

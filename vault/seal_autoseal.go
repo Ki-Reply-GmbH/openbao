@@ -67,10 +67,6 @@ func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
 	return ret, err
 }
 
-func (d *autoSeal) Wrapable() bool {
-	return true
-}
-
 func (d *autoSeal) GetAccess() seal.Access {
 	return d.Access
 }
@@ -84,6 +80,7 @@ func (d *autoSeal) checkCore() error {
 
 func (d *autoSeal) SetCore(core *Core) {
 	d.core = core
+
 	if d.logger == nil {
 		d.logger = d.core.Logger().Named("autoseal")
 		d.core.AddLogger(d.logger)
@@ -98,10 +95,6 @@ func (d *autoSeal) SetCore(core *Core) {
 
 func (d *autoSeal) Init(ctx context.Context) error {
 	return d.Access.Init(ctx)
-}
-
-func (d *autoSeal) MetaPrefix() string {
-	return d.metaPrefix
 }
 
 func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
@@ -224,8 +217,7 @@ func (d *autoSeal) Config(ctx context.Context) (*SealConfig, error) {
 	}
 
 	conf := &SealConfig{}
-	err = json.Unmarshal(valueBytes, conf)
-	if err != nil {
+	if err = json.Unmarshal(valueBytes, conf); err != nil {
 		d.logger.Error("failed to decode seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to decode %q seal configuration: %w", sealType, err)
 	}
@@ -400,12 +392,12 @@ func (d *autoSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 		return fmt.Errorf("failed to marshal value for storage: %w", err)
 	}
 
-	be := &physical.Entry{
+	pe := &physical.Entry{
 		Key:   d.metaPrefix + recoveryKeyPath,
 		Value: value,
 	}
 
-	if err := d.core.physical.Put(ctx, be); err != nil {
+	if err := d.core.physical.Put(ctx, pe); err != nil {
 		d.logger.Error("failed to write recovery key", "error", err)
 		return fmt.Errorf("failed to write recovery key: %w", err)
 	}

@@ -63,11 +63,11 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 		}
 	}
 
-	// TODO(wslabosz): awaiting seal manager implementation
 	if specialPath {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		parent, _ := ns.ParentPath()
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(parent)}, nil
 	} else {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		return &secureStorageAccess{barrier: b.core.sealManager.NamespaceBarrierByLongestPrefix(ns.Path)}, nil
 	}
 }
 
@@ -200,7 +200,7 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		// Ensure compression_type matches existing entries' compression
 		// except allow writing non-compressed data over compressed data
 		if existingCompressionType != compressionType && compressionType != "" {
-			err := "the entry uses a different compression scheme then compression_type"
+			err := "the entry uses a different compression scheme than compression_type"
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest
 		}
 
