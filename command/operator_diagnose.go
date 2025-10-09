@@ -36,7 +36,7 @@ import (
 	"golang.org/x/term"
 )
 
-const CoreConfigUninitializedErr = "Diagnose cannot attempt this step because core config could not be set."
+var ErrCoreConfigUninitialized = errors.New("Diagnose cannot attempt this step because core config could not be set.")
 
 var (
 	_ cli.Command             = (*OperatorDiagnoseCommand)(nil)
@@ -424,7 +424,7 @@ SEALFAIL:
 			if seal.Type == "transit" {
 				checkSealTransit = true
 
-				tlsSkipVerify, _ := seal.Config["tls_skip_verify"]
+				tlsSkipVerify := seal.Config["tls_skip_verify"]
 				if tlsSkipVerify == "true" {
 					diagnose.Warn(ctx, "TLS verification is skipped. This is highly discouraged and decreases the security of data transmissions to and from the Vault server.")
 					return nil
@@ -533,7 +533,7 @@ SEALFAIL:
 	diagnose.Test(ctx, "Check Core Creation", func(ctx context.Context) error {
 		var newCoreError error
 		if coreConfig.RawConfig == nil {
-			return fmt.Errorf(CoreConfigUninitializedErr)
+			return ErrCoreConfigUninitialized
 		}
 		core, newCoreError := vault.CreateCore(&coreConfig)
 		if newCoreError != nil {
