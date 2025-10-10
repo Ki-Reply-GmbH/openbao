@@ -159,10 +159,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	args, format, detailed, outputCurlString, outputPolicy = setupEnv(args)
 
 	// Don't use color if disabled
-	useColor := true
-	if api.ReadBaoVariable(EnvVaultCLINoColor) != "" || color.NoColor {
-		useColor = false
-	}
+	useColor := !color.NoColor && api.ReadBaoVariable(EnvVaultCLINoColor) == ""
 
 	if runOpts.Stdout == nil {
 		runOpts.Stdout = os.Stdout
@@ -328,11 +325,11 @@ func generateCurlString(exitCode int, runOpts *RunOptions, preParsingErrBuf *byt
 
 	cs, err := api.LastOutputStringError.CurlString()
 	if err != nil {
-		runOpts.Stderr.Write([]byte(fmt.Sprintf("Error creating request string: %s\n", err)))
+		fmt.Fprintf(runOpts.Stderr, "Error creating request string: %s\n", err)
 		return 1
 	}
 
-	runOpts.Stdout.Write([]byte(fmt.Sprintf("%s\n", cs)))
+	fmt.Fprintf(runOpts.Stdout, "%s\n", cs)
 	return 0
 }
 
@@ -354,10 +351,10 @@ func generatePolicy(exitCode int, runOpts *RunOptions, preParsingErrBuf *bytes.B
 
 	hcl, err := api.LastOutputPolicyError.HCLString()
 	if err != nil {
-		runOpts.Stderr.Write([]byte(fmt.Sprintf("Error assembling policy HCL: %s\n", err)))
+		fmt.Fprintf(runOpts.Stderr, "Error assembling policy HCL: %s\n", err)
 		return 1
 	}
 
-	runOpts.Stdout.Write([]byte(fmt.Sprintf("%s\n", hcl)))
+	fmt.Fprintf(runOpts.Stdout, "%s\n", hcl)
 	return 0
 }
