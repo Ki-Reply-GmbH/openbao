@@ -839,6 +839,9 @@ func TestConfig_CAContext_MismatchedHost(t *testing.T) {
 			}
 
 			caCtx, err := b.createCAContext(ctx, rootCAString, test.allowedServerNames)
+			if err != nil {
+				t.Fatalf("failed to create CA context: %v", err)
+			}
 			client, ok := caCtx.Value(oauth2.HTTPClient).(*http.Client)
 			if !ok {
 				t.Fatalf("unexpected error; can't retrieve client")
