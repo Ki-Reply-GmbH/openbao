@@ -693,7 +693,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !errors.Is(logical.ErrPermissionDenied, err) {
+	if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -715,7 +715,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	_, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("Expected error")
-	} else if !errors.Is(logical.ErrPermissionDenied, err) {
+	} else if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
