@@ -683,7 +683,7 @@ func TestRaft_SnapshotAPI_Rotate_Backward(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resp, err = client.Do(httpReq)
+			_, err = client.Do(httpReq)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -856,7 +856,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resp, err = client.Do(httpReq)
+			_, err = client.Do(httpReq)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -890,7 +890,7 @@ func TestRaft_SnapshotAPI_Rotate_Forward(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			resp, err = client.Do(httpReq)
+			_, err = client.Do(httpReq)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1017,7 +1017,7 @@ func TestRaft_SnapshotAPI_DifferentCluster(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp, err = client.Do(httpReq)
+		_, err = client.Do(httpReq)
 		if err != nil {
 			t.Fatal(err)
 		}
