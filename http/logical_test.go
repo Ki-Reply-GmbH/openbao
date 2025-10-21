@@ -318,7 +318,7 @@ func TestLogical_RequestSizeDisableLimit(t *testing.T) {
 func TestLogical_ListSuffix(t *testing.T) {
 	core, _, rootToken := vault.TestCoreUnsealed(t)
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(context.TODO()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, _, status, err := buildLogicalRequest(core, nil, req)
@@ -333,7 +333,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	}
 
 	req, _ = http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo?list=true", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(context.TODO()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, _, status, err = buildLogicalRequest(core, nil, req)
@@ -348,7 +348,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	}
 
 	req, _ = http.NewRequest("LIST", "http://127.0.0.1:8200/v1/secret/foo", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(context.TODO()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
@@ -424,7 +424,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req, _ := http.NewRequest(tc.requestMethod, tc.url, nil)
-			req = req.WithContext(namespace.RootContext(nil))
+			req = req.WithContext(namespace.RootContext(context.TODO()))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
 			lreq, _, status, err := buildLogicalRequest(core, nil, req)
@@ -450,7 +450,7 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 func TestLogical_ScanSuffix(t *testing.T) {
 	core, _, rootToken := vault.TestCoreUnsealed(t)
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(context.TODO()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, _, status, err := buildLogicalRequest(core, nil, req)
@@ -465,7 +465,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	}
 
 	req, _ = http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo?scan=true", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(context.TODO()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	lreq, _, status, err = buildLogicalRequest(core, nil, req)
@@ -480,7 +480,7 @@ func TestLogical_ScanSuffix(t *testing.T) {
 	}
 
 	req, _ = http.NewRequest("SCAN", "http://127.0.0.1:8200/v1/secret/foo", nil)
-	req = req.WithContext(namespace.RootContext(nil))
+	req = req.WithContext(namespace.RootContext(context.TODO()))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
 	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
@@ -556,7 +556,7 @@ func TestLogical_ScanWithQueryParameters(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req, _ := http.NewRequest(tc.requestMethod, tc.url, nil)
-			req = req.WithContext(namespace.RootContext(nil))
+			req = req.WithContext(namespace.RootContext(context.TODO()))
 			req.Header.Add(consts.AuthHeaderName, rootToken)
 
 			lreq, _, status, err := buildLogicalRequest(core, nil, req)
