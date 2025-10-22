@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -72,7 +71,7 @@ func TestCRLFetch(t *testing.T) {
 	//  Entry with one cert first
 
 	revocationListTemplate := &x509.RevocationList{
-		RevokedCertificates: []pkix.RevokedCertificate{
+		RevokedCertificateEntries: []x509.RevocationListEntry{
 			{
 				SerialNumber:   big.NewInt(1),
 				RevocationTime: time.Now(),
@@ -173,10 +172,10 @@ func TestCRLFetch(t *testing.T) {
 	b.crlUpdateMutex.Unlock()
 
 	// Add a cert to the CRL, then wait to see if it gets automatically picked up
-	revocationListTemplate.RevokedCertificates = []pkix.RevokedCertificate{
+	revocationListTemplate.RevokedCertificateEntries = []x509.RevocationListEntry{
 		{
 			SerialNumber:   big.NewInt(1),
-			RevocationTime: revocationListTemplate.RevokedCertificates[0].RevocationTime,
+			RevocationTime: revocationListTemplate.RevokedCertificateEntries[0].RevocationTime,
 		},
 		{
 			SerialNumber:   big.NewInt(2),

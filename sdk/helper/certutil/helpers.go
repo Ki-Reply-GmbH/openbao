@@ -286,7 +286,7 @@ func ParsePEMBundle(pemBundle string) (*ParsedCertBundle, error) {
 				Certificate: certificates[0],
 				Bytes:       pemBlock.Bytes,
 			})
-		} else if x509.IsEncryptedPEMBlock(pemBlock) {
+		} else if x509.IsEncryptedPEMBlock(pemBlock) { //nolint:staticcheck
 			return nil, errutil.UserError{Err: "Encrypted private key given; provide only decrypted private key in the bundle"}
 		}
 	}
@@ -547,11 +547,7 @@ func HandleOtherCSRSANs(in *x509.CertificateRequest, sans map[string][]string) e
 	if err := HandleOtherSANs(certTemplate, sans); err != nil {
 		return err
 	}
-	if len(certTemplate.ExtraExtensions) > 0 {
-		for _, v := range certTemplate.ExtraExtensions {
-			in.ExtraExtensions = append(in.ExtraExtensions, v)
-		}
-	}
+	in.ExtraExtensions = append(in.ExtraExtensions, certTemplate.ExtraExtensions...)
 	return nil
 }
 
