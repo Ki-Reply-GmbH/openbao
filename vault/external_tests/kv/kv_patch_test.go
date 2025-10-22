@@ -79,7 +79,8 @@ func TestKV_Patch_BadContentTypeHeader(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		return c.RawRequestWithContext(context.Background(), req)
+		//nolint:staticcheck // currently there is no other way to perform this specific request
+		return c.RawRequestWithContext(t.Context(), req)
 	})
 
 	apiResp, ok := apiRespRaw.(*api.Response)

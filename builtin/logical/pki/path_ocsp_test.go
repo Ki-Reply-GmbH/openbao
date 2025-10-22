@@ -427,6 +427,7 @@ func TestOcsp_HigherLevel(t *testing.T) {
 	ocspPostReq := client.NewRequest(http.MethodPost, "/v1/pki/ocsp")
 	ocspPostReq.Headers.Set("Content-Type", "application/ocsp-request")
 	ocspPostReq.BodyBytes = ocspReq
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	rawResp, err := client.RawRequest(ocspPostReq)
 	require.NoError(t, err, "failed sending ocsp post request")
 
@@ -452,6 +453,7 @@ func TestOcsp_HigherLevel(t *testing.T) {
 
 	ocspGetReq := client.NewRequest(http.MethodGet, "/v1/pki/ocsp/"+urlEncoded)
 	ocspGetReq.Headers.Set("Content-Type", "application/ocsp-request")
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	rawResp, err = client.RawRequest(ocspGetReq)
 	require.NoError(t, err, "failed sending ocsp get request")
 

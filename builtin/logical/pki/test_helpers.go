@@ -162,8 +162,7 @@ func getParsedCrl(t *testing.T, client *api.Client, mountPoint string) *x509.Rev
 func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *x509.RevocationList {
 	t.Helper()
 
-	req := client.NewRequest("GET", path)
-	resp, err := client.RawRequest(req)
+	resp, err := client.Logical().ReadRaw(strings.TrimPrefix(path, "/v1/"))
 	if err != nil {
 		t.Fatal(err)
 	}

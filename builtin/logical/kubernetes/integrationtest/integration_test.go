@@ -251,8 +251,7 @@ func TestRole(t *testing.T) {
 }
 
 func isEnterprise(client *api.Client) bool {
-	req := client.NewRequest("GET", "/v1/sys/license/status")
-	resp, err := client.RawRequest(req)
+	resp, err := client.Logical().ReadRaw("sys/license/status")
 	if err != nil {
 		return false
 	}
@@ -261,6 +260,7 @@ func isEnterprise(client *api.Client) bool {
 
 func createNamespace(client *api.Client, namespace string) error {
 	req := client.NewRequest("PUT", "/v1/sys/namespaces/"+namespace)
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	resp, err := client.RawRequest(req)
 	if err != nil {
 		return err
@@ -274,6 +274,7 @@ func createNamespace(client *api.Client, namespace string) error {
 
 func deleteNamespace(client *api.Client, namespace string) error {
 	req := client.NewRequest("DELETE", "/v1/sys/namespaces/"+namespace)
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	resp, err := client.RawRequest(req)
 	if err != nil {
 		return err

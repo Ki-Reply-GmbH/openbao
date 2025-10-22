@@ -1005,6 +1005,7 @@ cache {}
 	}
 
 	// First try on listener 1 where the API should be disabled.
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPost, "/proxy/v1/quit"))
 	if err == nil {
 		t.Fatal("expected error")
@@ -1019,6 +1020,7 @@ cache {}
 		t.Fatal(err)
 	}
 
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	_, err = client.RawRequest(client.NewRequest(http.MethodPost, "/proxy/v1/quit"))
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)

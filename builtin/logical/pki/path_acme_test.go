@@ -502,6 +502,7 @@ func TestAcmeNonce(t *testing.T) {
 				case "header":
 					req = client.NewRequest(http.MethodHead, "/v1/"+tc.directoryUrl)
 				}
+				//nolint:staticcheck // currently there is no other way to perform this specific request
 				res, err := client.RawRequestWithContext(ctx, req)
 				require.NoError(t, err, "failed sending raw request")
 				_ = res.Body.Close()
@@ -669,6 +670,7 @@ func TestAcmeDisabledWithEnvVar(t *testing.T) {
 	for _, method := range []string{http.MethodHead, http.MethodGet} {
 		t.Run(method, func(t *testing.T) {
 			req := client.NewRequest(method, "/v1/pki/acme/new-nonce")
+			//nolint:staticcheck // currently there is no other way to perform this specific request
 			_, err := client.RawRequestWithContext(ctx, req)
 			require.Error(t, err, "should have received an error as ACME should have been disabled")
 

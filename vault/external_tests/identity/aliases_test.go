@@ -627,6 +627,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawReque
 		"from_entity_ids": []string{entityIdAlice},
 	})
 
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	resp, err := client.RawRequest(req)
 	if err == nil {
 		t.Fatalf("Expected error but did not get one. Response: %v", resp)

@@ -1180,6 +1180,7 @@ func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Access, r
 		return err
 	}
 
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	answerRespJson, err := raftInfo.leaderClient.RawRequestWithContext(ctx, answerReq)
 	if answerRespJson != nil {
 		defer answerRespJson.Body.Close()

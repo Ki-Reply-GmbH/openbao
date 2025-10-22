@@ -56,6 +56,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		client := cluster.Cores[0].Client
 
 		req := client.NewRequest("GET", "/")
+		//nolint:staticcheck // currently there is no other way to perform this specific request
 		_, err := client.RawRequest(req)
 		if err == nil {
 			t.Fatal("expected error")
@@ -66,6 +67,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req = client.NewRequest("GET", "/")
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "1.2.3.4")
+		//nolint:staticcheck // currently there is no other way to perform this specific request
 		resp, err := client.RawRequest(req)
 		if err != nil {
 			t.Fatal(err)
@@ -101,6 +103,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req := client.NewRequest("GET", "/")
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "5.6.7.8")
+		//nolint:staticcheck // currently there is no other way to perform this specific request
 		resp, err := client.RawRequest(req)
 		if err != nil {
 			t.Fatal(err)
@@ -137,6 +140,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req := client.NewRequest("GET", "/")
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "5.6.7.8")
+		//nolint:staticcheck // currently there is no other way to perform this specific request
 		_, err := client.RawRequest(req)
 		if err == nil {
 			t.Fatal("expected error")
@@ -171,6 +175,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req := client.NewRequest("GET", "/")
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "2.3.4.5,3.4.5.6")
+		//nolint:staticcheck // currently there is no other way to perform this specific request
 		_, err := client.RawRequest(req)
 		if err == nil {
 			t.Fatal("expected error")
@@ -205,6 +210,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req := client.NewRequest("GET", "/")
 		req.Headers = make(http.Header)
 		req.Headers.Set("x-forwarded-for", "2.3.4.5,3.4.5.6,4.5.6.7,5.6.7.8")
+		//nolint:staticcheck // currently there is no other way to perform this specific request
 		resp, err := client.RawRequest(req)
 		if err != nil {
 			t.Fatal(err)
@@ -244,6 +250,7 @@ func TestHandler_XForwardedFor(t *testing.T) {
 		req.Headers.Add("x-forwarded-for", "2.3.4.5")
 		req.Headers.Add("x-forwarded-for", "3.4.5.6,4.5.6.7")
 		req.Headers.Add("x-forwarded-for", "5.6.7.8")
+		//nolint:staticcheck // currently there is no other way to perform this specific request
 		resp, err := client.RawRequest(req)
 		if err != nil {
 			t.Fatal(err)

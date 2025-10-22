@@ -854,11 +854,9 @@ func TestCache_NonCacheable(t *testing.T) {
 	}
 
 	// Query a non-existing mount, expect an error from api.Response
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	r := testClient.NewRequest("GET", "/v1/kv-invalid")
+	ctx := t.Context()
 
-	apiResp, err := testClient.RawRequestWithContext(ctx, r)
+	apiResp, err := testClient.Logical().ReadRawWithContext(ctx, "kv-invalid")
 	if apiResp != nil {
 		defer apiResp.Body.Close()
 	}
@@ -1095,8 +1093,8 @@ func testCachingCacheClearCommon(t *testing.T, clearType string) {
 		t.Fatal(err)
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
+	ctx := t.Context()
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	apiResp, err := testClient.RawRequestWithContext(ctx, r)
 	if apiResp != nil {
 		defer apiResp.Body.Close()

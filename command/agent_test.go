@@ -423,8 +423,7 @@ listener "tcp" {
 	// Test against a listener configuration that sets 'require_request_header'
 	// to 'true', with the header missing from the request.
 	agentClient = newApiClient("http://"+listenAddr3, false)
-	req = agentClient.NewRequest("GET", "/v1/sys/health")
-	resp, err := agentClient.RawRequest(req)
+	resp, err := agentClient.Logical().ReadRaw("sys/health")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -438,8 +437,7 @@ listener "tcp" {
 	h := agentClient.Headers()
 	h[consts.RequestHeaderName] = []string{"bogus"}
 	agentClient.SetHeaders(h)
-	req = agentClient.NewRequest("GET", "/v1/sys/health")
-	resp, err = agentClient.RawRequest(req)
+	resp, err = agentClient.Logical().ReadRaw("sys/health")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -1334,6 +1332,7 @@ template {
 // request issues HTTP requests.
 func request(t *testing.T, client *api.Client, req *api.Request, expectedStatusCode int) map[string]interface{} {
 	t.Helper()
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	resp, err := client.RawRequest(req)
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -2763,6 +2762,7 @@ cache {}
 	}
 
 	// First try on listener 1 where the API should be disabled.
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPost, "/agent/v1/quit"))
 	if err == nil {
 		t.Fatal("expected error")
@@ -2777,6 +2777,7 @@ cache {}
 		t.Fatal(err)
 	}
 
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	_, err = client.RawRequest(client.NewRequest(http.MethodPost, "/agent/v1/quit"))
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)

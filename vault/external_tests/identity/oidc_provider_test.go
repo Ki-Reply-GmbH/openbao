@@ -977,6 +977,7 @@ func decodeRawRequest(t *testing.T, client *api.Client, method, path string, par
 	req.Params = params
 
 	// Send the raw request
+	//nolint:staticcheck // currently there is no other way to perform this specific request
 	r, err := client.RawRequest(req)
 	require.NoError(t, err)
 	require.NotNil(t, r)
