@@ -4,9 +4,10 @@
 package cert
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
-	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	url2 "net/url"
@@ -242,8 +243,15 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 		return logical.ErrorResponse("'name' parameter cannot be empty"), nil
 	}
 	if crlRaw, ok := d.GetOk("crl"); ok {
-		crl := crlRaw.(string)
-		certList, err := x509.ParseCRL([]byte(crl))
+		crl := []byte(crlRaw.(string))
+		// if the CRL is PEM encoded, parse it
+		if bytes.HasPrefix(crl, pemCRLPrefix) {
+			block, _ := pem.Decode(crl)
+			if block != nil && block.Type == pemType {
+				crl = block.Bytes
+			}
+		}
+		certList, err := x509.ParseRevocationList(crl)
 		if err != nil {
 			return logical.ErrorResponse("failed to parse CRL: %v", err), nil
 		}
@@ -286,7 +294,7 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 	return nil, nil
 }
 
-func (b *backend) setCRL(ctx context.Context, storage logical.Storage, certList *pkix.CertificateList, name string, cdp *CDPInfo) error {
+func (b *backend) setCRL(ctx context.Context, storage logical.Storage, certList *x509.RevocationList, name string, cdp *CDPInfo) error {
 	if err := b.populateCRLs(ctx, storage); err != nil {
 		return err
 	}
@@ -297,7 +305,7 @@ func (b *backend) setCRL(ctx context.Context, storage logical.Storage, certList 
 	}
 
 	if certList != nil {
-		for _, revokedCert := range certList.TBSCertList.RevokedCertificates {
+		for _, revokedCert := range certList.RevokedCertificateEntries {
 			crlInfo.Serials[revokedCert.SerialNumber.String()] = RevokedSerialInfo{}
 		}
 	}

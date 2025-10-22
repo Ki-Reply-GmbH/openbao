@@ -1,0 +1,3 @@
+```release-note:change
+auth/cert: No longer accept CRLv1.
+```

@@ -242,11 +242,11 @@ func (b *backend) pathUpdateResignCrlsHandler(ctx context.Context, request *logi
 
 	now := time.Now()
 	template := &x509.RevocationList{
-		SignatureAlgorithm:  caBundle.RevocationSigAlg,
-		RevokedCertificates: revokedCerts,
-		Number:              big.NewInt(int64(crlNumber)),
-		ThisUpdate:          now,
-		NextUpdate:          now.Add(nextUpdateOffset),
+		SignatureAlgorithm:        caBundle.RevocationSigAlg,
+		RevokedCertificateEntries: revokedCerts,
+		Number:                    big.NewInt(int64(crlNumber)),
+		ThisUpdate:                now,
+		NextUpdate:                now.Add(nextUpdateOffset),
 	}
 
 	if deltaCrlBaseNumber > -1 {
@@ -604,11 +604,11 @@ func encodeResponse(crlBytes []byte, derFormatRequested bool) string {
 	return string(pem.EncodeToMemory(&block))
 }
 
-func getAllRevokedCertsFromPem(crls []*x509.RevocationList) ([]pkix.RevokedCertificate, []string, error) {
-	uniqueCert := map[string]pkix.RevokedCertificate{}
+func getAllRevokedCertsFromPem(crls []*x509.RevocationList) ([]x509.RevocationListEntry, []string, error) {
+	uniqueCert := map[string]x509.RevocationListEntry{}
 	var warnings []string
 	for _, crl := range crls {
-		for _, curCert := range crl.RevokedCertificates {
+		for _, curCert := range crl.RevokedCertificateEntries {
 			serial := serialFromBigInt(curCert.SerialNumber)
 			// Get rid of any extensions the existing certificate might have had.
 			curCert.Extensions = []pkix.Extension{}
@@ -635,7 +635,7 @@ func getAllRevokedCertsFromPem(crls []*x509.RevocationList) ([]pkix.RevokedCerti
 		}
 	}
 
-	var revokedCerts []pkix.RevokedCertificate
+	var revokedCerts []x509.RevocationListEntry
 	for _, cert := range uniqueCert {
 		revokedCerts = append(revokedCerts, cert)
 	}
