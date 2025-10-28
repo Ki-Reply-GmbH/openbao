@@ -1,3 +1,6 @@
 ```release-note:change
 auth/cert: No longer accept CRLv1.
 ```
+```release-note:change
+secrets/ssh: Remove support for signing user-supplied DSA keys.
+```

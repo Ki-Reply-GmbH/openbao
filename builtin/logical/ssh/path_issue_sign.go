@@ -4,7 +4,6 @@
 package ssh
 
 import (
-	"crypto/dsa"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -426,9 +425,6 @@ func (b *backend) validateSignedKeyRequirements(publickey ssh.PublicKey, role *s
 			case *rsa.PublicKey:
 				keyType = "rsa"
 				keyBits = k.N.BitLen()
-			case *dsa.PublicKey:
-				keyType = "dsa"
-				keyBits = k.P.BitLen()
 			case *ecdsa.PublicKey:
 				keyType = "ecdsa"
 				keyBits = k.Curve.Params().BitSize
@@ -454,9 +450,9 @@ func (b *backend) validateSignedKeyRequirements(publickey ssh.PublicKey, role *s
 			present = true
 
 			for _, value := range allowed_values {
-				if keyType == "rsa" || keyType == "dsa" {
+				if keyType == "rsa" {
 					// Regardless of map naming, we always need to validate the
-					// bit length of RSA and DSA keys. Use the keyType flag to
+					// bit length of RSA keys. Use the keyType flag to
 					if keyBits == value {
 						pass = true
 					}
@@ -467,7 +463,7 @@ func (b *backend) validateSignedKeyRequirements(publickey ssh.PublicKey, role *s
 					// ssh.KeyAlgoECDSA256) is allowed (and hence kstr is that),
 					// because keyBits is already specified in the kstr. Thus,
 					// we have conditioned around kstr and not keyType (like with
-					// rsa or dsa).
+					// rsa).
 					if keyBits == value {
 						pass = true
 					}
@@ -563,7 +559,6 @@ func (b *creationBundle) sign() (retCert *ssh.Certificate, retErr error) {
 func createKeyTypeToMapKey(keyType string, keyBits int) map[string][]string {
 	keyTypeToMapKey := map[string][]string{
 		"rsa":     {"rsa", ssh.KeyAlgoRSA},
-		"dsa":     {"dsa", ssh.KeyAlgoDSA},
 		"ecdsa":   {"ecdsa", "ec"},
 		"ed25519": {"ed25519", ssh.KeyAlgoED25519},
 	}
