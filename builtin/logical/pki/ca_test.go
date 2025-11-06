@@ -575,13 +575,13 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				crlBytes = pemBlock.Bytes
 			}
 
-			certList, err := x509.ParseCRL(crlBytes)
+			certList, err := x509.ParseRevocationList(crlBytes)
 			if err != nil {
 				t.Fatal(err)
 			}
 			switch shouldFind {
 			case true:
-				revokedList := certList.TBSCertList.RevokedCertificates
+				revokedList := certList.RevokedCertificateEntries
 				if len(revokedList) != 1 {
 					t.Fatalf("bad length of revoked list: %d", len(revokedList))
 				}
@@ -590,7 +590,7 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 					t.Fatalf("bad revoked serial: %s", revokedString)
 				}
 			default:
-				revokedList := certList.TBSCertList.RevokedCertificates
+				revokedList := certList.RevokedCertificateEntries
 				if len(revokedList) != 0 {
 					t.Fatalf("bad length of revoked list: %d", len(revokedList))
 				}

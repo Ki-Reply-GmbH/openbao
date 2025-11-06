@@ -53,8 +53,8 @@ func (cg *CertificateGetter) Reload() error {
 		return errors.New("decoded PEM is blank")
 	}
 
-	if x509.IsEncryptedPEMBlock(keyBlock) {
-		keyBlock.Bytes, err = x509.DecryptPEMBlock(keyBlock, []byte(cg.passphrase))
+	if x509.IsEncryptedPEMBlock(keyBlock) { //nolint:staticcheck
+		keyBlock.Bytes, err = x509.DecryptPEMBlock(keyBlock, []byte(cg.passphrase)) //nolint:staticcheck
 		if err != nil {
 			return fmt.Errorf("Decrypting PEM block failed %w", err)
 		}

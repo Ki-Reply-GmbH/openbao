@@ -6,7 +6,6 @@ package certutil
 import (
 	"bytes"
 	"crypto"
-	"crypto/dsa"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -112,8 +111,8 @@ func ParseHexFormatted(in, sep string) []byte {
 	var ret bytes.Buffer
 	var err error
 	var inBits uint64
-	inBytes := strings.Split(in, sep)
-	for _, inByte := range inBytes {
+	inBytes := strings.SplitSeq(in, sep)
+	for inByte := range inBytes {
 		if inBits, err = strconv.ParseUint(inByte, 16, 8); err != nil {
 			return nil
 		}
@@ -286,7 +285,7 @@ func ParsePEMBundle(pemBundle string) (*ParsedCertBundle, error) {
 				Certificate: certificates[0],
 				Bytes:       pemBlock.Bytes,
 			})
-		} else if x509.IsEncryptedPEMBlock(pemBlock) {
+		} else if x509.IsEncryptedPEMBlock(pemBlock) { //nolint:staticcheck
 			return nil, errutil.UserError{Err: "Encrypted private key given; provide only decrypted private key in the bundle"}
 		}
 	}
@@ -547,11 +546,7 @@ func HandleOtherCSRSANs(in *x509.CertificateRequest, sans map[string][]string) e
 	if err := HandleOtherSANs(certTemplate, sans); err != nil {
 		return err
 	}
-	if len(certTemplate.ExtraExtensions) > 0 {
-		for _, v := range certTemplate.ExtraExtensions {
-			in.ExtraExtensions = append(in.ExtraExtensions, v)
-		}
-	}
+	in.ExtraExtensions = append(in.ExtraExtensions, certTemplate.ExtraExtensions...)
 	return nil
 }
 
@@ -1637,9 +1632,6 @@ func GetPublicKeySize(key crypto.PublicKey) int {
 	}
 	if key, ok := key.(ed25519.PublicKey); ok {
 		return len(key) * 8
-	}
-	if key, ok := key.(dsa.PublicKey); ok {
-		return key.Y.BitLen()
 	}
 
 	return -1

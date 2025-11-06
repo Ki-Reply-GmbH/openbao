@@ -4,8 +4,10 @@
 package cert
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -113,6 +115,11 @@ func (b *backend) updatedConfig(config *config) {
 	b.configUpdated.Store(false)
 }
 
+var (
+	pemCRLPrefix = []byte("-----BEGIN X509 CRL")
+	pemType      = "X509 CRL"
+)
+
 func (b *backend) fetchCRL(ctx context.Context, storage logical.Storage, name string, crl *CRLInfo) error {
 	response, err := http.Get(crl.CDP.Url)
 	if err != nil {
@@ -123,11 +130,18 @@ func (b *backend) fetchCRL(ctx context.Context, storage logical.Storage, name st
 		if err != nil {
 			return err
 		}
-		certList, err := x509.ParseCRL(body)
+		// if the CRL is PEM encoded, parse it
+		if bytes.HasPrefix(body, pemCRLPrefix) {
+			block, _ := pem.Decode(body)
+			if block != nil && block.Type == pemType {
+				body = block.Bytes
+			}
+		}
+		certList, err := x509.ParseRevocationList(body)
 		if err != nil {
 			return err
 		}
-		crl.CDP.ValidUntil = certList.TBSCertList.NextUpdate
+		crl.CDP.ValidUntil = certList.NextUpdate
 		return b.setCRL(ctx, storage, certList, name, crl.CDP)
 	}
 	return fmt.Errorf("unexpected response code %d fetching CRL from %s", response.StatusCode, crl.CDP.Url)
