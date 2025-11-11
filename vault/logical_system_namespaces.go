@@ -585,8 +585,8 @@ func (b *SystemBackend) handleNamespaceExternalKeysWrite() framework.OperationFu
 			return handleError(err)
 		}
 
-		// TODO(satoqz): Call into the External Keys registry to recursively kill off
-		// any cached clients/connections for types that are now disabled.
+		// Kill external key clients active in this namespace (and any children).
+		b.Core.externalKeys.InvalidateNamespaceRecursive(ctx, path)
 
 		return nil, nil
 	}

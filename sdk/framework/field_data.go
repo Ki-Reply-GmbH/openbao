@@ -90,6 +90,30 @@ func (d *FieldData) ValidateStrict() error {
 	return nil
 }
 
+func (d *FieldData) ToMap() (map[string]any, error) {
+	ret := make(map[string]any)
+
+	for field := range d.Raw {
+		if _, ok := d.Schema[field]; !ok {
+			continue
+		}
+		if v, ok := d.GetOk(field); ok {
+			ret[field] = v
+		}
+	}
+
+	for field, schema := range d.Schema {
+		if !schema.Required {
+			continue
+		}
+		if _, ok := d.Raw[field]; !ok {
+			return nil, fmt.Errorf("missing required field %q", field)
+		}
+	}
+
+	return ret, nil
+}
+
 // Get gets the value for the given field. If the key is an invalid field,
 // FieldData will panic. If you want a safer version of this method, use
 // GetOk. If the field k is not set, the default value (if set) will be
