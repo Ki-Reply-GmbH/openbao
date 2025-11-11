@@ -267,8 +267,8 @@ func (b *ServiceRegistration) GoString() string {
 
 // ExternalKeys is the server-level configuration for External Keys.
 type ExternalKeysConfig struct {
-	Type       string                // Type of external_keys stanza, e.g. "pkcs11".
-	Values     map[string]string     // Type-specific parameters, e.g. lib="/usr/lib/..." for type "pkcs11".
+	Provider   string                // Type of external_keys stanza, e.g. "pkcs11".
+	Values     map[string]any        // Type-specific parameters, e.g. lib="/usr/lib/..." for type "pkcs11".
 	Namespaces []*NamespaceSpecifier // Namespaces to enable this configuration in.
 }
 
@@ -1116,7 +1116,7 @@ func parseExternalKeys(result *Config, list *ast.ObjectList, blockName string) e
 			return fmt.Errorf("%s: expected exactly one key", blockName)
 		}
 		key := item.Keys[0].Token.Value().(string)
-		e.Type = strings.ToLower(key)
+		e.Provider = strings.ToLower(key)
 
 		var m map[string]any
 		if err := hcl.DecodeObject(&m, item.Val); err != nil {
@@ -1147,25 +1147,17 @@ func parseExternalKeys(result *Config, list *ast.ObjectList, blockName string) e
 			e.Namespaces = append(e.Namespaces, &NamespaceSpecifier{Kind: "id", Value: namespace.RootNamespaceID})
 		}
 
-		// Convert all remaining fields to strings:
-		e.Values = make(map[string]string, len(m))
-		for k, v := range m {
-			s, err := parseutil.ParseString(v)
-			if err != nil {
-				return fmt.Errorf("%s.%s: %w", blockName, key, err)
-			}
-			e.Values[k] = s
-		}
-
-		name, ok := e.Values["name"]
+		name, ok := m["name"].(string)
 		if !ok {
 			return fmt.Errorf("%s.%s: missing 'name'", blockName, key)
 		}
-		delete(e.Values, "name")
+		delete(m, "name")
 
 		if _, ok := cfgs[blockName]; ok {
 			return fmt.Errorf("%s.%s: duplicate 'name' %q", blockName, key, name)
 		}
+
+		e.Values = m
 		cfgs[name] = &e
 	}
 
@@ -1307,7 +1299,7 @@ func (c *Config) Sanitized() map[string]interface{} {
 		for name, e := range c.ExternalKeys {
 			sanitizedExternalKeys = append(sanitizedExternalKeys, map[string]string{
 				"name": name,
-				"type": e.Type,
+				"type": e.Provider,
 			})
 		}
 		result["external_keys"] = sanitizedExternalKeys

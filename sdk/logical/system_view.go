@@ -5,6 +5,7 @@ package logical
 
 import (
 	"context"
+	"crypto"
 	"errors"
 	"io"
 	"time"
@@ -92,6 +93,18 @@ type SystemView interface {
 	// write forwarding (WriteForwardedPaths). This value will be templated
 	// in for the {{cluterId}} sentinel.
 	ClusterID(ctx context.Context) (string, error)
+
+	GetExternalSigningKey(ctx context.Context, configName, keyName string) (ExternalSigningKey, error)
+}
+
+type ExternalKey interface {
+	Close(ctx context.Context) error
+}
+
+type ExternalSigningKey interface {
+	ExternalKey
+
+	GetSigner(ctx context.Context) (crypto.Signer, error)
 }
 
 type PasswordPolicy interface {
@@ -251,4 +264,8 @@ func (d StaticSystemView) ClusterID(ctx context.Context) (string, error) {
 
 func (d StaticSystemView) APILockShouldBlockRequest() (bool, error) {
 	return d.APILockShouldBlockRequestVal, nil
+}
+
+func (d StaticSystemView) GetExternalSigningKey(ctx context.Context, configName, keyName string) (ExternalSigningKey, error) {
+	return nil, errors.New("GetExternalSigningKey is not implemented in StaticSystemView")
 }

@@ -5,11 +5,13 @@ package vault
 
 import (
 	"context"
+	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/openbao/go-kms-wrapping/v2/kms"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/random"
@@ -17,6 +19,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/extkey"
 	"github.com/openbao/openbao/version"
 )
 
@@ -446,4 +449,42 @@ func (d dynamicSystemView) ClusterID(ctx context.Context) (string, error) {
 	}
 
 	return clusterInfo.ID, nil
+}
+
+func (d dynamicSystemView) getExternalKey(ctx context.Context, config, key string) (ret externalKeyImpl, err error) {
+	switch {
+	case !extkey.NameRegexp.MatchString(config):
+		return ret, fmt.Errorf("invalid config name: %q", config)
+	case !extkey.NameRegexp.MatchString(key):
+		return ret, fmt.Errorf("invalid key name: %q", key)
+	}
+
+	isSystem := d.mountEntry.Type == mountTypeSystem ||
+		d.mountEntry.Type == mountTypeNSSystem
+
+	req := &extkey.Request{
+		ConfigName: config, KeyName: key,
+		Mount:     d.mountEntry.Path,
+		Namespace: d.mountEntry.Namespace(),
+		IsSystem:  isSystem,
+	}
+
+	ret.inner, err = d.core.externalKeys.GetKey(ctx, req)
+	return ret, err
+}
+
+func (d dynamicSystemView) GetExternalSigningKey(ctx context.Context, config, key string) (logical.ExternalSigningKey, error) {
+	return d.getExternalKey(ctx, config, key)
+}
+
+type externalKeyImpl struct {
+	inner kms.Key
+}
+
+func (k externalKeyImpl) Close(ctx context.Context) error {
+	return k.inner.Close(ctx)
+}
+
+func (k externalKeyImpl) GetSigner(ctx context.Context) (crypto.Signer, error) {
+	return kms.NewCryptoSigner(ctx, k.inner)
 }

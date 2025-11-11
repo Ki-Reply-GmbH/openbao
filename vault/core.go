@@ -55,6 +55,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/vault/cluster"
+	"github.com/openbao/openbao/vault/extkey"
 	"github.com/openbao/openbao/vault/quotas"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
@@ -390,7 +391,7 @@ type Core struct {
 	identityStore *IdentityStore
 
 	// externalKeys is used to manage External Keys
-	externalKeys *ExternalKeyRegistry
+	externalKeys *extkey.Registry
 
 	// metricsCh is used to stop the metrics streaming
 	metricsCh chan struct{}
@@ -2609,12 +2610,11 @@ func (c *Core) preSeal() error {
 	if err := c.teardownLoginMFA(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA: %w", err))
 	}
-	if err := c.teardownExternalKeys(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down external keys registry: %w", err))
-	}
 	if err := c.teardownNamespaceStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))
 	}
+
+	c.teardownExternalKeys()
 
 	if c.autoRotateCancel != nil {
 		c.autoRotateCancel()
@@ -3708,13 +3708,57 @@ func (c *Core) ReloadIntrospectionEndpointEnabled() {
 	c.introspectionEnabled = conf.(*server.Config).EnableIntrospectionEndpoint
 }
 
+func (c *Core) setupExternalKeys() error {
+	logger := c.baseLogger.Named("external-keys")
+	c.AddLogger(logger)
+
+	view := extkey.CoreView{}
+
+	view.GetStanza = func(provider string) *server.ExternalKeysConfig {
+		return c.rawConfig.Load().(*server.Config).ExternalKeys[provider]
+	}
+
+	view.Allow = func(ctx context.Context, ns *namespace.Namespace, provider string) error {
+		return c.namespaceStore.ExternalKeyTypeAllowed(ns, provider)
+	}
+
+	view.GetStorage = func(ctx context.Context, ns *namespace.Namespace) (logical.Storage, error) {
+		return NamespaceView(c.barrier, ns).SubView(systemBarrierPrefix), nil
+	}
+
+	view.GetNamespace = func(ctx context.Context, path string) (*namespace.Namespace, error) {
+		return c.namespaceStore.GetNamespaceByPath(namespace.RootContext(ctx), path)
+	}
+
+	c.externalKeys = extkey.NewRegistry(
+		c.activeContext, logger, &view,
+	)
+
+	return nil
+}
+
+func (c *Core) teardownExternalKeys() {
+	if c.externalKeys == nil {
+		return
+	}
+	// Core.activeContext is already canceled at this point.
+	c.externalKeys.InvalidateNamespaceRecursive(context.Background(), "")
+	c.externalKeys = nil
+}
+
 func (c *Core) ReloadExternalKeys() {
 	conf := c.rawConfig.Load()
 	if conf == nil {
 		return
 	}
-	// TODO(satoqz): Reload all affected external key configs.
-	// externalKeyStanzas := conf.(*server.Config).ExternalKeys
+
+	c.stateLock.RLock()
+	registry, ctx := c.externalKeys, c.activeContext
+	c.stateLock.RUnlock()
+
+	if registry != nil {
+		go registry.InvalidateNamespaceRecursive(ctx, "")
+	}
 }
 
 type PeerNode struct {

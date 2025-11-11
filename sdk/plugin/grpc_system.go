@@ -204,6 +204,10 @@ func (s gRPCSystemViewClient) ClusterID(ctx context.Context) (string, error) {
 	return reply.ClusterID, nil
 }
 
+func (s gRPCSystemViewClient) GetExternalSigningKey(ctx context.Context, configName, keyName string) (logical.ExternalSigningKey, error) {
+	return nil, errors.New("cannot call GetExternalSigningKey from a plugin backend")
+}
+
 type gRPCSystemViewServer struct {
 	pb.UnimplementedSystemViewServer
 

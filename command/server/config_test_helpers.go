@@ -1091,21 +1091,21 @@ external_keys "pkcs11" {
 		SharedConfig: &configutil.SharedConfig{},
 		ExternalKeys: map[string]*ExternalKeysConfig{
 			"foo": {
-				Type: "pkcs11",
+				Provider: "pkcs11",
 				Namespaces: []*NamespaceSpecifier{
 					{Kind: "id", Value: "root"},
 				},
-				Values: map[string]string{
+				Values: map[string]any{
 					"lib": "/usr/lib/softhsm/libsofthsm2.so",
 				},
 			},
 			"bar": {
-				Type: "pkcs11",
+				Provider: "pkcs11",
 				Namespaces: []*NamespaceSpecifier{
 					{Kind: "id", Value: "root"},
 					{Kind: "path", Value: "my-namespace"},
 				},
-				Values: map[string]string{
+				Values: map[string]any{
 					"lib": "/usr/lib/pkcs11_R2/libcs_pkcs11_R2.so",
 				},
 			},

@@ -1020,6 +1020,10 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 		ns.logger.Error("failed to clean up locked user entries", "namespace", namespaceToDelete.Path, "error", err.Error())
 		return false
 	}
+
+	// clear external key clients
+	ns.core.externalKeys.InvalidateNamespaceRecursive(nsCtx, namespaceToDelete.Path)
+
 	return true
 }
 
