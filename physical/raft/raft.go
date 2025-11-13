@@ -19,8 +19,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	metrics "github.com/hashicorp/go-metrics/compat"
 	"github.com/hashicorp/go-raftchunking"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
@@ -82,7 +82,7 @@ var (
 	defaultMaxEntrySize    = uint64(2 * raftchunking.ChunkSize)
 	defaultMaxTxnSize      = 8 * defaultMaxEntrySize
 
-	GetInTxnDisabledError = errors.New("get operations inside transactions are disabled in raft backend")
+	ErrGetInTxnDisabled = errors.New("get operations inside transactions are disabled in raft backend")
 )
 
 // RaftBackend implements the backend interfaces and uses the raft protocol to
