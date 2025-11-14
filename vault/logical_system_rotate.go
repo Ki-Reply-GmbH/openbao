@@ -676,7 +676,7 @@ func (b *SystemBackend) handleRotateInitDelete() framework.OperationFunc {
 // handleRotateUpdate handles the POST `/sys/rotate/root/update` and `/sys/rotate/recovery/update`
 // endpoints used for providing a single root key share progressing the rotation of the key.
 func (b *SystemBackend) handleRotateUpdate() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	return func(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		ikey, ok, err := data.GetOkErr("key")
 		if err != nil {
 			return handleError(err)
@@ -780,7 +780,7 @@ func (b *SystemBackend) handleRotateVerifyGet() framework.OperationFunc {
 // handleRotateVerifyPut handles the POST `/sys/rotate/root/verify` and `/sys/rotate/recovery/verify`
 // endpoints used to enter a single key share to progress the rotation verification operation.
 func (b *SystemBackend) handleRotateVerifyPut() framework.OperationFunc {
-	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	return func(_ context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		ikey, ok, err := data.GetOkErr("key")
 		if err != nil {
 			return handleError(err)

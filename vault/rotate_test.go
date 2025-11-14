@@ -73,7 +73,7 @@ func testCoreRotateLifecycleCommon(t *testing.T, c *Core, recovery bool) {
 
 	// Should be no config
 	conf = c.RotationConfig(recovery)
-	require.NoError(t, err)
+	require.Nil(t, conf)
 }
 
 func TestCoreInitRotation(t *testing.T) {
