@@ -417,15 +417,22 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			return
 		}
 
+		if unlocked {
+			// Re-lock if needed.
+			ns.lock.Lock()
+			unlocked = false
+		}
+
 		// When commit fails and the namespace did not exist, we should back
 		// out the entry from our in-memory versions.
-		ns.lock.Lock()
 		if err := ns.namespacesByPath.Delete(entry.Path); err != nil {
 			ns.logger.Error("failed to remove namespace from path manager", "error", err)
 		}
 		delete(ns.namespacesByUUID, entry.UUID)
 		delete(ns.namespacesByAccessor, entry.ID)
+
 		ns.lock.Unlock()
+		unlocked = true
 
 		// Handle in-memory mount table entries that we should also clean
 		// up.
@@ -441,10 +448,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		}
 
 		defer func() {
-			if err := txn.Rollback(ctx); err != nil {
-				ns.logger.Error("failed to rollback transaction", "error", err)
-			}
-
+			txn.Rollback(ctx) //nolint:errcheck
 			cleanupFailed()
 		}()
 
@@ -902,7 +906,10 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 
 	if !namespaceToDelete.Tainted {
 		// taint the namespace
-		err = ns.taintNamespace(ctx, namespaceToDelete)
+		err := ns.taintNamespace(ctx, namespaceToDelete)
+		if err != nil {
+			return "", fmt.Errorf("error tainting namespace: %w", err)
+		}
 	}
 
 	parent, err := namespace.FromContext(ctx)
