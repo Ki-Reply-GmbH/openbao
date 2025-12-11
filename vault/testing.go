@@ -325,6 +325,10 @@ func TestCoreSeal(core *Core) error {
 	return core.sealInternal()
 }
 
+func TestNamespaceUnseal(core *Core, ns *namespace.Namespace, key []byte) (bool, error) {
+	return core.namespaceStore.unsealNamespace(namespace.ContextWithNamespace(context.Background(), ns), ns, TestKeyCopy(key))
+}
+
 func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) {
 	t.Helper()
 	ctx := namespace.RootContext(context.Background())
@@ -369,7 +373,7 @@ func TestCoreCreateUnsealedNamespaces(t testing.T, core *Core, namespaces ...*na
 	for _, ns := range namespaces {
 		keys := TestCoreCreateSealedNamespaces(t, core, ns)
 		for _, key := range keys[ns.Path] {
-			unsealed, err := core.sealManager.UnsealNamespace(namespace.ContextWithNamespace(context.Background(), ns), ns, TestKeyCopy(key))
+			unsealed, err := TestNamespaceUnseal(core, ns, key)
 			require.NoError(t, err)
 			if unsealed {
 				break

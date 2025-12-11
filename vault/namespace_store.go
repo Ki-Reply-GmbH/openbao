@@ -468,7 +468,6 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	// storage entry while holding the lock, but Tainted status ensures
 	// nobody else attempts to mutate until we're done.
 	failed := true
-
 	cleanupFailed := func() {
 		if !failed {
 			return
@@ -529,8 +528,8 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		unlocked = true
 
 		// Create sys/, token/ mounts and policies for the new namespace.
-		if err := ns.initializeNamespace(ctx, ns.storage, entry); err != nil {
-			return nil, err
+		if err := ns.initializeNamespace(ctx, entry); err != nil {
+			return nil, fmt.Errorf("failed to initialize namespace: %w", err)
 		}
 
 		// Reacquire the lock to undo tainting in storage. We need the lock
@@ -604,8 +603,8 @@ func (ns *NamespaceStore) assignIdentifier(path string) (string, error) {
 	}
 }
 
-// initializeNamespace initializes default policies and  sys/ and token/ mounts for a new namespace
-func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logical.Storage, entry *namespace.Namespace) error {
+// initializeNamespace initializes default policies and sys/ and token/ mounts for a new namespace
+func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namespace.Namespace) error {
 	// ctx may have a namespace of the parent of our newly created namespace,
 	// so create a new context with the newly created child namespace.
 	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone(false))
@@ -618,16 +617,16 @@ func (ns *NamespaceStore) initializeNamespace(ctx context.Context, storage logic
 		return fmt.Errorf("error creating default policies: %w", err)
 	}
 
-	return ns.createMounts(nsCtx, storage)
+	return ns.createMounts(nsCtx, ns.core.NamespaceView(entry))
 }
 
-// createMounts handles creation of sys/ and token/ mounts for this new
+// createMounts handles creation of sys/ and token/ mounts for new
 // namespace.
 //
 // This is a two-step process:
 //
 // 1. Create in-memory versions of the mount.
-// 2. Persist into storage using the passed transaction.
+// 2. Persist into storage.
 //
 // In particular, mountInternal and enableCredentialInternal do not easily
 // support passing external storage transactions just for persisting the
@@ -1223,22 +1222,27 @@ func (ns *NamespaceStore) UnsealNamespace(ctx context.Context, path string, key 
 		return errors.New("unable to unseal root namespace")
 	}
 
+	_, err = ns.unsealNamespace(ctx, namespaceToUnseal, key)
+	return err
+}
+
+func (ns *NamespaceStore) unsealNamespace(ctx context.Context, namespaceToUnseal *namespace.Namespace, key []byte) (bool, error) {
 	// this means that the namespace wasn't sealed before the call
 	if !ns.core.NamespaceSealed(namespaceToUnseal) {
-		return nil
+		return true, nil
 	}
 
 	unsealed, err := ns.core.sealManager.UnsealNamespace(ctx, namespaceToUnseal, key)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// If namespace is still sealed meaning we do not have enough shards yet, return early
 	if !unsealed {
-		return nil
+		return unsealed, nil
 	}
 
-	return ns.postNamespaceUnseal(ctx, namespaceToUnseal)
+	return unsealed, ns.postNamespaceUnseal(ctx, namespaceToUnseal)
 }
 
 func (ns *NamespaceStore) postNamespaceUnseal(ctx context.Context, unsealedNamespace *namespace.Namespace) error {
