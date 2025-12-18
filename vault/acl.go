@@ -85,9 +85,6 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ns == nil {
-		return nil, namespace.ErrNoNamespace
-	}
 
 	// Inject each policy
 	for _, policy := range policies {

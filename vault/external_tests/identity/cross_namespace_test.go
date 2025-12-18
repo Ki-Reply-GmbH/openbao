@@ -65,7 +65,7 @@ func TestUnsafeCrossNamespaceIdentity(t *testing.T) {
 			// create data
 
 			t.Log("creating namespace")
-			_, err := client.Logical().Write("sys/namespaces/test", map[string]any{})
+			_, err := client.Sys().CreateNamespace("test")
 			require.NoError(t, err)
 
 			client.SetCloneToken(true)

@@ -564,9 +564,6 @@ func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType Po
 	if err != nil {
 		return nil, err
 	}
-	if ns == nil {
-		return nil, namespace.ErrNoNamespace
-	}
 
 	// Get the appropriate view based on policy type and namespace
 	view := ps.getBarrierView(ns, policyType)

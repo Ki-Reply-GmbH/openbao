@@ -786,9 +786,7 @@ func TestCore_Invalidate_SecretMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			// 3. Manipulate mount table in storage: delete entry from mount table
-			ns, err := namespace.FromContext(ctx)
-			require.NoError(t, err)
-			storageEntry, err := c.NamespaceView(ns).Get(ctx, coreMountConfigPath)
+			storageEntry, err := c.barrier.Get(ctx, coreMountConfigPath)
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount table to be written at %s", coreMountConfigPath)
 
@@ -1062,10 +1060,7 @@ func TestCore_Invalidate_AuthMount_NonTransactional(t *testing.T) {
 			require.EqualValues(t, 1, readCallCount.Load(), "expected one read call")
 
 			// 3. Manipulate mount table in storage: delete entry from mount table
-			ns, err := namespace.FromContext(ctx)
-			require.NoError(t, err)
-
-			storageEntry, err := c.NamespaceView(ns).Get(ctx, coreAuthConfigPath)
+			storageEntry, err := c.barrier.Get(ctx, coreAuthConfigPath)
 			require.NoError(t, err)
 			require.NotNil(t, storageEntry, "expected mount table to be written at %s", coreAuthConfigPath)
 
