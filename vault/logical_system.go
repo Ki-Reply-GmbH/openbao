@@ -851,7 +851,7 @@ func (b *SystemBackend) handleGenerateRootDecodeTokenUpdate(ctx context.Context,
 	otp := data.Get("otp").(string)
 
 	if encodedToken == "" || otp == "" {
-		return handleError(errors.New("provided encodedToken or otp is empty"))
+		return handleError(errors.New("provided encoded_token or otp is empty"))
 	}
 
 	token, err := roottoken.DecodeToken(encodedToken, otp, len(otp))

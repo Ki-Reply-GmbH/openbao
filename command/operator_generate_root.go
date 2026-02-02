@@ -274,14 +274,14 @@ func (c *OperatorGenerateRootCommand) generateOTP(client *api.Client, kind gener
 	if otpLength == 0 {
 		otpLength = vault.TokenLength + vault.TokenPrefixLength
 	}
+
 	otp, err := base62.Random(otpLength)
-	retCode := 0
 	if err != nil {
-		retCode = 2
 		c.UI.Error(err.Error())
+		return "", 2
 	}
 
-	return otp, retCode
+	return otp, 0
 }
 
 // decode decodes the given value using the otp.

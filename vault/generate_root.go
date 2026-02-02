@@ -17,12 +17,12 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 )
 
-// GenerateStandardRootTokenStrategy is the strategy used to generate a
-// typical root token
+// GenerateStandardRootTokenStrategy is the strategy used to
+// generate a typical root token.
 var GenerateStandardRootTokenStrategy GenerateRootStrategy = generateStandardRootToken{}
 
-// ErrNoRootGeneration is a sentinel error that we return where
-// there is no root generation currently in progress
+// ErrNoRootGeneration is returned when no root token generation
+// is currently in progress.
 var ErrNoRootGeneration = errors.New("no root generation in progress")
 
 // GenerateRootStrategy allows us to swap out the strategy we want to use to
