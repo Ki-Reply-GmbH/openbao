@@ -47,6 +47,9 @@ func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte
 
 	tokenLength := TokenLength
 	otp, err := base62.Random(TokenPrefixLength + tokenLength)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Start a root generation
 	err = c.GenerateRootInit(otp, "", GenerateStandardRootTokenStrategy)

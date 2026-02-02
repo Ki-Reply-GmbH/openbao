@@ -694,7 +694,7 @@ func (b *SystemBackend) handleStorageRaftSnapshotWrite(force bool) framework.Ope
 				}
 			}()
 
-			ctx, ctxCancel := context.WithCancel(namespace.RootContext(nil))
+			ctx, ctxCancel := context.WithCancel(namespace.RootContext(ctx))
 			defer func() {
 				if retErr != nil {
 					ctxCancel()
