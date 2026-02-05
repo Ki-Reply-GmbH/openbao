@@ -1745,7 +1745,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 		// HOWEVER, we must verify that the previous initialization actually finished.
 		// If barrier exists but self-init marker is missing, we are in a broken state.
 
-		complete, err := core.IsSelfInitComplete()
+		complete, err := core.IsSelfInitComplete(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to verify self-init consistency: %w", err)
 		}
@@ -1796,7 +1796,7 @@ func (c *ServerCommand) Initialize(core *vault.Core, config *server.Config) erro
 
 	// [FIX 2190 START] - Success Marker
 	// Self-init completed successfully. Persist the state to allow future restarts.
-	if err := core.MarkSelfInitComplete(); err != nil {
+	if err := core.MarkSelfInitComplete(ctx); err != nil {
 		return fmt.Errorf("failed to persist self-init success marker: %w", err)
 	}
 	// [FIX 2190  END]

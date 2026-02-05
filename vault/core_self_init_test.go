@@ -10,8 +10,8 @@ import (
 )
 
 // --- MOCK BACKEND (Isolated Test Implementation) ---
-// We remove the dependency on 'physical/inmem' to avoid circular imports
-// and ensure strict isolation for this core logic test.
+// We remove the dependency on 'physical/inmem' to avoid circular imports.
+
 type MockPhysicalBackend struct {
 	data map[string][]byte
 	mu   sync.RWMutex
@@ -35,7 +35,7 @@ func (m *MockPhysicalBackend) Get(ctx context.Context, key string) (*physical.En
 	defer m.mu.RUnlock()
 	val, ok := m.data[key]
 	if !ok {
-		// Legal: Standard OpenBao pattern for "Key Not Found" in physical backends
+		// Standard pattern for "key not found" in physical backends.
 		return nil, nil //nolint:nilnil
 	}
 	return &physical.Entry{Key: key, Value: val}, nil
@@ -49,15 +49,36 @@ func (m *MockPhysicalBackend) Delete(ctx context.Context, key string) error {
 }
 
 func (m *MockPhysicalBackend) List(ctx context.Context, prefix string) ([]string, error) {
-	return nil, nil // Not required for this specific test
+	return nil, nil // Not required for this specific test.
 }
 
-// Stub implementation for other physical.Backend interface methods
-// to satisfy the Go compiler requirements.
+// ListPage satisfies the OpenBao SDK v2 physical backend interface.
+func (m *MockPhysicalBackend) ListPage(ctx context.Context, prefix string, page string, limit int) ([]string, error) {
+	return nil, nil
+}
+
+// --- FAULTY WRAPPER (For Error Injection) ---
+
+// FaultyPhysicalBackend wraps a real backend but fails on Put if configured.
+type FaultyPhysicalBackend struct {
+	physical.Backend // Embedded backend implementation
+	FailPut          bool
+}
+
+// Put intercepts the write and returns an error if FailPut is true.
+func (f *FaultyPhysicalBackend) Put(ctx context.Context, entry *physical.Entry) error {
+	if f.FailPut {
+		return errors.New("simulated io error")
+	}
+	return f.Backend.Put(ctx, entry)
+}
 
 // --- ACTUAL TEST SUITE ---
 
 func TestCore_SelfInit_StateTransition(t *testing.T) {
+	// 0. Setup Context (Required for all backend calls).
+	ctx := context.Background()
+
 	// 1. Setup
 	backend := NewMockBackend()
 	core := &Core{
@@ -66,7 +87,7 @@ func TestCore_SelfInit_StateTransition(t *testing.T) {
 
 	// PHASE 1: Clean Slate Verification
 	// Ensure the system correctly identifies an uninitialized state.
-	complete, err := core.IsSelfInitComplete()
+	complete, err := core.IsSelfInitComplete(ctx)
 	if err != nil {
 		t.Fatalf("Unexpected error on empty storage: %v", err)
 	}
@@ -76,13 +97,13 @@ func TestCore_SelfInit_StateTransition(t *testing.T) {
 
 	// PHASE 2: State Transition
 	// Attempt to mark initialization as complete.
-	if err := core.MarkSelfInitComplete(); err != nil {
+	if err := core.MarkSelfInitComplete(ctx); err != nil {
 		t.Fatalf("Write operation failed: %v", err)
 	}
 
 	// PHASE 3: Consistency Verification
 	// Ensure the state is persistently reflected immediately after write.
-	complete, err = core.IsSelfInitComplete()
+	complete, err = core.IsSelfInitComplete(ctx)
 	if err != nil {
 		t.Fatalf("Read operation failed: %v", err)
 	}
@@ -92,40 +113,28 @@ func TestCore_SelfInit_StateTransition(t *testing.T) {
 
 	// PHASE 4: Raw Integrity Check
 	// Verify the actual bytes written to the backend match expectations.
-	entry, _ := backend.Get(context.Background(), coreStatusSelfInit)
+	entry, _ := backend.Get(ctx, coreStatusSelfInit)
+	if entry == nil {
+		t.Fatalf("INTEGRITY VIOLATION: Key not found in storage")
+	}
 	if string(entry.Value) != "true" {
 		t.Fatalf("INTEGRITY VIOLATION: Invalid payload written to storage")
 	}
 }
 
 func TestCore_SelfInit_FaultInjection(t *testing.T) {
-	// Setup a faulty backend to simulate storage failure
+	// 0. Setup Context.
+	ctx := context.Background()
+
+	// Setup a faulty backend to simulate storage failure.
 	faulty := &FaultyPhysicalBackend{
 		Backend: NewMockBackend(),
 		FailPut: true,
 	}
 	core := &Core{physical: faulty}
 
-	// Ensure errors are propagated up the stack and not swallowed
-	if err := core.MarkSelfInitComplete(); err == nil {
+	// Ensure errors are propagated up the stack and not swallowed.
+	if err := core.MarkSelfInitComplete(ctx); err == nil {
 		t.Fatal("SAFETY VIOLATION: Swallowed critical storage error")
 	}
-}
-
-// Faulty Wrapper for Error Injection
-type FaultyPhysicalBackend struct {
-	physical.Backend
-	FailPut bool
-}
-
-func (f *FaultyPhysicalBackend) Put(ctx context.Context, entry *physical.Entry) error {
-	if f.FailPut {
-		return errors.New("simulated io error")
-	}
-	return f.Backend.Put(ctx, entry)
-}
-
-// Correct signature for OpenBao/Vault SDK v2 compliance
-func (m *MockPhysicalBackend) ListPage(ctx context.Context, prefix string, page string, limit int) ([]string, error) {
-	return nil, nil
 }

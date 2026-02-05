@@ -3965,23 +3965,23 @@ const (
 )
 
 // MarkSelfInitComplete persists the success state.
-func (c *Core) MarkSelfInitComplete() error {
+func (c *Core) MarkSelfInitComplete(ctx context.Context) error {
 	if c.physical == nil {
 		return fmt.Errorf("physical backend missing")
 	}
 	// Direct write to physical storage. Bypass barrier.
-	return c.physical.Put(context.Background(), &physical.Entry{
+	return c.physical.Put(ctx, &physical.Entry{
 		Key:   coreStatusSelfInit,
 		Value: []byte("true"),
 	})
 }
 
 // IsSelfInitComplete checks if we actually finished provisioning previously.
-func (c *Core) IsSelfInitComplete() (bool, error) {
+func (c *Core) IsSelfInitComplete(ctx context.Context) (bool, error) {
 	if c.physical == nil {
 		return false, fmt.Errorf("physical backend missing")
 	}
-	entry, err := c.physical.Get(context.Background(), coreStatusSelfInit)
+	entry, err := c.physical.Get(ctx, coreStatusSelfInit)
 	if err != nil {
 		return false, err
 	}
