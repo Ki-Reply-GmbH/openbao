@@ -547,7 +547,7 @@ func TestAuditBroker_AuditHeaders(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
 	b := NewAuditBroker(logger)
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "headers/")
+	view := barrier.NewView(barr, "headers/")
 	a1 := corehelpers.TestNoopAudit(t, nil)
 	a2 := corehelpers.TestNoopAudit(t, nil)
 	b.Register("foo", a1, nil, false)

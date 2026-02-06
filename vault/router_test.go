@@ -18,7 +18,7 @@ import (
 func TestRouter_Mount(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
@@ -58,7 +58,7 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatalf("bad: %s", path)
 	}
 
-	if v := r.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "prod/aws/foo"); v.(barrier.BarrierView) != view {
+	if v := r.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "prod/aws/foo"); v.(barrier.View) != view {
 		t.Fatalf("bad: %v", v)
 	}
 
@@ -130,7 +130,7 @@ func TestRouter_Mount(t *testing.T) {
 func TestRouter_MountCredential(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, credentialBarrierPrefix)
+	view := barrier.NewView(barr, credentialBarrierPrefix)
 
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
@@ -165,7 +165,7 @@ func TestRouter_MountCredential(t *testing.T) {
 		t.Fatalf("bad: %s", path)
 	}
 
-	if v := r.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "auth/aws/foo"); v.(barrier.BarrierView) != view {
+	if v := r.MatchingStorageByAPIPath(namespace.RootContext(t.Context()), "auth/aws/foo"); v.(barrier.View) != view {
 		t.Fatalf("bad: %v", v)
 	}
 
@@ -210,7 +210,7 @@ func TestRouter_MountCredential(t *testing.T) {
 func TestRouter_Unmount(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
@@ -243,7 +243,7 @@ func TestRouter_Unmount(t *testing.T) {
 func TestRouter_Remount(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
@@ -301,7 +301,7 @@ func TestRouter_Remount(t *testing.T) {
 func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 
 	// Create a test namespace "team1/"
 	nsTeam := &namespace.Namespace{ID: "team1", Path: "team1/"}
@@ -345,7 +345,7 @@ func TestRouter_NamespaceNameMount_NoConflict(t *testing.T) {
 func TestRouter_RootPath(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
@@ -387,7 +387,7 @@ func TestRouter_RootPath(t *testing.T) {
 func TestRouter_LoginPath(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "auth/")
+	view := barrier.NewView(barr, "auth/")
 
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
@@ -499,7 +499,7 @@ func TestRouter_LoginPath(t *testing.T) {
 func TestRouter_Taint(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
@@ -542,7 +542,7 @@ func TestRouter_Taint(t *testing.T) {
 func TestRouter_Untaint(t *testing.T) {
 	r := NewRouter()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {

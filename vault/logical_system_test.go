@@ -80,7 +80,7 @@ func TestSystemConfigCORS(t *testing.T) {
 	b := testSystemBackend(t)
 	paths := b.(*SystemBackend).configPaths()
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "")
+	view := barrier.NewView(barr, "")
 	b.(*SystemBackend).Core.systemBarrierView = view
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "config/cors")

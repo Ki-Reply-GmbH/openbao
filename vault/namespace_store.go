@@ -122,8 +122,8 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 }
 
 // NamespaceView uses given barrier and namespace to return back a view scoped to that namespace.
-func NamespaceView(b logical.Storage, ns *namespace.Namespace) barrier.BarrierView {
-	return barrier.NewBarrierView(b, NamespaceBarrierPrefix(ns))
+func NamespaceView(b logical.Storage, ns *namespace.Namespace) barrier.View {
+	return barrier.NewView(b, NamespaceBarrierPrefix(ns))
 }
 
 // NamespaceBarrierPrefix uses given namespace to return back the common prefix
@@ -243,7 +243,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	}
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		rootStoreView := barrier.NewBarrierView(s, namespaceStoreSubPath)
+		rootStoreView := barrier.NewView(s, namespaceStoreSubPath)
 		return ns.loadNamespacesRecursive(ctx, s, rootStoreView, loadingCallback)
 	}); err != nil {
 		return err

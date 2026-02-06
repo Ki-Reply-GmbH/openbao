@@ -705,7 +705,7 @@ func benchmarkExpirationBackend(b *testing.B, physicalBackend physical.Backend, 
 	c, _, _ := TestCoreUnsealedBackend(benchhelpers.TBtoT(b), physicalBackend)
 	exp := c.expiration
 	noop := &NoopBackend{}
-	view := barrier.NewBarrierView(c.barrier, "logical/")
+	view := barrier.NewView(c.barrier, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		b.Fatal(err)
@@ -774,7 +774,7 @@ func BenchmarkExpiration_Create_Leases(b *testing.B) {
 	c, _, _ := TestCoreUnsealedBackend(benchhelpers.TBtoT(b), inm)
 	exp := c.expiration
 	noop := &NoopBackend{}
-	view := barrier.NewBarrierView(c.barrier, "logical/")
+	view := barrier.NewView(c.barrier, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		b.Fatal(err)
@@ -815,7 +815,7 @@ func TestExpiration_Restore(t *testing.T) {
 	exp := c.expiration
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -989,7 +989,7 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 	}
 	{
 		_, barr, _ := barrier.MockBarrier(t, logger)
-		view := barrier.NewBarrierView(barr, "logical/")
+		view := barrier.NewView(barr, "logical/")
 		meUUID, err := uuid.GenerateUUID()
 		if err != nil {
 			t.Fatal(err)
@@ -1254,7 +1254,7 @@ func TestExpiration_Revoke(t *testing.T) {
 	exp := mockExpiration(t)
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -1301,7 +1301,7 @@ func TestExpiration_RevokeOnExpire(t *testing.T) {
 	exp := mockExpiration(t)
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -1359,7 +1359,7 @@ func TestExpiration_RevokePrefix(t *testing.T) {
 	exp := mockExpiration(t)
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -1428,7 +1428,7 @@ func TestExpiration_RevokeByToken(t *testing.T) {
 	exp := mockExpiration(t)
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -1525,7 +1525,7 @@ func TestExpiration_RevokeByToken_Blocking(t *testing.T) {
 	}
 
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -1735,7 +1735,7 @@ func TestExpiration_RenewToken_period_backend(t *testing.T) {
 	}
 
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, credentialBarrierPrefix)
+	view := barrier.NewView(barr, credentialBarrierPrefix)
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -1841,7 +1841,7 @@ func TestExpiration_Renew(t *testing.T) {
 	exp := mockExpiration(t)
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -1912,7 +1912,7 @@ func TestExpiration_Renew_NotRenewable(t *testing.T) {
 	exp := mockExpiration(t)
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -1963,7 +1963,7 @@ func TestExpiration_Renew_RevokeOnExpire(t *testing.T) {
 	exp := mockExpiration(t)
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -2039,7 +2039,7 @@ func TestExpiration_Renew_FinalSecond(t *testing.T) {
 	exp := mockExpiration(t)
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -2113,7 +2113,7 @@ func TestExpiration_Renew_FinalSecond_Lease(t *testing.T) {
 	exp := mockExpiration(t)
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -2176,7 +2176,7 @@ func TestExpiration_revokeEntry(t *testing.T) {
 
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -2318,7 +2318,7 @@ func TestExpiration_renewEntry(t *testing.T) {
 		},
 	}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -2383,7 +2383,7 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 		},
 	}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
@@ -2467,7 +2467,7 @@ func TestExpiration_renewAuthEntry(t *testing.T) {
 		},
 	}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "auth/")
+	view := barrier.NewView(barr, "auth/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)

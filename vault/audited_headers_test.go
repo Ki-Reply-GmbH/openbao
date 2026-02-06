@@ -14,7 +14,7 @@ import (
 
 func mockAuditedHeadersConfig(t *testing.T) *AuditedHeadersConfig {
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "foo/")
+	view := barrier.NewView(barr, "foo/")
 	return &AuditedHeadersConfig{
 		Headers: make(map[string]*auditedHeaderSettings),
 		view:    view,

@@ -2892,7 +2892,7 @@ func (b *LoginMFABackend) putMFAConfigByID(ctx context.Context, mConfig *mfa.Con
 	})
 }
 
-func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView barrier.BarrierView) (*mfa.Config, error) {
+func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView barrier.View) (*mfa.Config, error) {
 	entry, err := barrierView.Get(ctx, path)
 	if err != nil {
 		return nil, err
@@ -2911,7 +2911,7 @@ func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView 
 	return &mConfig, nil
 }
 
-func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path string, barrierView barrier.BarrierView) (*mfa.MFAEnforcementConfig, error) {
+func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path string, barrierView barrier.View) (*mfa.MFAEnforcementConfig, error) {
 	entry, err := barrierView.Get(ctx, path)
 	if err != nil {
 		return nil, err

@@ -1476,7 +1476,7 @@ func TestTokenStore_Revoke_Leases(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ts := c.tokenStore
 
-	view := barrier.NewBarrierView(c.barrier, "noop/")
+	view := barrier.NewView(c.barrier, "noop/")
 
 	// Mount a noop backend
 	noop := &NoopBackend{}
@@ -5951,7 +5951,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 
 	noop := &NoopBackend{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
