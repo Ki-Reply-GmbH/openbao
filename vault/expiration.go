@@ -32,6 +32,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 const (
@@ -447,14 +448,14 @@ func (c *Core) stopExpiration() error {
 	return nil
 }
 
-func (m *ExpirationManager) leaseView(ns *namespace.Namespace) BarrierView {
+func (m *ExpirationManager) leaseView(ns *namespace.Namespace) barrier.View {
 	if ns.ID == namespace.RootNamespaceID {
 		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
 	}
 	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
 }
 
-func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) BarrierView {
+func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) barrier.View {
 	if ns.ID == namespace.RootNamespaceID {
 		return m.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
 	}
@@ -703,7 +704,7 @@ func (m *ExpirationManager) Restore(errorFunc func()) (retErr error) {
 			// Don't run error func because we lost leadership
 			m.logger.Warn("context canceled while restoring leases, stopping lease loading")
 			retErr = nil
-		case errwrap.Contains(retErr, ErrBarrierSealed.Error()):
+		case errwrap.Contains(retErr, barrier.ErrBarrierSealed.Error()):
 			// Don't run error func because we're likely already shutting down
 			m.logger.Warn("barrier sealed while restoring leases, stopping lease loading")
 			retErr = nil

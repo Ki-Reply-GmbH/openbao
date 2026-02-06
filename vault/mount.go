@@ -27,6 +27,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/barrier"
 )
 
 const (
@@ -1239,18 +1240,18 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 }
 
 // moveMountStorage moves storage entries of a mount mountEntry to its new destination
-func (c *Core) moveMountStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView BarrierView) error {
+func (c *Core) moveMountStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView barrier.View) error {
 	return c.moveStorage(ctx, src, me, srcBarrierView, dstBarrierView)
 }
 
 // moveAuthStorage moves storage entries of an auth mountEntry to its new destination
-func (c *Core) moveAuthStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView BarrierView) error {
+func (c *Core) moveAuthStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView barrier.View) error {
 	return c.moveStorage(ctx, src, me, srcBarrierView, dstBarrierView)
 }
 
 // moveStorage moves storage entries of a mountEntry to its new destination
 // It detects the mountEntry type
-func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView BarrierView) error {
+func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView barrier.View) error {
 	srcPrefix := srcBarrierView.Prefix()
 	dstPrefix := dstBarrierView.Prefix()
 
@@ -2301,7 +2302,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 	return mounts, auth
 }
 
-func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view BarrierView) {
+func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view barrier.View) {
 	switch entry.Type {
 	case mountTypeSystem:
 		c.systemBackend = backend.(*SystemBackend)
@@ -2349,12 +2350,12 @@ func (c *Core) readMigrationStatus(migrationID string) *MountMigrationInfo {
 	return &migrationInfo
 }
 
-func (c *Core) namespaceMountEntryView(namespace *namespace.Namespace, prefix string) BarrierView {
+func (c *Core) namespaceMountEntryView(namespace *namespace.Namespace, prefix string) barrier.View {
 	return NamespaceView(c.barrier, namespace).SubView(prefix)
 }
 
 // mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
-func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
+func (c *Core) mountEntryView(me *MountEntry) (barrier.View, error) {
 	if me.Namespace() != nil && me.Namespace().ID != me.NamespaceID {
 		return nil, errors.New("invalid namespace")
 	}
@@ -2364,9 +2365,9 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
 			return c.namespaceMountEntryView(me.Namespace(), systemBarrierPrefix), nil
 		}
-		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
+		return barrier.NewView(c.barrier, systemBarrierPrefix), nil
 	case mountTypeToken:
-		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
+		return barrier.NewView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
 	}
 
 	switch me.Table {
@@ -2374,14 +2375,14 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
 			return c.namespaceMountEntryView(me.Namespace(), backendBarrierPrefix+me.UUID+"/"), nil
 		}
-		return NewBarrierView(c.barrier, backendBarrierPrefix+me.UUID+"/"), nil
+		return barrier.NewView(c.barrier, backendBarrierPrefix+me.UUID+"/"), nil
 	case credentialTableType:
 		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
 			return c.namespaceMountEntryView(me.Namespace(), credentialBarrierPrefix+me.UUID+"/"), nil
 		}
-		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
+		return barrier.NewView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
 	case auditTableType, configAuditTableType:
-		return NewBarrierView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil
+		return barrier.NewView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil
 	}
 
 	return nil, errors.New("invalid mount entry")
