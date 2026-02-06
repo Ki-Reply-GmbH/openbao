@@ -448,11 +448,11 @@ func (c *Core) stopExpiration() error {
 	return nil
 }
 
-func (m *ExpirationManager) leaseView(ns *namespace.Namespace) barrier.BarrierView {
+func (m *ExpirationManager) leaseView(ns *namespace.Namespace) barrier.View {
 	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + leaseViewPrefix)
 }
 
-func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) barrier.BarrierView {
+func (m *ExpirationManager) tokenIndexView(ns *namespace.Namespace) barrier.View {
 	return NamespaceView(m.core.barrier, ns).SubView(systemBarrierPrefix + expirationSubPath + tokenViewPrefix)
 }
 

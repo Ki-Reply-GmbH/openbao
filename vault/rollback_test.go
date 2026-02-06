@@ -27,7 +27,7 @@ func mockRollback(t *testing.T) (*RollbackManager, *NoopBackend) {
 	core, _, _ := TestCoreUnsealed(t)
 
 	_, barr, _ := barrier.MockBarrier(t, logger)
-	view := barrier.NewBarrierView(barr, "logical/")
+	view := barrier.NewView(barr, "logical/")
 
 	mounts.Entries = []*MountEntry{
 		{
@@ -86,7 +86,7 @@ func TestRollbackManager(t *testing.T) {
 // work items will run in parallel
 func TestRollbackManager_ManyWorkers(t *testing.T) {
 	core := TestCoreWithConfig(t, &CoreConfig{NumRollbackWorkers: 20, RollbackPeriod: time.Millisecond * 10})
-	view := barrier.NewBarrierView(core.barrier, "logical/")
+	view := barrier.NewView(core.barrier, "logical/")
 
 	ran := make(chan string)
 	release := make(chan struct{})
@@ -169,7 +169,7 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 // workers are available
 func TestRollbackManager_WorkerPool(t *testing.T) {
 	core := TestCoreWithConfig(t, &CoreConfig{NumRollbackWorkers: 5, RollbackPeriod: time.Millisecond * 10})
-	view := barrier.NewBarrierView(core.barrier, "logical/")
+	view := barrier.NewView(core.barrier, "logical/")
 
 	ran := make(chan string)
 	release := make(chan struct{})

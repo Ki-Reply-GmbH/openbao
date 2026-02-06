@@ -33,7 +33,7 @@ type auditedHeaderSettings struct {
 type AuditedHeadersConfig struct {
 	Headers map[string]*auditedHeaderSettings
 
-	view barrier.BarrierView
+	view barrier.View
 	sync.RWMutex
 }
 

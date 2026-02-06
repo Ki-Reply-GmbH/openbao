@@ -230,7 +230,7 @@ func allTransactionalLogical(t *testing.T) (map[string]logical.TransactionalStor
 	imabv, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err, "failed to create transactional in-mem for AES-GCM with barrier view")
 	aimbv := newAESBarrier(t, imabv)
-	bvaim := barrier.NewBarrierView(aimbv, "prefix-for-testing/")
+	bvaim := barrier.NewView(aimbv, "prefix-for-testing/")
 
 	// inmem+cache+encoding+aes+bv
 	imceabv, err := inmem.NewInmem(nil, logger)
@@ -238,7 +238,7 @@ func allTransactionalLogical(t *testing.T) (map[string]logical.TransactionalStor
 	cimeabv := physical.NewCache(imceabv, 0, logger, &metrics.BlackholeSink{})
 	eimcabv := physical.NewStorageEncoding(cimeabv)
 	aimcebv := newAESBarrier(t, eimcabv)
-	bvimcae := barrier.NewBarrierView(aimcebv, "prefix-for-testing/")
+	bvimcae := barrier.NewView(aimcebv, "prefix-for-testing/")
 
 	// raft+cache+encoding+aes+bv
 	rceabv, raftFullDir := raft.GetRaft(t, true, true)
@@ -246,7 +246,7 @@ func allTransactionalLogical(t *testing.T) (map[string]logical.TransactionalStor
 	creabv := physical.NewCache(rceabv, 0, logger, &metrics.BlackholeSink{})
 	ercabv := physical.NewStorageEncoding(creabv)
 	arcebv := newAESBarrier(t, ercabv)
-	bvrcae := barrier.NewBarrierView(arcebv, "prefix-for-testing/")
+	bvrcae := barrier.NewView(arcebv, "prefix-for-testing/")
 
 	return map[string]logical.TransactionalStorage{
 			"raft":                        logical.NewLogicalStorage(rb).(logical.TransactionalStorage),

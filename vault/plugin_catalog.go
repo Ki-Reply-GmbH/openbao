@@ -50,7 +50,7 @@ var (
 // plugins are automatically detected and included in the catalog.
 type PluginCatalog struct {
 	builtinRegistry BuiltinRegistry
-	catalogView     barrier.BarrierView
+	catalogView     barrier.View
 	directory       string
 	logger          log.Logger
 
@@ -174,7 +174,7 @@ func wrapFactoryCheckPerms(core *Core, f logical.Factory) logical.Factory {
 func (c *Core) setupPluginCatalog(ctx context.Context) error {
 	c.pluginCatalog = &PluginCatalog{
 		builtinRegistry: c.builtinRegistry,
-		catalogView:     barrier.NewBarrierView(c.barrier, pluginCatalogPath),
+		catalogView:     barrier.NewView(c.barrier, pluginCatalogPath),
 		directory:       c.pluginDirectory,
 		logger:          c.logger,
 		// mlock is not currently used in OpenBao, but this setting is retained for Vault compat

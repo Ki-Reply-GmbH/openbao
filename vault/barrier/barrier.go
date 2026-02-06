@@ -164,7 +164,7 @@ type SecurityBarrierCore interface {
 	CheckBarrierAutoRotate(ctx context.Context) (string, error)
 
 	// SecurityBarrier must provide the encryption APIs
-	BarrierEncryptor
+	Encryptor
 
 	// SetReadOnly allows marking storage as read-only; this is useful for
 	// HA mode but could be more broadly useful.
@@ -204,10 +204,10 @@ type SecurityBarrierTransaction interface {
 	logical.Transaction
 }
 
-// BarrierEncryptor is the in memory only interface that does not actually
+// Encryptor is the in memory only interface that does not actually
 // use the underlying barrier. It is used for lower level modules like the
 // Write-Ahead-Log and Merkle index to allow them to use the barrier.
-type BarrierEncryptor interface {
+type Encryptor interface {
 	Encrypt(ctx context.Context, key string, plaintext []byte) ([]byte, error)
 	Decrypt(ctx context.Context, key string, ciphertext []byte) ([]byte, error)
 }

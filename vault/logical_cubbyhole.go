@@ -106,7 +106,7 @@ func (b *CubbyholeBackend) paths() []*framework.Path {
 	}
 }
 
-func (b *CubbyholeBackend) revoke(ctx context.Context, view barrier.BarrierView, saltedToken string) error {
+func (b *CubbyholeBackend) revoke(ctx context.Context, view barrier.View, saltedToken string) error {
 	if saltedToken == "" {
 		return errors.New("client token empty during revocation")
 	}

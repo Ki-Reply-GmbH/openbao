@@ -21,7 +21,7 @@ import (
 
 type backendEntry struct {
 	backend audit.Backend
-	view    barrier.BarrierView
+	view    barrier.View
 	local   bool
 }
 
@@ -43,7 +43,7 @@ func NewAuditBroker(log log.Logger) *AuditBroker {
 }
 
 // Register is used to add new audit backend to the broker
-func (a *AuditBroker) Register(name string, b audit.Backend, v barrier.BarrierView, local bool) {
+func (a *AuditBroker) Register(name string, b audit.Backend, v barrier.View, local bool) {
 	a.Lock()
 	defer a.Unlock()
 	a.backends[name] = backendEntry{

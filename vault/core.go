@@ -375,7 +375,7 @@ type Core struct {
 	cubbyholeBackend *CubbyholeBackend
 
 	// systemBarrierView is the barrier view for the system backend
-	systemBarrierView barrier.BarrierView
+	systemBarrierView barrier.View
 
 	// expiration manager is used for managing LeaseIDs,
 	// renewal, expiration and revocation
@@ -1131,7 +1131,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	// UI
 	uiStoragePrefix := systemBarrierPrefix + "ui"
-	c.uiConfig = NewUIConfig(conf.EnableUI, physical.NewView(c.physical, uiStoragePrefix), barrier.NewBarrierView(c.barrier, uiStoragePrefix))
+	c.uiConfig = NewUIConfig(conf.EnableUI, physical.NewView(c.physical, uiStoragePrefix), barrier.NewView(c.barrier, uiStoragePrefix))
 
 	// Listeners
 	err = c.configureListeners(conf)
@@ -2939,10 +2939,6 @@ func (c *Core) IsSealMigrated(lock bool) bool {
 	}
 	done, _ := c.sealMigrated(context.Background())
 	return done
-}
-
-func (c *Core) BarrierEncryptorAccess() *barrier.BarrierEncryptorAccess {
-	return barrier.NewBarrierEncryptorAccess(c.barrier)
 }
 
 func (c *Core) PhysicalAccess() *physical.PhysicalAccess {
