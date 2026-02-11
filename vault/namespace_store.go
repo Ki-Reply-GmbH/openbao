@@ -712,7 +712,7 @@ func (ns *NamespaceStore) pushToMounts(ctx context.Context, entry *namespace.Nam
 			continue
 		}
 
-		mount.namespace = entry
+		mount.Namespace = entry
 	}
 
 	for _, mount := range ns.core.mounts.Entries {
@@ -720,7 +720,7 @@ func (ns *NamespaceStore) pushToMounts(ctx context.Context, entry *namespace.Nam
 			continue
 		}
 
-		mount.namespace = entry
+		mount.Namespace = entry
 	}
 
 	return nil
