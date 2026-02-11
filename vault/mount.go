@@ -858,7 +858,7 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 		}
 	}
 
-	srcEntryView := NamespaceView(barrier, src.Namespace)
+	srcEntryView := NamespaceScopedView(barrier, src.Namespace)
 	var coreLocalPath, corePath string
 
 	switch me.Table {
@@ -980,7 +980,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 			continue
 		}
 
-		view := NamespaceView(barrier, ns)
+		view := NamespaceScopedView(barrier, ns)
 		nsGlobal, nsLocal, err := listTransactionalMountsForNamespace(ctx, view)
 		if err != nil {
 			c.logger.Error("failed to list transactional mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
@@ -1008,7 +1008,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		}
 
 		for nsIndex, ns := range allNamespaces {
-			view := NamespaceView(barrier, ns)
+			view := NamespaceScopedView(barrier, ns)
 			for index, uuid := range globalEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreMountConfigPath, uuid)
 				if err != nil {
@@ -1024,7 +1024,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 
 	if len(localEntries) > 0 {
 		for nsIndex, ns := range allNamespaces {
-			view := NamespaceView(barrier, ns)
+			view := NamespaceScopedView(barrier, ns)
 			for index, uuid := range localEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalMountConfigPath, uuid)
 				if err != nil {
@@ -1334,7 +1334,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 					continue
 				}
 
-				view := NamespaceView(barrier, mtEntry.Namespace())
+				view := NamespaceScopedView(barrier, mtEntry.Namespace())
 
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
@@ -1373,7 +1373,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := NamespaceView(barrier, ns)
+					view := NamespaceScopedView(barrier, ns)
 					path := path.Join(prefix, mount)
 					if err := view.Delete(ctx, path); err != nil {
 						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.ID, nsIndex, err)
@@ -1388,7 +1388,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := NamespaceView(barrier, ns)
+					view := NamespaceScopedView(barrier, ns)
 
 					// List all entries and remove any deleted ones.
 					presentEntries, err := view.List(ctx, prefix+"/")
@@ -1918,7 +1918,7 @@ func (c *Core) reloadNamespaceMounts(childCtx context.Context, uuid string, dele
 			return fmt.Errorf("failed to get namespace from context: %w", err)
 		}
 
-		barrier := NamespaceView(c.barrier, ns)
+		barrier := NamespaceScopedView(c.barrier, ns)
 
 		mountGlobal, mountLocal, err := listTransactionalMountsForNamespace(childCtx, barrier)
 		if err != nil {
@@ -2071,7 +2071,7 @@ func (c *Core) reloadMount(ctx context.Context, key string) error {
 	if err != nil {
 		return err
 	}
-	barrier := NamespaceView(c.barrier, ns)
+	barrier := NamespaceScopedView(c.barrier, ns)
 
 	desiredMountEntry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, prefix, uuid)
 	if err != nil {

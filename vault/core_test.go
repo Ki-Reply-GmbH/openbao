@@ -662,7 +662,7 @@ func TestCore_LoadLoginMFAConfigs(t *testing.T) {
 	TestCoreCreateNamespaces(t, c, ns1)
 
 	// prepare views
-	nsView := NamespaceView(c.barrier, ns1)
+	nsView := NamespaceScopedView(c.barrier, ns1)
 	mfaConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	mfaEnforcementConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 
@@ -709,7 +709,7 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	testNamespace := &namespace.Namespace{Path: "test"}
 	TestCoreCreateNamespaces(t, core, testNamespace)
 
-	barrier := NamespaceView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
+	barrier := NamespaceScopedView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
 	// cleanup
 	defer barrier.Delete(ctx, "aliasName1")
 
@@ -768,7 +768,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 	testNamespace := &namespace.Namespace{Path: "test"}
 	TestCoreCreateNamespaces(t, core, testNamespace)
 
-	barrier := NamespaceView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
+	barrier := NamespaceScopedView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
 	// cleanup
 	defer barrier.Delete(ctx, "aliasName1")
 
