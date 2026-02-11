@@ -1,12 +1,10 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package routing
 
 import (
-	"errors"
 	"fmt"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +13,57 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"github.com/openbao/openbao/vault/barrier"
+)
+
+// ListingVisibilityType represents the types for listing visibility
+type ListingVisibilityType string
+
+const (
+	// ListingVisibilityDefault is the default value for listing visibility
+	ListingVisibilityDefault ListingVisibilityType = ""
+	// ListingVisibilityHidden is the hidden type for listing visibility
+	ListingVisibilityHidden ListingVisibilityType = "hidden"
+	// ListingVisibilityUnauth is the unauth type for listing visibility
+	ListingVisibilityUnauth ListingVisibilityType = "unauth"
+)
+
+const (
+	// CredentialBarrierPrefix is the prefix to the UUID used in the
+	// barrier view for the credential backends.
+	CredentialBarrierPrefix = "auth/"
+
+	// CredentialRoutePrefix is the mount prefix used for the router
+	CredentialRoutePrefix = "auth/"
+
+	// CredentialTableType is the value we expect to find for the credential
+	// table and corresponding entries
+	CredentialTableType = "auth"
+
+	// MountTableType is the value we expect to find for the mount table and
+	// corresponding entries
+	MountTableType = "mounts"
+)
+
+const (
+	MountPathSystem    = "sys/"
+	MountPathIdentity  = "identity/"
+	MountPathCubbyhole = "cubbyhole/"
+)
+
+const (
+	MountTypeSystem      = "system"
+	MountTypeNSSystem    = "ns_system"
+	MountTypeIdentity    = "identity"
+	MountTypeNSIdentity  = "ns_identity"
+	MountTypeCubbyhole   = "cubbyhole"
+	MountTypePlugin      = "plugin"
+	MountTypeKV          = "kv"
+	MountTypeNSCubbyhole = "ns_cubbyhole"
+	MountTypeToken       = "token"
+	MountTypeNSToken     = "ns_token"
+
+	MountTableUpdateStorage   = true
+	MountTableNoUpdateStorage = false
 )
 
 // MountEntry is used to represent a mount table entry
@@ -35,14 +83,14 @@ type MountEntry struct {
 	Tainted               bool              `json:"tainted,omitempty"`                 // Set as a Write-Ahead flag for unmount/remount
 	NamespaceID           string            `json:"namespace_id"`
 
-	// namespace contains the populated namespace
-	namespace *namespace.Namespace
+	// Namespace contains the populated Namespace
+	Namespace *namespace.Namespace
 
-	// synthesizedConfigCache is used to cache configuration values. These
+	// SynthesizedConfigCache is used to cache configuration values. These
 	// particular values are cached since we want to get them at a point-in-time
 	// without separately managing their locks individually. See SyncCache() for
 	// the specific values that are being cached.
-	synthesizedConfigCache sync.Map
+	SynthesizedConfigCache sync.Map
 
 	// version info
 	Version        string `json:"plugin_version,omitempty"`         // The semantic version of the mounted plugin, e.g. v1.2.3.
@@ -89,16 +137,6 @@ type APIMountConfig struct {
 	PluginName string `json:"plugin_name,omitempty" structs:"plugin_name,omitempty" mapstructure:"plugin_name"`
 }
 
-type FailedLoginUser struct {
-	aliasName     string
-	mountAccessor string
-}
-
-type FailedLoginInfo struct {
-	count               uint
-	lastFailedLoginTime int
-}
-
 type UserLockoutConfig struct {
 	LockoutThreshold    uint64        `json:"lockout_threshold,omitempty" structs:"lockout_threshold" mapstructure:"lockout_threshold"`
 	LockoutDuration     time.Duration `json:"lockout_duration,omitempty" structs:"lockout_duration" mapstructure:"lockout_duration"`
@@ -130,36 +168,31 @@ func (e *MountEntry) IsExternalPlugin() bool {
 
 // MountClass returns the mount class based on Accessor and Path
 func (e *MountEntry) MountClass() string {
-	if e.Accessor == "" || strings.HasPrefix(e.Path, fmt.Sprintf("%s/", mountPathSystem)) {
+	if e.Accessor == "" || strings.HasPrefix(e.Path, fmt.Sprintf("%s/", MountPathSystem)) {
 		return ""
 	}
 
-	if e.Table == credentialTableType {
+	if e.Table == CredentialTableType {
 		return consts.PluginTypeCredential.String()
 	}
 
 	return consts.PluginTypeSecrets.String()
 }
 
-// Namespace returns the namespace for the mount entry
-func (e *MountEntry) Namespace() *namespace.Namespace {
-	return e.namespace
-}
-
 // APIPath returns the full API Path for the given mount entry
 func (e *MountEntry) APIPath() string {
 	path := e.Path
-	if e.Table == credentialTableType {
-		path = credentialRoutePrefix + path
+	if e.Table == CredentialTableType {
+		path = CredentialRoutePrefix + path
 	}
-	return e.namespace.Path + path
+	return e.Namespace.Path + path
 }
 
 // APIPathNoNamespace returns the API Path without the namespace for the given mount entry
 func (e *MountEntry) APIPathNoNamespace() string {
 	path := e.Path
-	if e.Table == credentialTableType {
-		path = credentialRoutePrefix + path
+	if e.Table == CredentialTableType {
+		path = CredentialRoutePrefix + path
 	}
 	return path
 }
@@ -169,73 +202,41 @@ func (e *MountEntry) APIPathNoNamespace() string {
 // instead of accessing them directly through MountConfig.
 func (e *MountEntry) SyncCache() {
 	if len(e.Config.AuditNonHMACRequestKeys) == 0 {
-		e.synthesizedConfigCache.Delete("audit_non_hmac_request_keys")
+		e.SynthesizedConfigCache.Delete("audit_non_hmac_request_keys")
 	} else {
-		e.synthesizedConfigCache.Store("audit_non_hmac_request_keys", e.Config.AuditNonHMACRequestKeys)
+		e.SynthesizedConfigCache.Store("audit_non_hmac_request_keys", e.Config.AuditNonHMACRequestKeys)
 	}
 
 	if len(e.Config.AuditNonHMACResponseKeys) == 0 {
-		e.synthesizedConfigCache.Delete("audit_non_hmac_response_keys")
+		e.SynthesizedConfigCache.Delete("audit_non_hmac_response_keys")
 	} else {
-		e.synthesizedConfigCache.Store("audit_non_hmac_response_keys", e.Config.AuditNonHMACResponseKeys)
+		e.SynthesizedConfigCache.Store("audit_non_hmac_response_keys", e.Config.AuditNonHMACResponseKeys)
 	}
 
 	if len(e.Config.PassthroughRequestHeaders) == 0 {
-		e.synthesizedConfigCache.Delete("passthrough_request_headers")
+		e.SynthesizedConfigCache.Delete("passthrough_request_headers")
 	} else {
-		e.synthesizedConfigCache.Store("passthrough_request_headers", e.Config.PassthroughRequestHeaders)
+		e.SynthesizedConfigCache.Store("passthrough_request_headers", e.Config.PassthroughRequestHeaders)
 	}
 
 	if len(e.Config.AllowedResponseHeaders) == 0 {
-		e.synthesizedConfigCache.Delete("allowed_response_headers")
+		e.SynthesizedConfigCache.Delete("allowed_response_headers")
 	} else {
-		e.synthesizedConfigCache.Store("allowed_response_headers", e.Config.AllowedResponseHeaders)
+		e.SynthesizedConfigCache.Store("allowed_response_headers", e.Config.AllowedResponseHeaders)
 	}
 }
 
 func (entry *MountEntry) Deserialize() map[string]interface{} {
 	return map[string]interface{}{
 		"mount_path":      entry.Path,
-		"mount_namespace": entry.Namespace().Path,
+		"mount_namespace": entry.Namespace.Path,
 		"uuid":            entry.UUID,
 		"accessor":        entry.Accessor,
 		"mount_type":      entry.Type,
 	}
 }
 
-// mountEntrySysView creates a logical.SystemView from global and
-// mount-specific entries; because this should be called when setting
-// up a mountEntry, it doesn't check to ensure that me is not nil
-func (c *Core) mountEntrySysView(entry *MountEntry) extendedSystemView {
-	return extendedSystemViewImpl{
-		dynamicSystemView{
-			core:       c,
-			mountEntry: entry,
-		},
-	}
-}
-
-// mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
-func (c *Core) mountEntryView(me *MountEntry) (barrier.View, error) {
-	if me.Namespace() != nil && me.Namespace().ID != me.NamespaceID {
-		return nil, errors.New("invalid namespace")
-	}
-
-	switch me.Type {
-	case mountTypeSystem, mountTypeNSSystem:
-		return NamespaceView(c.barrier, me.Namespace()).SubView(systemBarrierPrefix), nil
-	case mountTypeToken:
-		return NamespaceView(c.barrier, me.Namespace()).SubView(systemBarrierPrefix + tokenSubPath), nil
-	}
-
-	switch me.Table {
-	case mountTableType:
-		return NamespaceView(c.barrier, me.Namespace()).SubView(path.Join(backendBarrierPrefix, me.UUID) + "/"), nil
-	case credentialTableType:
-		return NamespaceView(c.barrier, me.Namespace()).SubView(path.Join(credentialBarrierPrefix, me.UUID) + "/"), nil
-	case auditTableType, configAuditTableType:
-		return NamespaceView(c.barrier, me.Namespace()).SubView(path.Join(auditBarrierPrefix, me.UUID) + "/"), nil
-	}
-
-	return nil, errors.New("invalid mount entry")
+type Deserializable interface {
+	// Converts a structure into a consummable map
+	Deserialize() map[string]interface{}
 }

@@ -667,7 +667,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 		t.Fatal("should not be sealed")
 	}
 
-	meGH := &MountEntry{
+	meGH := &routing.MountEntry{
 		Table:       credentialTableType,
 		Path:        "approle/",
 		Type:        "approle",

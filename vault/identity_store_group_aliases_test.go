@@ -107,7 +107,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 
 	ctx := namespace.RootContext(nil)
 
-	userpassMe := &MountEntry{
+	userpassMe := &routing.MountEntry{
 		Table:       credentialTableType,
 		Path:        "userpass/",
 		Type:        "userpass",
@@ -118,7 +118,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ldapMe := &MountEntry{
+	ldapMe := &routing.MountEntry{
 		Table:       credentialTableType,
 		Path:        "ldap/",
 		Type:        "ldap",
@@ -443,7 +443,7 @@ func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	ctx := namespace.RootContext(nil)
 	i, accessor1, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	ghme2 := &MountEntry{
+	ghme2 := &routing.MountEntry{
 		Table:       credentialTableType,
 		Path:        "approle2/",
 		Type:        "approle",

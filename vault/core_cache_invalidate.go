@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/quotas"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 const (
@@ -252,7 +253,7 @@ func isKeyringPath(key string) bool {
 }
 
 func isMissedMountKey(key string) bool {
-	return strings.HasPrefix(key, credentialBarrierPrefix) ||
+	return strings.HasPrefix(key, routing.CredentialBarrierPrefix) ||
 		strings.HasPrefix(key, backendBarrierPrefix) ||
 		strings.HasPrefix(key, auditBarrierPrefix)
 }

@@ -15,21 +15,23 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
 )
 
 // mockRollback returns a mock rollback manager
-func mockRollback(t *testing.T) (*RollbackManager, *NoopBackend) {
-	backend := new(NoopBackend)
-	mounts := new(MountTable)
+func mockRollback(t *testing.T) (*RollbackManager, *backend.Noop) {
+	backend := new(backend.Noop)
+	mounts := new(routing.MountTable)
 	router := NewRouter()
 	core, _, _ := TestCoreUnsealed(t)
 
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 
-	mounts.Entries = []*MountEntry{
+	mounts.Entries = []*routing.MountEntry{
 		{
 			Path:        "foo",
 			NamespaceID: namespace.RootNamespaceID,
@@ -41,11 +43,11 @@ func mockRollback(t *testing.T) (*RollbackManager, *NoopBackend) {
 		t.Fatal(err)
 	}
 
-	if err := router.Mount(backend, "foo", &MountEntry{UUID: meUUID, Accessor: "noopaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view); err != nil {
+	if err := router.Mount(backend, "foo", &routing.MountEntry{UUID: meUUID, Accessor: "noopaccessor", NamespaceID: namespace.RootNamespaceID, namespace: namespace.RootNamespace}, view); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	mountsFunc := func() []*MountEntry {
+	mountsFunc := func() []*routing.MountEntry {
 		return mounts.Entries
 	}
 
@@ -96,7 +98,7 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 	// when a rollback happens, each backend will try to write to an unbuffered
 	// channel, then wait to be released
 	for i := 0; i < 10; i++ {
-		b := &NoopBackend{}
+		b := &backend.Noop{}
 		b.RequestHandler = func(ctx context.Context, request *logical.Request) (*logical.Response, error) {
 			if request.Operation == logical.RollbackOperation {
 				ran <- request.Path
@@ -107,8 +109,8 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 		b.Root = []string{fmt.Sprintf("foo/%d", i)}
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
-		mountEntry := &MountEntry{
-			Table:       mountTableType,
+		mountEntry := &routing.MountEntry{
+			Table:       routing.MountTableType,
 			UUID:        meUUID,
 			Accessor:    fmt.Sprintf("accessor-%d", i),
 			NamespaceID: namespace.RootNamespaceID,
@@ -179,7 +181,7 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 	// when a rollback happens, each backend will try to write to an unbuffered
 	// channel, then wait to be released
 	for i := 0; i < 10; i++ {
-		b := &NoopBackend{}
+		b := &backend.Noop{}
 		b.RequestHandler = func(ctx context.Context, request *logical.Request) (*logical.Response, error) {
 			if request.Operation == logical.RollbackOperation {
 				ran <- request.Path
@@ -190,8 +192,8 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 		b.Root = []string{fmt.Sprintf("foo/%d", i)}
 		meUUID, err := uuid.GenerateUUID()
 		require.NoError(t, err)
-		mountEntry := &MountEntry{
-			Table:       mountTableType,
+		mountEntry := &routing.MountEntry{
+			Table:       routing.MountTableType,
 			UUID:        meUUID,
 			Accessor:    fmt.Sprintf("accessor-%d", i),
 			NamespaceID: namespace.RootNamespaceID,
