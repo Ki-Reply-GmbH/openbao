@@ -15,16 +15,19 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
 )
 
 // mockRollback returns a mock rollback manager
-func mockRollback(t *testing.T) (*RollbackManager, *NoopBackend) {
-	backend := new(NoopBackend)
-	mounts := new(MountTable)
-	router := NewRouter()
+func mockRollback(t *testing.T) (*RollbackManager, *be.Noop) {
+	logger := logging.NewVaultLogger(log.Trace)
+
+	backend := new(be.Noop)
+	mounts := new(routing.MountTable)
+	router := routing.NewRouter(logger)
 	core, _, _ := TestCoreUnsealed(t)
 
 	_, barr, _ := barrier.MockBarrier(t, logger)
@@ -49,8 +52,6 @@ func mockRollback(t *testing.T) (*RollbackManager, *NoopBackend) {
 	mountsFunc := func() []*routing.MountEntry {
 		return mounts.Entries
 	}
-
-	logger := logging.NewVaultLogger(log.Trace)
 
 	rb := NewRollbackManager(context.Background(), logger, mountsFunc, router, core)
 	rb.period = 10 * time.Millisecond
@@ -97,7 +98,7 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 	// when a rollback happens, each backend will try to write to an unbuffered
 	// channel, then wait to be released
 	for i := 0; i < 10; i++ {
-		b := &NoopBackend{}
+		b := &be.Noop{}
 		b.RequestHandler = func(ctx context.Context, request *logical.Request) (*logical.Response, error) {
 			if request.Operation == logical.RollbackOperation {
 				ran <- request.Path
@@ -180,7 +181,7 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 	// when a rollback happens, each backend will try to write to an unbuffered
 	// channel, then wait to be released
 	for i := 0; i < 10; i++ {
-		b := &NoopBackend{}
+		b := &be.Noop{}
 		b.RequestHandler = func(ctx context.Context, request *logical.Request) (*logical.Response, error) {
 			if request.Operation == logical.RollbackOperation {
 				ran <- request.Path

@@ -746,9 +746,9 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	}
 
 	// Remount the backend
-	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath, func(re *routeEntry) error {
-		re.storageView = dstBarrierView
-		re.storagePrefix = dstBarrierView.Prefix()
+	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath, func(re *routing.RouteEntry) error {
+		re.StorageView = dstBarrierView
+		re.StoragePrefix = dstBarrierView.Prefix()
 
 		return nil
 	}); err != nil {
@@ -1566,7 +1566,7 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 	}
 
 	c.mounts = nil
-	c.router.reset()
+	c.router.Reset()
 	c.systemBarrierView = nil
 	return nil
 }
@@ -2206,7 +2206,7 @@ func (c *Core) mountEntryView(me *routing.MountEntry) (barrier.View, error) {
 	case routing.MountTableType:
 		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(backendBarrierPrefix, me.UUID) + "/"), nil
 	case routing.CredentialTableType:
-		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(credentialBarrierPrefix, me.UUID) + "/"), nil
+		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(barrier.CredentialBarrierPrefix, me.UUID) + "/"), nil
 	case auditTableType, configAuditTableType:
 		return NamespaceView(c.barrier, me.Namespace).SubView(path.Join(auditBarrierPrefix, me.UUID) + "/"), nil
 	}

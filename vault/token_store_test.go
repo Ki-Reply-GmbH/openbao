@@ -38,6 +38,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	be "github.com/openbao/openbao/vault/backend"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/stretchr/testify/require"
@@ -1480,8 +1481,8 @@ func TestTokenStore_Revoke_Leases(t *testing.T) {
 	view := barrier.NewView(c.barrier, "noop/")
 
 	// Mount a noop backend
-	noop := &backend.Noop{}
-	err := ts.expiration.router.Mount(noop, "noop/", &routing.MountEntry{UUID: "noopuuid", Accessor: "noopaccessor", namespace: namespace.RootNamespace}, view)
+	noop := &be.Noop{}
+	err := ts.expiration.router.Mount(noop, "noop/", &routing.MountEntry{UUID: "noopuuid", Accessor: "noopaccessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5950,14 +5951,14 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	exp := mockExpiration(t)
 	ts := exp.tokenStore
 
-	noop := &backend.Noop{}
+	noop := &be.Noop{}
 	_, barr, _ := barrier.MockBarrier(t, logger)
 	view := barrier.NewView(barr, "logical/")
 	meUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = exp.router.Mount(noop, "prod/aws/", &MountEntry{UUID: meUUID, Accessor: "awsaccessor", namespace: namespace.RootNamespace}, view)
+	err = exp.router.Mount(noop, "prod/aws/", &routing.MountEntry{UUID: meUUID, Accessor: "awsaccessor", Namespace: namespace.RootNamespace}, view)
 	if err != nil {
 		t.Fatal(err)
 	}
