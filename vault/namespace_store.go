@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/routing"
 )
 
 // Namespace id length; upstream uses 5 characters so we use one more to
@@ -617,13 +618,13 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, storage logical.Stor
 	defer ns.core.mountsLock.Unlock()
 
 	for _, mount := range mounts.Entries {
-		if err := ns.core.mountInternalWithLock(ctx, mount, MountTableNoUpdateStorage); err != nil {
+		if err := ns.core.mountInternalWithLock(ctx, mount, routing.MountTableNoUpdateStorage); err != nil {
 			return err
 		}
 	}
 
 	for _, credential := range credentials.Entries {
-		if err := ns.core.enableCredentialInternalWithLock(ctx, credential, MountTableNoUpdateStorage); err != nil {
+		if err := ns.core.enableCredentialInternalWithLock(ctx, credential, routing.MountTableNoUpdateStorage); err != nil {
 			return err
 		}
 	}
