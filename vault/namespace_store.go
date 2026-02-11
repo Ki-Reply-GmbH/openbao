@@ -418,9 +418,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			path = namespace.Canonicalize(parent.TrimmedPath(entry.Path))
 		}
 
-		ns.core.router.l.RLock()
 		conflict := ns.core.router.matchingPrefixInternal(ctx, path)
-		ns.core.router.l.RUnlock()
 		if conflict != "" {
 			return fmt.Errorf("new namespace conflicts with existing mount: %v", conflict)
 		}
@@ -655,7 +653,7 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 
 	// clear auth mounts
 	ns.core.authLock.Lock()
-	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	authMountEntries, err := ns.core.auth.FindAllNamespaceMounts(nsCtx)
 	ns.core.authLock.Unlock()
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace credentials", "namespace", namespaceToDelete.Path, "error", err.Error())
@@ -677,7 +675,7 @@ func (ns *NamespaceStore) undoCreateMounts(nsCtx context.Context, namespaceToDel
 
 	// clear mounts
 	ns.core.mountsLock.Lock()
-	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	mountEntries, err := ns.core.mounts.FindAllNamespaceMounts(nsCtx)
 	ns.core.mountsLock.Unlock()
 	if err != nil {
 		ns.logger.Error("failed to retrieve namespace mounts", "namespace", namespaceToDelete.Path, "error", err.Error())
@@ -1017,7 +1015,7 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 
 	// clear auth mounts
 	ns.core.authLock.Lock()
-	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	authMountEntries, err := ns.core.auth.FindAllNamespaceMounts(nsCtx)
 	ns.core.authLock.Unlock()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve namespace credentials: %w", err)
@@ -1036,7 +1034,7 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 
 	// clear mounts
 	ns.core.mountsLock.Lock()
-	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	mountEntries, err := ns.core.mounts.FindAllNamespaceMounts(nsCtx)
 	ns.core.mountsLock.Unlock()
 	if err != nil {
 		return fmt.Errorf("failed to retrieve namespace mounts: %w", err)
