@@ -1602,6 +1602,56 @@ func (c *Core) unloadMounts(ctx context.Context) error {
 	return nil
 }
 
+// UnloadNamespaceSecretMounts is used before we seal the namespace to reset
+// secret mounts to their unloaded state.
+func (c *Core) UnloadNamespaceSecretMounts(ctx context.Context, ns *namespace.Namespace) error {
+	c.mountsLock.Lock()
+	defer c.mountsLock.Unlock()
+
+	if c.mounts != nil {
+		mountTable := c.mounts.shallowClone()
+		if err := c.cleanupNamespaceMounts(ctx, mountTable, ns.UUID); err != nil {
+			return err
+		}
+	}
+
+	if c.logger.IsInfo() {
+		c.logger.Info(fmt.Sprintf("successfully unmounted namespace %q mounts from mount table", ns.Path))
+	}
+	return nil
+}
+
+func (c *Core) cleanupNamespaceMounts(ctx context.Context, mountTable *MountTable, nsUUID string) error {
+	for _, e := range mountTable.Entries {
+		if e.namespace.UUID == nsUUID {
+			nsCtx := namespace.ContextWithNamespace(ctx, e.namespace)
+
+			routerPath := e.Path
+			if mountTable.Type == credentialTableType {
+				routerPath = credentialRoutePrefix + e.Path
+			}
+
+			if err := c.router.Unmount(nsCtx, routerPath); err != nil {
+				return err
+			}
+
+			switch mountTable.Type {
+			case credentialTableType:
+				if err := c.removeCredEntryWithLock(nsCtx, e.Path, false); err != nil {
+					return err
+				}
+			case mountTableType:
+				if err := c.removeMountEntryWithLock(nsCtx, e.Path, false); err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("unknown table type encountered while cleaning up namespace mounts: %q", mountTable.Type)
+			}
+		}
+	}
+	return nil
+}
+
 // newLogicalBackend is used to create and configure a new logical backend by name.
 // It also returns the SHA256 of the plugin, if available.
 func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView logical.SystemView, view logical.Storage) (logical.Backend, string, error) {

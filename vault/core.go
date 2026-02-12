@@ -1063,8 +1063,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	// Construct a new AES-GCM barrier
 	c.barrier = barrier.NewAESGCMBarrier(c.physical, "")
-	// TODO(wslabosz): setup seal manager
-	// c.SetupSealManager()
+	c.SetupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
@@ -1391,8 +1390,7 @@ func (c *Core) Sealed() bool {
 // NamespaceSealed checks if there's a namespace
 // (in direct ancestry line) that is currently sealed.
 func (c *Core) NamespaceSealed(ns *namespace.Namespace) bool {
-	// TODO(wslabosz): implement with seal manager
-	return false
+	return c.sealManager.NamespaceBarrierByLongestPrefix(ns.Path).Sealed()
 }
 
 // SecretProgress returns the number of keys provided so far. Lock
@@ -2539,6 +2537,9 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.stopExpiration(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error stopping expiration: %w", err))
+	}
+	if err := c.sealAllNamespaces(context.Background()); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error sealing namespaces: %v", err))
 	}
 	if err := c.teardownCredentials(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down credentials: %w", err))

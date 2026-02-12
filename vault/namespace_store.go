@@ -317,6 +317,16 @@ func (c *Core) teardownNamespaceStore() error {
 	return nil
 }
 
+// sealAllNamespaces seals all namespaces to prepare for core to seal.
+func (c *Core) sealAllNamespaces(ctx context.Context) (err error) {
+	// This is called in preSeal(), so no locks should be required.
+	if c.namespaceStore != nil {
+		err = c.namespaceStore.sealNamespaceLocked(ctx, namespace.RootNamespace)
+	}
+	c.sealManager.Reset()
+	return err
+}
+
 func (ns *NamespaceStore) invalidate(ctx context.Context, path string) {
 	// We want to keep invalidation proper fast (as it holds up replication),
 	// so defer invalidation to the next load.
@@ -924,6 +934,40 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 	return ns.namespacesByPath.List(parent.Path, includeParent, recursive, ns.creationDeletionMap)
 }
 
+// sealNamespaceLocked assumes the read lock is hold, and seals provided namespace,
+// cleaning up namespace resources.
+func (ns *NamespaceStore) sealNamespaceLocked(ctx context.Context, namespaceToSeal *namespace.Namespace) error {
+	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
+
+	var errs error
+	ns.namespacesByPath.PostOrderTraversal(namespaceToSeal.Path, func(namespaceEntry *namespace.Namespace) {
+		if namespaceEntry.ID == namespace.RootNamespaceID || ns.core.NamespaceSealed(namespaceEntry) {
+			return
+		}
+
+		barrier := ns.core.sealManager.NamespaceBarrier(namespaceEntry.Path)
+		if barrier != nil && barrier.Sealed() {
+			return
+		}
+
+		ctx = namespace.ContextWithNamespace(ctx, namespaceEntry)
+		errs = errors.Join(
+			ns.clearNamespacePolicies(ctx, namespaceEntry, false),
+			ns.core.identityStore.RemoveNamespaceView(namespaceEntry),
+			ns.core.UnloadNamespaceCredentialMounts(ctx, namespaceEntry),
+			ns.core.UnloadNamespaceSecretMounts(ctx, namespaceEntry),
+		)
+
+		if barrier != nil {
+			if err := barrier.Seal(); err != nil {
+				errs = errors.Join(errs, err)
+			}
+		}
+	})
+
+	return errs
+}
+
 // taintNamespace is used to taint the namespace designated to be deleted
 func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *namespace.Namespace) error {
 	// to be extra safe
@@ -1004,16 +1048,8 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 
 func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent *namespace.Namespace, namespaceToDelete *namespace.Namespace) error {
 	// clear ACL policies
-	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve namespace policies: %w", err)
-	}
-
-	for _, policy := range policiesToClear {
-		err := ns.core.policyStore.deletePolicyForce(nsCtx, policy, PolicyTypeACL)
-		if err != nil {
-			return fmt.Errorf("failed to delete policy: %w", err)
-		}
+	if err := ns.clearNamespacePolicies(nsCtx, namespaceToDelete, true); err != nil {
+		return err
 	}
 
 	// clear auth mounts
@@ -1071,6 +1107,29 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent 
 		return fmt.Errorf("failed to clean up locked user entries: %w", err)
 	}
 
+	return nil
+}
+
+func (ns *NamespaceStore) clearNamespacePolicies(ctx context.Context, namespace *namespace.Namespace, physicalDeletion bool) error {
+	policiesToClear, err := ns.core.policyStore.ListPolicies(ctx, PolicyTypeACL, false)
+	if err != nil {
+		ns.logger.Error("failed to retrieve namespace policies", "namespace", namespace.Path, "error", err.Error())
+		return err
+	}
+
+	for _, policy := range policiesToClear {
+		if physicalDeletion {
+			if err := ns.core.policyStore.deletePolicyForce(ctx, policy, PolicyTypeACL); err != nil {
+				ns.logger.Error(fmt.Sprintf("failed to delete policy %q", policy), "namespace", namespace.Path, "error", err.Error())
+				return err
+			}
+		} else {
+			if err := ns.core.policyStore.invalidate(ctx, policy, PolicyTypeACL); err != nil {
+				ns.logger.Error(fmt.Sprintf("failed to invalidate policy %q", policy), "namespace", namespace.Path, "error", err.Error())
+				return err
+			}
+		}
+	}
 	return nil
 }
 

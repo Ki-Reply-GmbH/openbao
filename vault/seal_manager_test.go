@@ -19,9 +19,6 @@ import (
 func TestSealManager_Reset(t *testing.T) {
 	t.Parallel()
 	c, _, _ := TestCoreUnsealed(t)
-	// TODO(wslabosz): with seal manager running on unseal,
-	// no need to do it manually
-	c.SetupSealManager()
 
 	// verify initial state of seal manager
 	require.Len(t, c.sealManager.barrierByNamespace.ToMap(), 1)
@@ -55,9 +52,6 @@ func TestSealManager_Reset(t *testing.T) {
 func TestSealManager_SetSeal(t *testing.T) {
 	t.Parallel()
 	c, _, _ := TestCoreUnsealed(t)
-	// TODO(wslabosz): with seal manager running on unseal,
-	// no need to do it manually
-	c.SetupSealManager()
 	ctx := namespace.RootContext(t.Context())
 
 	tc := []struct {
@@ -138,9 +132,6 @@ func TestSealManager_SetSeal(t *testing.T) {
 func TestSealManager_InitializeBarrier(t *testing.T) {
 	t.Parallel()
 	c, _, _ := TestCoreUnsealed(t)
-	// TODO(wslabosz): with seal manager running on unseal,
-	// no need to do it manually
-	c.SetupSealManager()
 	ctx := namespace.RootContext(t.Context())
 
 	flawedNS := &namespace.Namespace{UUID: "notpresent", Path: "flawed/"}
@@ -204,9 +195,6 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 func TestSealManager_SealStatus(t *testing.T) {
 	t.Parallel()
 	c, _, _ := TestCoreUnsealed(t)
-	// TODO(wslabosz): with seal manager running on unseal,
-	// no need to do it manually
-	c.SetupSealManager()
 	ctx := namespace.RootContext(t.Context())
 
 	// check for seal existence
@@ -266,9 +254,6 @@ func TestSealManager_SealStatus(t *testing.T) {
 func TestSealManager_UnsealBarrier(t *testing.T) {
 	t.Parallel()
 	c, _, _ := TestCoreUnsealed(t)
-	// TODO(wslabosz): with seal manager running on unseal,
-	// no need to do it manually
-	c.SetupSealManager()
 	ctx := namespace.RootContext(t.Context())
 
 	sealConfig := &SealConfig{
