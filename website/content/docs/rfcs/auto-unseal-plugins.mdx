@@ -37,13 +37,15 @@ All of the currently available mechanisms are statically compiled into the
 released OpenBao binary, with the exception of PKCS#11, which is only available
 in the HSM distribution of OpenBao due to requiring CGO.
 
-Furthermore, requests for (usually along with a Pull Request ready for review)
-have been received to add additional vendor-specific mechanisms:
+Furthermore, requests to add additional vendor-specific mechanisms have been
+received have been received (usually along with a Pull Request ready for
+review):
 
 - [Naver Cloud](https://github.com/openbao/go-kms-wrapping/pull/6)
 - [NHN Cloud SKM](https://github.com/openbao/go-kms-wrapping/pull/47)
 - [OVHcloud KMS](https://github.com/openbao/go-kms-wrapping/pull/68)
 - [Open Telekom Cloud](https://github.com/openbao/go-kms-wrapping/pull/63)
+- [OpenStack Barbican](https://github.com/openbao/openbao/issues/1114)
 
 Some more providers already have (presumably working) code present in-tree in
 [go-kms-wrapping](https://github.com/openbao/go-kms-wrapping), but haven't been
@@ -66,6 +68,11 @@ However, simply including all of these into the main binary seems naive:
    may increase with [Emergency Seals](./emergency-seal.mdx) or [Namespace
    Sealing](./namespace-sealing.mdx), but it is unlikely for an instance to make
    use of a large variety of mechanisms at a time.
+3. As outlined in [OpenBao's original Plugin
+   Proposal](https://github.com/orgs/openbao/discussions/64), it is preferred to
+   constrain builtin integrations with 3rd party components to easily testable,
+   OSI-licensed components while keeping others external and encouraging broader
+   community involvement to maintain externalized integrations.
 
 This would lead to dependency and binary bloat, increased attack surface and
 increased complexity in release management. This RFC proposes to solve the
@@ -74,9 +81,10 @@ mechanism that is already used for secrets, auth & database engines.
 
 ### User-facing description
 
-OpenBao Auto Seal Plugins will be available as standalone
-binaries (and OCI images) just like current secrets/auth/database
-plugins are. The source code of these plugins will live in
+A new "kms" plugin type that provides pluggable external KMS functionality,
+starting with Auto Unseal, will be introduced. These plugins will be
+available as standalone binaries (and OCI images) just like current
+secrets/auth/database plugins are. The source code of the plugins will live in
 [go-kms-wrapping](https://github.com/openbao/go-kms-wrapping), which is also
 where they will be released separately from the main release schedule. Custom,
 3rd party plugins not upstreamed into go-kms-wrapping can also be built and used
@@ -96,7 +104,6 @@ An exemplary server config entry may look like the following:
 ```hcl
 plugin "kms" "opentelekomcloudkms" {
   command   = "openbao-plugin-opentelekomcloudkms"
-  version   = "v0.0.1"
   sha256sum = "b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c"
 }
 
@@ -107,11 +114,8 @@ seal "opentelekomcloudkms" {
 
 The value of `plugin_auto_register` is ignored and KMS plugins are never
 traditionally registered and tracked in OpenBao's secure storage. As previously
-mentioned, OCI-based plugin distribution will also be supported.
-
-A generic "kms" plugin type is chosen over a more specific "seal" plugin type to
-leave room for this new plugin type to service future KMS-related features such
-as [External Keys](./external-keys.mdx) in addition to seals.
+mentioned, OCI-based plugin distribution will also be supported. KMS plugin
+stanzas to not support the `version` field for now, but may do so in the future.
 
 ### Technical description
 
@@ -184,7 +188,7 @@ Neither of these are in line with OpenBao's existing plugin-based philosophy.
 ### Downsides
 
 Any kind of plugin requires operators to handle additional complexity. Based
-on unformal community observation, it appears that many instances are operated
+on informal community observation, it appears that many instances are operated
 without external secrets/auth/database plugins as the built-ins are sufficient
 for most use cases, yet there is a large variety of choices when it comes to
 Auto Unseal mechanisms. As a result, pluginized Auto Unseals may be the initial
@@ -231,6 +235,7 @@ patch release.
 ### Related Issues
 
 - https://github.com/openbao/openbao/issues/1054
+- https://github.com/openbao/openbao/issues/1114
 - https://github.com/openbao/openbao/issues/1786
 - https://github.com/openbao/openbao/issues/2302
 - https://github.com/openbao/go-kms-wrapping/issues/67
