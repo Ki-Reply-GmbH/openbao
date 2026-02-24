@@ -207,10 +207,14 @@ around HSM integration with PKCS#11.
 
 ### Security Implications
 
-This change improves OpenBao's overall security posture by greatly reducing
-the Go dependencies of the main OpenBao binary. Furthermore, in terms of
-reliability, a panicking KMS plugin will not directly affect other processes or
-cause the OpenBao instance to crash.
+This change improves OpenBao's overall security posture by reducing the attack
+surface of the average OpenBao installation and by enabling plug-and-play custom
+Auto Unseal implementations if desired.
+
+Furthermore, in terms of reliability, a panicking KMS plugin will not directly
+affect other processes or cause the OpenBao instance to crash. Also, avoidance
+of CGO addresses the warning from `go-plugins` [1] about loading dynamic
+libraries into Vault not being acceptable for security reasons.
 
 Additionally, this change will allow third parties to build their own Auto
 Unseal plugins as they see fit. This is a double-edged sword: On one hand, this
@@ -262,3 +266,20 @@ patch release.
 - https://github.com/openbao/openbao-plugins/pull/55
 
 Additional PRs TBD
+
+### References
+
+[1] [What About Shared Libraries?](https://github.com/hashicorp/go-plugin/blob/main/README.md#what-about-shared-libraries)
+    in `go-plugin/README.md` from last two paragraphs:
+
+> "For example, we use this plugin system in Vault where _dynamic library_
+> loading is ***not acceptable for security reasons***. That is an extreme
+> example, but we believe our library system has more upsides than downsides
+> over dynamic library loading and since we've had it built and tested for
+> years, we'll continue to use it."
+
+> "_Shared libraries_ have one major advantage over _our (plugin) system_
+> which is much higher performance. In real world scenarios across our various
+> tools, we've never required any more performance out of our _plugin system_
+> and it has seen _very high throughput_, so this isn't a concern for us at the
+> moment."
