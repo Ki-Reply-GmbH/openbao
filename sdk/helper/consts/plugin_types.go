@@ -14,6 +14,7 @@ var PluginTypes = []PluginType{
 	PluginTypeCredential,
 	PluginTypeDatabase,
 	PluginTypeSecrets,
+	PluginTypeKMS,
 }
 
 type PluginType uint32
@@ -33,6 +34,7 @@ const (
 	PluginTypeCredential
 	PluginTypeDatabase
 	PluginTypeSecrets
+	PluginTypeKMS
 )
 
 func (p PluginType) String() string {
@@ -60,6 +62,8 @@ func ParsePluginType(pluginType string) (PluginType, error) {
 		return PluginTypeDatabase, nil
 	case "secret":
 		return PluginTypeSecrets, nil
+	case "kms":
+		return PluginTypeKMS, nil
 	default:
 		return PluginTypeUnknown, fmt.Errorf("%q is not a supported plugin type", pluginType)
 	}

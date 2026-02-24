@@ -67,7 +67,7 @@ func testConfigRaftRetryJoin(t *testing.T) {
 	}
 }
 
-func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
+func testLoadConfigFile_topLevel(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config2.hcl", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -102,24 +102,6 @@ func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
 			PidFile: "./pidfile",
 
 			ClusterName: "testcluster",
-
-			Seals: []*configutil.KMS{
-				{
-					Type: "nopurpose",
-				},
-				{
-					Type:    "stringpurpose",
-					Purpose: []string{"foo"},
-				},
-				{
-					Type:    "commastringpurpose",
-					Purpose: []string{"foo", "bar"},
-				},
-				{
-					Type:    "slicepurpose",
-					Purpose: []string{"zip", "zap"},
-				},
-			},
 		},
 
 		Storage: &Storage{
@@ -177,7 +159,7 @@ func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
 	}
 }
 
-func testLoadConfigFile_json2(t *testing.T, entropy *configutil.Entropy) {
+func testLoadConfigFile_json2(t *testing.T) {
 	config, err := LoadConfigFile("./test-fixtures/config2.hcl.json", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -1033,8 +1015,7 @@ func testParseSeals(t *testing.T) {
 			},
 			Seals: []*configutil.KMS{
 				{
-					Type:    "pkcs11",
-					Purpose: []string{"many", "purposes"},
+					Type: "pkcs11",
 					Config: map[string]string{
 						"lib":                    "/usr/lib/libcklog2.so",
 						"slot":                   "0.0",
@@ -1049,7 +1030,6 @@ func testParseSeals(t *testing.T) {
 				},
 				{
 					Type:     "pkcs11",
-					Purpose:  []string{"single"},
 					Disabled: true,
 					Config: map[string]string{
 						"lib":                    "/usr/lib/libcklog2.so",

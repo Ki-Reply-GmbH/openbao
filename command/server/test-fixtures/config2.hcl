@@ -41,21 +41,6 @@ entropy "seal" {
     mode = "augmentation"
 }
 
-sentinel {
-    additional_enabled_modules = []
-}
-kms "commastringpurpose" {
-    purpose = "foo,bar"
-}
-kms "slicepurpose" {
-    purpose = ["zip", "zap"]
-}
-seal "nopurpose" {
-}
-seal "stringpurpose" {
-    purpose = "foo"
-}
-
 max_lease_ttl = "10h"
 default_lease_ttl = "10h"
 cluster_name = "testcluster"
