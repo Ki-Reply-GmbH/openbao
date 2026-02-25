@@ -30,7 +30,7 @@ require (
 	github.com/caddyserver/certmagic v0.25.1
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/containerd/platforms v0.2.1
-	github.com/coreos/go-systemd/v22 v22.6.0
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/duosecurity/duo_api_golang v0.0.0-20190308151101-6c680f768e74
 	github.com/fatih/color v1.18.0
 	github.com/go-errors/errors v1.5.1
@@ -42,7 +42,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/gocql/gocql v1.7.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
-	github.com/google/cel-go v0.26.1
+	github.com/google/cel-go v0.27.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.7
 	github.com/google/go-metrics-stackdriver v0.2.0
@@ -84,13 +84,13 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f
-	github.com/klauspost/compress v1.18.3
+	github.com/klauspost/compress v1.18.4
 	github.com/kr/pretty v0.3.1
 	github.com/kr/text v0.2.0
 	github.com/mattn/go-colorable v0.1.14
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mediocregopher/radix/v4 v4.1.4
-	github.com/mholt/acmez/v3 v3.1.4
+	github.com/mholt/acmez/v3 v3.1.5
 	github.com/michaelklishin/rabbit-hole/v3 v3.5.0
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-testing-interface v1.14.2-0.20210821155943-2d9075ca8770
@@ -100,8 +100,7 @@ require (
 	github.com/moby/moby/client v0.2.2
 	github.com/oklog/run v1.2.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
-	github.com/openbao/go-kms-wrapping/v2 v2.6.0
-	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.3.0
+	github.com/openbao/go-kms-wrapping/v2 v2.7.0
 	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0
 	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.2.0
@@ -117,7 +116,7 @@ require (
 	github.com/openbao/openbao/api/v2 v2.5.0
 	github.com/openbao/openbao/sdk/v2 v2.5.0
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/pires/go-proxyproto v0.9.1
+	github.com/pires/go-proxyproto v0.9.2
 	github.com/posener/complete v1.2.3
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.23.2
@@ -127,14 +126,14 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sasha-s/go-deadlock v0.3.6
 	github.com/sethvargo/go-limiter v1.1.0
-	github.com/shirou/gopsutil/v4 v4.25.12
+	github.com/shirou/gopsutil/v4 v4.26.1
 	github.com/stretchr/testify v1.11.1
 	github.com/tink-crypto/tink-go/v2 v2.6.0
 	github.com/yeqown/go-qrcode/v2 v2.2.5
 	go.etcd.io/bbolt v1.4.3
-	go.opentelemetry.io/otel v1.39.0
-	go.opentelemetry.io/otel/sdk v1.39.0
-	go.opentelemetry.io/otel/trace v1.39.0
+	go.opentelemetry.io/otel v1.40.0
+	go.opentelemetry.io/otel/sdk v1.40.0
+	go.opentelemetry.io/otel/trace v1.40.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0
@@ -142,16 +141,16 @@ require (
 	golang.org/x/net v0.49.0
 	golang.org/x/oauth2 v0.35.0
 	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.40.0
+	golang.org/x/sys v0.41.0
 	golang.org/x/term v0.39.0
 	golang.org/x/text v0.33.0
-	google.golang.org/api v0.262.0
+	google.golang.org/api v0.265.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0
-	k8s.io/api v0.35.0
-	k8s.io/apimachinery v0.35.0
-	k8s.io/client-go v0.35.0
+	k8s.io/api v0.35.1
+	k8s.io/apimachinery v0.35.1
+	k8s.io/client-go v0.35.1
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	layeh.com/radius v0.0.0-20230922032716-6579be8edf5d
 	sigs.k8s.io/yaml v1.6.0
@@ -159,7 +158,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.24.0 // indirect
+	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go v0.121.6 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
@@ -197,7 +196,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v1.62.301 // indirect
-	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.6 // indirect
@@ -217,7 +216,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.9 // indirect
 	github.com/aws/smithy-go v1.22.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bgentry/speakeasy v0.1.0 // indirect
+	github.com/bgentry/speakeasy v0.2.0 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/boombuler/barcode v1.0.1 // indirect
 	github.com/caddyserver/zerossl v0.1.4 // indirect
@@ -343,7 +342,6 @@ require (
 	github.com/sony/gobreaker v0.5.0 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.480 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cvm v1.0.480 // indirect
@@ -364,7 +362,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
-	go.opentelemetry.io/otel/metric v1.39.0 // indirect
+	go.opentelemetry.io/otel/metric v1.40.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
@@ -374,7 +372,7 @@ require (
 	golang.org/x/tools v0.41.0 // indirect
 	google.golang.org/genproto v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120174246-409b4a993575 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

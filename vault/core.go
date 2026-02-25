@@ -34,7 +34,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	aeadwrapper "github.com/openbao/go-kms-wrapping/v2/aead"
 	"github.com/openbao/go-kms-wrapping/wrappers/awskms/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
@@ -2341,7 +2341,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-	if err := c.loadMounts(ctx); err != nil {
+	if err := c.loadMounts(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.setupMounts(ctx); err != nil {
@@ -2353,7 +2353,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.loadCORSConfig(ctx); err != nil {
 		return err
 	}
-	if err := c.loadCredentials(ctx); err != nil {
+	if err := c.loadCredentials(ctx, standby); err != nil {
 		return err
 	}
 	if err := c.setupCredentials(ctx); err != nil {
@@ -2383,7 +2383,7 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, logger log.Logge
 	if err := c.handleAuditLogSetup(ctx, standby); err != nil {
 		return err
 	}
-	if err := c.loadIdentityStoreArtifacts(ctx); err != nil {
+	if err := c.loadIdentityStoreArtifacts(ctx, standby); err != nil {
 		return err
 	}
 	c.setupCachedMFAResponseAuth()
