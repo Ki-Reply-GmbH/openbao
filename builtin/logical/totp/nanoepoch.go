@@ -15,15 +15,15 @@ type NanoEpoch time.Time
 func (n NanoEpoch) MarshalJSON() (b []byte, err error) {
 	t := time.Time(n)
 	if t.IsZero() {
-		return
+		return b, err
 	}
 	b = fmt.Appendf(nil, "%d.%d", t.Unix(), t.Nanosecond())
-	return
+	return b, err
 }
 
 func (n *NanoEpoch) UnmarshalJSON(b []byte) (err error) {
 	if len(b) == 0 {
-		return
+		return err
 	}
 
 	var sec int64
@@ -33,15 +33,15 @@ func (n *NanoEpoch) UnmarshalJSON(b []byte) (err error) {
 	// Theoretically should always be true. But alas, better safe than sorry.
 	if spl[0] != "" {
 		if sec, err = strconv.ParseInt(spl[0], 10, 64); err != nil {
-			return
+			return err
 		}
 	}
 	if len(spl) == 2 {
 		if nsec, err = strconv.ParseInt(spl[1], 10, 64); err != nil {
-			return
+			return err
 		}
 	}
 
 	*n = NanoEpoch(time.Unix(sec, nsec))
-	return
+	return err
 }
