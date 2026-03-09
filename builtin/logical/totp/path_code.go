@@ -93,11 +93,14 @@ func (b *backend) pathReadCode(ctx context.Context, req *logical.Request, data *
 	// key.Period is number of seconds represented by uint
 	// so we need to convert to duration seconds
 	period := time.Duration(key.Period) * time.Second
+
+	// calculate time step
+	ts := time.Duration(tNow.Unix()/int64(key.Period)) * period
 	return &logical.Response{
 		Data: map[string]interface{}{
 			"code":      totpToken,
 			"generated": NanoEpoch(tNow),
-			"expiry":    NanoEpoch(tNow.Add(period).Truncate(time.Second)),
+			"expiry":    NanoEpoch(time.Unix(int64(ts.Seconds()), 0).Add(period)),
 			"period":    period.String(),
 		},
 	}, nil
