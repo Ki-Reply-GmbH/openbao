@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package policy
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	policy_testing "github.com/openbao/openbao/vault/policy/testing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -312,78 +313,8 @@ func TestACL_Layered(t *testing.T) {
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
-		testLayeredACL(t, acl, namespace.RootNamespace)
+		policy_testing.TestLayeredACL(t, acl, namespace.RootNamespace)
 	})
-}
-
-func testLayeredACL(t *testing.T, acl *ACL, ns *namespace.Namespace) {
-	// Type of operation is not important here as we only care about checking
-	// sudo/root
-	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	request := new(logical.Request)
-	request.Operation = logical.ReadOperation
-	request.Path = "sys/mount/foo"
-
-	authResults := acl.AllowOperation(ctx, request, false)
-	if authResults.RootPrivs {
-		t.Fatal("unexpected root")
-	}
-
-	type tcase struct {
-		op        logical.Operation
-		path      string
-		allowed   bool
-		rootPrivs bool
-	}
-	tcases := []tcase{
-		{logical.ReadOperation, "root", false, false},
-		{logical.HelpOperation, "root", true, false},
-
-		{logical.ReadOperation, "dev/foo", true, true},
-		{logical.UpdateOperation, "dev/foo", true, true},
-		{logical.ReadOperation, "dev/hide/foo", false, false},
-		{logical.UpdateOperation, "dev/hide/foo", false, false},
-
-		{logical.DeleteOperation, "stage/foo", true, false},
-		{logical.ListOperation, "stage/aws/foo", true, true},
-		{logical.UpdateOperation, "stage/aws/foo", true, true},
-		{logical.UpdateOperation, "stage/aws/policy/foo", false, false},
-
-		{logical.DeleteOperation, "prod/foo", true, false},
-		{logical.UpdateOperation, "prod/foo", true, false},
-		{logical.ReadOperation, "prod/foo", true, false},
-		{logical.ListOperation, "prod/foo", true, false},
-		{logical.ReadOperation, "prod/aws/foo", false, false},
-
-		{logical.ReadOperation, "sys/status", false, false},
-		{logical.UpdateOperation, "sys/seal", true, true},
-
-		{logical.ReadOperation, "foo/bar", false, false},
-		{logical.ListOperation, "foo/bar", false, false},
-		{logical.UpdateOperation, "foo/bar", false, false},
-		{logical.CreateOperation, "foo/bar", false, false},
-
-		{logical.ReadOperation, "baz/quux", false, false},
-		{logical.ListOperation, "baz/quux", false, false},
-		{logical.UpdateOperation, "baz/quux", false, false},
-		{logical.CreateOperation, "baz/quux", false, false},
-		{logical.PatchOperation, "baz/quux", false, false},
-	}
-
-	for _, tc := range tcases {
-		ctx := namespace.ContextWithNamespace(context.Background(), ns)
-		request := new(logical.Request)
-		request.Operation = tc.op
-		request.Path = tc.path
-
-		authResults := acl.AllowOperation(ctx, request, false)
-		if authResults.Allowed != tc.allowed {
-			t.Fatalf("bad: case %#v: %v, %v", tc, authResults.Allowed, authResults.RootPrivs)
-		}
-		if authResults.RootPrivs != tc.rootPrivs {
-			t.Fatalf("bad: case %#v: %v, %v", tc, authResults.Allowed, authResults.RootPrivs)
-		}
-	}
 }
 
 func TestACL_ParseMalformedPolicy(t *testing.T) {
