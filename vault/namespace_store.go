@@ -24,6 +24,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/policy"
 )
 
 // Namespace id length; upstream uses 5 characters so we use one more to
@@ -1000,13 +1001,13 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 
 func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, parent *namespace.Namespace, namespaceToDelete *namespace.Namespace) error {
 	// clear ACL policies
-	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)
+	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, policy.PolicyTypeACL, false)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve namespace policies: %w", err)
 	}
 
-	for _, policy := range policiesToClear {
-		err := ns.core.policyStore.deletePolicyForce(nsCtx, policy, PolicyTypeACL)
+	for _, pol := range policiesToClear {
+		err := ns.core.policyStore.deletePolicyForce(nsCtx, pol, policy.PolicyTypeACL)
 		if err != nil {
 			return fmt.Errorf("failed to delete policy: %w", err)
 		}
