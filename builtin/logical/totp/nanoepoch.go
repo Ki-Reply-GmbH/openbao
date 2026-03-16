@@ -26,20 +26,19 @@ func (n *NanoEpoch) UnmarshalJSON(b []byte) (err error) {
 		return err
 	}
 
+	s, ns, ok := strings.Cut(string(b), ".")
+	if !ok {
+		return err
+	}
+
 	var sec int64
 	var nsec int64
-	spl := strings.SplitN(string(b), ".", 2)
-
-	// Theoretically should always be true. But alas, better safe than sorry.
-	if spl[0] != "" {
-		if sec, err = strconv.ParseInt(spl[0], 10, 64); err != nil {
-			return err
-		}
+	if sec, err = strconv.ParseInt(s, 10, 64); err != nil {
+		return err
 	}
-	if len(spl) == 2 {
-		if nsec, err = strconv.ParseInt(spl[1], 10, 64); err != nil {
-			return err
-		}
+
+	if nsec, err = strconv.ParseInt(ns, 10, 64); err != nil {
+		return err
 	}
 
 	*n = NanoEpoch(time.Unix(sec, nsec))
