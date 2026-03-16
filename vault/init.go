@@ -207,7 +207,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		barrierConfig.SecretShares = 1
 		barrierConfig.SecretThreshold = 1
 		if barrierConfig.StoredShares != 1 {
-			c.Logger().Warn("stored keys supported on init, forcing shares/threshold to 1")
+			c.Logger().Debug("stored keys supported on init, forcing shares/threshold to 1")
 		}
 	}
 
