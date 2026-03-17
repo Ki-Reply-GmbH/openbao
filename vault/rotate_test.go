@@ -20,7 +20,7 @@ import (
 )
 
 func TestCoreRotateLifecycle(t *testing.T) {
-	bc := &SealConfig{
+	bc := &seal.SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 		StoredShares:    1,
@@ -55,7 +55,7 @@ func testCoreRotateLifecycleCommon(t *testing.T, c *Core, recovery bool) {
 	require.NoError(t, err)
 
 	// Start rotation
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -86,7 +86,7 @@ func TestCoreInitRotation(t *testing.T) {
 
 func testCoreInitRotationCommon(t *testing.T, c *Core, recovery bool) {
 	// Try an invalid config
-	badConf := &SealConfig{
+	badConf := &seal.SealConfig{
 		SecretThreshold: 5,
 		SecretShares:    1,
 	}
@@ -95,7 +95,7 @@ func testCoreInitRotationCommon(t *testing.T, c *Core, recovery bool) {
 	require.Empty(t, rotationResult)
 
 	// Start rotation
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -116,7 +116,7 @@ func testCoreInitRotationCommon(t *testing.T, c *Core, recovery bool) {
 }
 
 func TestCoreUpdateRotation(t *testing.T) {
-	bc := &SealConfig{
+	bc := &seal.SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
@@ -134,7 +134,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 		expType = c.seal.BarrierType().String()
 	}
 
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		Type:            expType,
 		SecretThreshold: 3,
 		SecretShares:    5,
@@ -167,7 +167,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 	require.Nil(t, conf)
 
 	// SealConfig should update
-	var sealConf *SealConfig
+	var sealConf *seal.SealConfig
 	if recovery {
 		sealConf, err = c.seal.RecoveryConfig(t.Context())
 	} else {
@@ -198,7 +198,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 	}
 
 	// Start another rotation, this time we require a quorum!
-	newConf = &SealConfig{
+	newConf = &seal.SealConfig{
 		Type:            expType,
 		SecretThreshold: 1,
 		SecretShares:    1,
@@ -251,7 +251,7 @@ func testCoreUpdateRotationCommon(t *testing.T, c *Core, keys [][]byte, root str
 }
 
 func TestCoreRotateInvalid(t *testing.T) {
-	bc := &SealConfig{
+	bc := &seal.SealConfig{
 		StoredShares:    0,
 		SecretShares:    1,
 		SecretThreshold: 1,
@@ -261,7 +261,7 @@ func TestCoreRotateInvalid(t *testing.T) {
 }
 
 func testCoreRotateInvalidCommon(t *testing.T, c *Core, keys [][]byte, recovery bool) {
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -338,7 +338,7 @@ func TestCoreRotationStandby(t *testing.T) {
 	}
 
 	// Rotate the root key
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
@@ -383,14 +383,14 @@ func TestCoreRotationStandby(t *testing.T) {
 // barrier that verification is not allowed since the keys aren't returned
 func TestRotationVerficationInvalid(t *testing.T) {
 	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
+		&seal.SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
+		&seal.SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
 		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
 
 	nonce, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 
-	err = core.initBarrierRotation(&SealConfig{
+	err = core.initBarrierRotation(&seal.SealConfig{
 		VerificationRequired: true,
 		StoredShares:         1,
 	}, nonce)
@@ -399,12 +399,12 @@ func TestRotationVerficationInvalid(t *testing.T) {
 
 func TestRotationGenerateRecoveryKey(t *testing.T) {
 	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
-		&SealConfig{SecretShares: 0, SecretThreshold: 0},
+		&seal.SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
+		&seal.SealConfig{SecretShares: 0, SecretThreshold: 0},
 		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
 
 	// Rotate (generate) the recovery key
-	rotConfig := &SealConfig{
+	rotConfig := &seal.SealConfig{
 		SecretShares:    5,
 		SecretThreshold: 3,
 	}
@@ -418,12 +418,12 @@ func TestRotationGenerateRecoveryKey(t *testing.T) {
 func TestRotateBarrierRootKey(t *testing.T) {
 	t.Parallel()
 	c1, unsealShares, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{StoredShares: 1, SecretShares: 3, SecretThreshold: 2},
+		&seal.SealConfig{StoredShares: 1, SecretShares: 3, SecretThreshold: 2},
 		nil,
 		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedShamirRoot})
 	c2, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{},
-		&SealConfig{StoredShares: 1, SecretShares: 3, SecretThreshold: 2},
+		&seal.SealConfig{},
+		&seal.SealConfig{StoredShares: 1, SecretShares: 3, SecretThreshold: 2},
 		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
 
 	testRotateBarrierRootKey(t, c1, unsealShares)

@@ -59,6 +59,7 @@ import (
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/routing"
+	"github.com/openbao/openbao/vault/seal"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
@@ -92,7 +93,7 @@ func TestCoreWithConfig(t testing.T, conf *CoreConfig) *Core {
 
 // TestCoreWithSeal returns a pure in-memory, uninitialized core with the
 // specified seal for testing.
-func TestCoreWithSeal(t testing.T, testSeal Seal, enableRaw bool) *Core {
+func TestCoreWithSeal(t testing.T, testSeal seal.Seal, enableRaw bool) *Core {
 	conf := &CoreConfig{
 		Seal:            testSeal,
 		EnableUI:        false,
@@ -105,7 +106,7 @@ func TestCoreWithSeal(t testing.T, testSeal Seal, enableRaw bool) *Core {
 	return TestCoreWithSealAndUI(t, conf)
 }
 
-func TestCoreWithDeadlockDetection(t testing.T, testSeal Seal, enableRaw bool) *Core {
+func TestCoreWithDeadlockDetection(t testing.T, testSeal seal.Seal, enableRaw bool) *Core {
 	conf := &CoreConfig{
 		Seal:            testSeal,
 		EnableUI:        false,
@@ -296,13 +297,13 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	t.Helper()
 	core.SetClusterHandler(handler)
 
-	barrierConfig := &SealConfig{
+	barrierConfig := &seal.SealConfig{
 		SecretShares:    3,
 		SecretThreshold: 3,
 		StoredShares:    1,
 	}
 
-	recoveryConfig := &SealConfig{
+	recoveryConfig := &seal.SealConfig{
 		SecretShares:    3,
 		SecretThreshold: 3,
 	}
@@ -1148,8 +1149,8 @@ type TestClusterOptions struct {
 	BaseClusterListenPort int
 
 	NumCores       int
-	SealFunc       func() Seal
-	UnwrapSealFunc func() Seal
+	SealFunc       func() seal.Seal
+	UnwrapSealFunc func() seal.Seal
 	Logger         log.Logger
 	TempDir        string
 	CACert         []byte

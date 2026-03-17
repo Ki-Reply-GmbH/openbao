@@ -19,7 +19,7 @@ import (
 )
 
 func TestCore_Rekey_Lifecycle(t *testing.T) {
-	bc := &SealConfig{
+	bc := &seal.SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 		StoredShares:    1,
@@ -64,7 +64,7 @@ func testCore_Rekey_Lifecycle_Common(t *testing.T, c *Core, recovery bool) {
 	}
 
 	// Start a rekey
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -108,7 +108,7 @@ func TestCore_Rekey_Init(t *testing.T) {
 
 func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 	// Try an invalid config
-	badConf := &SealConfig{
+	badConf := &seal.SealConfig{
 		SecretThreshold: 5,
 		SecretShares:    1,
 	}
@@ -118,7 +118,7 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 	}
 
 	// Start a rekey
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -142,7 +142,7 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 }
 
 func TestCore_Rekey_Update(t *testing.T) {
-	bc := &SealConfig{
+	bc := &seal.SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
@@ -160,7 +160,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		expType = c.seal.BarrierType().String()
 	}
 
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		Type:            expType,
 		SecretThreshold: 3,
 		SecretShares:    5,
@@ -209,7 +209,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	}
 
 	// SealConfig should update
-	var sealConf *SealConfig
+	var sealConf *seal.SealConfig
 	if recovery {
 		sealConf, err = c.seal.RecoveryConfig(context.Background())
 	} else {
@@ -253,7 +253,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 
 	// Start another rekey, this time we require a quorum!
 
-	newConf = &SealConfig{
+	newConf = &seal.SealConfig{
 		Type:            expType,
 		SecretThreshold: 1,
 		SecretShares:    1,
@@ -327,7 +327,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 }
 
 func TestCore_Rekey_Invalid(t *testing.T) {
-	bc := &SealConfig{
+	bc := &seal.SealConfig{
 		SecretShares:    5,
 		SecretThreshold: 3,
 	}
@@ -340,7 +340,7 @@ func TestCore_Rekey_Invalid(t *testing.T) {
 
 func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recovery bool) {
 	// Start a rekey
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		SecretThreshold: 3,
 		SecretShares:    5,
 	}
@@ -437,7 +437,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	}
 
 	// Rekey the root key
-	newConf := &SealConfig{
+	newConf := &seal.SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
@@ -503,11 +503,11 @@ func TestCore_Rekey_Standby(t *testing.T) {
 // the keys aren't returned
 func TestSysRekey_Verification_Invalid(t *testing.T) {
 	core, _, _, _ := TestCoreUnsealedWithConfigSealOpts(t,
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
-		&SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
+		&seal.SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
+		&seal.SealConfig{StoredShares: 1, SecretShares: 1, SecretThreshold: 1},
 		&seal.TestSealOpts{StoredKeys: seal.StoredKeysSupportedGeneric})
 
-	err := core.BarrierRekeyInit(&SealConfig{
+	err := core.BarrierRekeyInit(&seal.SealConfig{
 		VerificationRequired: true,
 		StoredShares:         1,
 	})

@@ -15,8 +15,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 
@@ -24,21 +24,22 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/vault/barrier"
+	vaulterrs "github.com/openbao/openbao/vault/errors"
 )
 
 const (
-	// barrierSealConfigPath is the path used to store our seal configuration.
+	// BarrierSealConfigPath is the path used to store our seal configuration.
 	// This value is stored in plaintext, since we must be able to read it even
 	// with the Vault sealed. This is required so that we know how many secret
 	// parts must be used to reconstruct the unseal key.
-	barrierSealConfigPath = "core/seal-config"
+	BarrierSealConfigPath = "core/seal-config"
 
-	// recoverySealConfigPath is the path to the recovery key seal configuration.
+	// RecoverySealConfigPath is the path to the recovery key seal configuration.
 	// This is stored in plaintext so that we can perform auto-unseal.
-	recoverySealConfigPath = "core/recovery-config"
+	RecoverySealConfigPath = "core/recovery-config"
 
-	// recoveryKeyPath is the path to the recovery key
-	recoveryKeyPath = "core/recovery-key"
+	// RecoveryKeyPath is the path to the recovery key
+	RecoveryKeyPath = "core/recovery-key"
 
 	// StoredBarrierKeysPath is the path used for storing HSM-encrypted unseal keys
 	StoredBarrierKeysPath = "core/hsm/barrier-unseal-keys"
@@ -55,7 +56,7 @@ type core interface {
 	AddLogger(hclog.Logger)
 	IsRaftUnseal() bool
 	ActiveContext() context.Context
-	MetricSink() metrics.MetricSink
+	MetricSink() *metricsutil.ClusterMetricSink
 }
 
 type Seal interface {
@@ -164,7 +165,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	// Fetch the seal configuration
-	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+BarrierSealConfigPath)
 	if err != nil {
 		d.core.Logger().Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
@@ -231,7 +232,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+BarrierSealConfigPath, buf); err != nil {
 		d.core.Logger().Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
@@ -504,7 +505,7 @@ func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix st
 	pt, err := encryptor.Decrypt(ctx, blobInfo, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {
-			return nil, &ErrInvalidKey{Reason: fmt.Sprintf("failed to decrypt keys from storage: %v", err)}
+			return nil, &vaulterrs.ErrInvalidKey{Reason: fmt.Sprintf("failed to decrypt keys from storage: %v", err)}
 		}
 		return nil, &ErrDecrypt{Err: fmt.Errorf("failed to decrypt keys from storage: %w", err)}
 	}

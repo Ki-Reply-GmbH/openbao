@@ -15,6 +15,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
+	vaulterrs "github.com/openbao/openbao/vault/errors"
 )
 
 // GenerateStandardRootTokenStrategy is the strategy used to
@@ -213,10 +214,10 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	min, max := c.barrier.KeyLength()
 	max += shamir.ShareOverhead
 	if len(key) < min {
-		return nil, &ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
+		return nil, &vaulterrs.ErrInvalidKey{fmt.Sprintf("key is shorter than minimum %d bytes", min)}
 	}
 	if len(key) > max {
-		return nil, &ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
+		return nil, &vaulterrs.ErrInvalidKey{fmt.Sprintf("key is longer than maximum %d bytes", max)}
 	}
 
 	// Get the seal configuration

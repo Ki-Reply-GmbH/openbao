@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 // protectedPaths cannot be accessed via the raw APIs.
@@ -45,7 +46,7 @@ func NewRawBackend(core *Core) *RawBackend {
 	return r
 }
 
-func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAccess, error) {
+func (b *RawBackend) storageByPath(ctx context.Context, path string) (seal.StorageAccess, error) {
 	ns, rest, err := b.core.NamespaceByStoragePath(ctx, path)
 	if err != nil {
 		return nil, err
