@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/quotas"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 const (
@@ -239,14 +240,14 @@ func isTransactionalMountPath(key string) bool {
 }
 
 func isKeyringPath(key string) bool {
-	return key == barrierSealConfigPath ||
+	return key == seal.BarrierSealConfigPath ||
 		key == barrier.KeyringPath ||
 		key == barrier.LegacyRootKeyPath ||
-		key == recoverySealConfigPath ||
-		key == recoveryKeyPath ||
+		key == seal.RecoverySealConfigPath ||
+		key == seal.RecoveryKeyPath ||
 		key == barrier.RootKeyPath ||
 		key == barrier.ShamirKekPath ||
-		key == StoredBarrierKeysPath ||
+		key == seal.StoredBarrierKeysPath ||
 		strings.HasPrefix(key, barrier.KeyringUpgradePrefix)
 }
 

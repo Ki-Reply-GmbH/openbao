@@ -54,22 +54,22 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (seal.Stora
 
 	// These paths use the "upper" barrier, which is the direct physical layer
 	// for the root namespace.
-	specialPath := rest == barrierSealConfigPath || rest == recoverySealConfigPath
+	specialPath := rest == seal.BarrierSealConfigPath || rest == seal.RecoverySealConfigPath
 
 	// Fast-path root, we do not need a lookup into the seal manager.
 	if ns.ID == namespace.RootNamespaceID {
 		if specialPath {
-			return &directStorageAccess{physical: b.core.physical}, nil
+			return seal.NewDirectStorageAccess(b.core.physical), nil
 		} else {
-			return &secureStorageAccess{barrier: b.core.barrier}, nil
+			return seal.NewDirectStorageAccess(b.core.physical), nil
 		}
 	}
 
 	// TODO(wslabosz): awaiting seal manager implementation
 	if specialPath {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		return seal.NewSecureStorageAccess(b.core.barrier), nil
 	} else {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		return seal.NewSecureStorageAccess(b.core.barrier), nil
 	}
 }
 

@@ -75,7 +75,7 @@ func (c *Core) RekeyThreshold(ctx context.Context, recovery bool) (int, logical.
 	c.rotationLock.RLock()
 	defer c.rotationLock.RUnlock()
 
-	var config *SealConfig
+	var config *seal.SealConfig
 	var err error
 	// If we are rekeying the recovery key, or if the seal supports
 	// recovery keys and we are rekeying the barrier key, we use the
@@ -109,7 +109,7 @@ func (c *Core) RekeyProgress(recovery, verification bool) (bool, int, logical.HT
 	c.rotationLock.RLock()
 	defer c.rotationLock.RUnlock()
 
-	var conf *SealConfig
+	var conf *seal.SealConfig
 	if recovery {
 		conf = c.recoveryRotationConfig
 	} else {
@@ -127,7 +127,7 @@ func (c *Core) RekeyProgress(recovery, verification bool) (bool, int, logical.HT
 }
 
 // RekeyConfig is used to read the rekey configuration
-func (c *Core) RekeyConfig(recovery bool) (*SealConfig, logical.HTTPCodedError) {
+func (c *Core) RekeyConfig(recovery bool) (*seal.SealConfig, logical.HTTPCodedError) {
 	c.stateLock.RLock()
 	defer c.stateLock.RUnlock()
 	if c.Sealed() {
@@ -141,7 +141,7 @@ func (c *Core) RekeyConfig(recovery bool) (*SealConfig, logical.HTTPCodedError) 
 	defer c.rotationLock.Unlock()
 
 	// Copy the seal config if any
-	var conf *SealConfig
+	var conf *seal.SealConfig
 	if recovery {
 		if c.recoveryRotationConfig != nil {
 			conf = c.recoveryRotationConfig.Clone()
@@ -157,7 +157,7 @@ func (c *Core) RekeyConfig(recovery bool) (*SealConfig, logical.HTTPCodedError) 
 
 // RekeyInit will either initialize the rekey of barrier or recovery key.
 // recovery determines whether this is a rekey on the barrier or recovery key.
-func (c *Core) RekeyInit(config *SealConfig, recovery bool) logical.HTTPCodedError {
+func (c *Core) RekeyInit(config *seal.SealConfig, recovery bool) logical.HTTPCodedError {
 	if recovery {
 		return c.RecoveryRekeyInit(config)
 	}
@@ -165,7 +165,7 @@ func (c *Core) RekeyInit(config *SealConfig, recovery bool) logical.HTTPCodedErr
 }
 
 // BarrierRekeyInit is used to initialize the rekey settings for the barrier key
-func (c *Core) BarrierRekeyInit(config *SealConfig) logical.HTTPCodedError {
+func (c *Core) BarrierRekeyInit(config *seal.SealConfig) logical.HTTPCodedError {
 	switch c.seal.BarrierType() {
 	case wrapping.WrapperTypeShamir:
 		// As of Vault 1.3 all seals use StoredShares==1.
@@ -237,7 +237,7 @@ func (c *Core) BarrierRekeyInit(config *SealConfig) logical.HTTPCodedError {
 }
 
 // RecoveryRekeyInit is used to initialize the rekey settings for the recovery key
-func (c *Core) RecoveryRekeyInit(config *SealConfig) logical.HTTPCodedError {
+func (c *Core) RecoveryRekeyInit(config *seal.SealConfig) logical.HTTPCodedError {
 	if config.StoredShares > 0 {
 		return logical.CodedError(http.StatusBadRequest, "stored shares not supported by recovery key")
 	}
@@ -326,7 +326,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 	defer c.rotationLock.Unlock()
 
 	// Get the seal configuration
-	var existingConfig *SealConfig
+	var existingConfig *seal.SealConfig
 	var err error
 	var useRecovery bool // Determines whether recovery key is being used to rekey the root key
 	if c.seal.StoredKeysSupported() == seal.StoredKeysSupportedGeneric && c.seal.RecoveryKeySupported() {
@@ -400,7 +400,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %v", err)
 			}
 
-			testseal := NewDefaultSeal(seal.NewSealWrapper(shamirWrapper))
+			testseal := seal.NewDefaultSeal(seal.NewSealWrapper(shamirWrapper))
 			testseal.SetCore(c)
 
 			cfg, err := c.seal.BarrierConfig(ctx)

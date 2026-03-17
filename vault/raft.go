@@ -810,7 +810,7 @@ func (c *Core) getRaftChallenge(leaderInfo *raft.LeaderJoinInfo) (*raftInformati
 		return nil, errors.New("could not retrieve raft bootstrap package")
 	}
 
-	var sealConfig SealConfig
+	var sealConfig seal.SealConfig
 	err = mapstructure.Decode(secret.Data["seal_config"], &sealConfig)
 	if err != nil {
 		return nil, err

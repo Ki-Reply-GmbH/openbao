@@ -33,6 +33,12 @@ type directStorageAccess struct {
 	physical physical.Backend
 }
 
+func NewDirectStorageAccess(physical physical.Backend) *directStorageAccess {
+	return &directStorageAccess{
+		physical: physical,
+	}
+}
+
 func (p *directStorageAccess) Put(ctx context.Context, path string, value []byte) error {
 	pe := &physical.Entry{
 		Key:   path,
@@ -62,6 +68,12 @@ func (p *directStorageAccess) ListPage(ctx context.Context, prefix string, after
 
 type secureStorageAccess struct {
 	barrier barrier.SecurityBarrier
+}
+
+func NewSecureStorageAccess(barrier barrier.SecurityBarrier) *secureStorageAccess {
+	return &secureStorageAccess{
+		barrier: barrier,
+	}
 }
 
 func (b *secureStorageAccess) Put(ctx context.Context, path string, value []byte) error {

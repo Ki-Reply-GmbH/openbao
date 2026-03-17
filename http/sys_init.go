@@ -13,6 +13,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 func handleSysInit(core *vault.Core) http.Handler {
@@ -57,14 +58,14 @@ func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Initialize
-	barrierConfig := &vault.SealConfig{
+	barrierConfig := &seal.SealConfig{
 		SecretShares:    req.SecretShares,
 		SecretThreshold: req.SecretThreshold,
 		StoredShares:    req.StoredShares,
 		PGPKeys:         req.PGPKeys,
 	}
 
-	recoveryConfig := &vault.SealConfig{
+	recoveryConfig := &seal.SealConfig{
 		SecretShares:    req.RecoveryShares,
 		SecretThreshold: req.RecoveryThreshold,
 		PGPKeys:         req.RecoveryPGPKeys,

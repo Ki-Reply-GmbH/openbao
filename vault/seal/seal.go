@@ -71,7 +71,6 @@ type Seal interface {
 	SetBarrierConfig(context.Context, *SealConfig) error
 	SetCachedBarrierConfig(*SealConfig)
 	SetConfigAccess(barrier.SecurityBarrier)
-	RecoveryType() string
 	RecoveryKey(context.Context) ([]byte, error)
 	SetRecoveryConfig(context.Context, *SealConfig) error
 	SetCachedRecoveryConfig(*SealConfig)

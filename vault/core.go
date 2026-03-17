@@ -2396,6 +2396,12 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	return nil
 }
 
+type autoSeal interface {
+	seal.Seal
+	seal.HealthChecker
+	seal.KeyUpgrader
+}
+
 // postUnseal is invoked on the active node, and performance standby nodes,
 // after the barrier is unsealed, but before
 // allowing any user operations. This allows us to setup any state that
@@ -2447,7 +2453,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	// is normally supported for a configurable time period. Re-encrypting
 	// the keys used for auto unsealing ensures Vault and its data will
 	// continue to be accessible even after prior seal keys are destroyed.
-	if seal, ok := c.seal.(*autoSeal); ok {
+	if seal, ok := c.seal.(autoSeal); ok {
 		if err := seal.UpgradeKeys(c.activeContext); err != nil {
 			c.logger.Warn("post-unseal upgrade seal keys failed", "error", err)
 		}
@@ -2512,7 +2518,7 @@ func (c *Core) preSeal() error {
 	defer metrics.MeasureSince([]string{"core", "pre_seal"}, time.Now())
 	c.logger.Info("pre-seal teardown starting")
 
-	if seal, ok := c.seal.(*autoSeal); ok {
+	if seal, ok := c.seal.(autoSeal); ok {
 		seal.StopHealthCheck()
 	}
 	// Clear any pending funcs
@@ -2571,7 +2577,7 @@ func (c *Core) preSeal() error {
 		c.updateLockedUserEntriesCancel = nil
 	}
 
-	if seal, ok := c.seal.(*autoSeal); ok {
+	if seal, ok := c.seal.(autoSeal); ok {
 		seal.StopHealthCheck()
 	}
 

@@ -33,6 +33,15 @@ var (
 	SealHealthTestTimeout           = 1 * time.Minute
 )
 
+type HealthChecker interface {
+	StopHealthCheck()
+	StartHealthCheck()
+}
+
+type KeyUpgrader interface {
+	UpgradeKeys(context.Context) error
+}
+
 // autoSeal is a Seal implementation that contains logic for encrypting and
 // decrypting stored keys via an underlying AutoSealAccess implementation, as
 // well as logic related to recovery keys and barrier config.

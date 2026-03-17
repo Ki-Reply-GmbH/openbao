@@ -20,4 +20,5 @@ type SealAccess interface {
 	RecoveryConfig(context.Context) (*SealConfig, error)
 	VerifyRecoveryKey(context.Context, []byte) error
 	GetAccess() Wrapper
+	RecoveryType() string
 }

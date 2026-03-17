@@ -16,6 +16,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	vaulterrs "github.com/openbao/openbao/vault/errors"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 // GenerateStandardRootTokenStrategy is the strategy used to
@@ -221,7 +222,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 	}
 
 	// Get the seal configuration
-	var config *SealConfig
+	var config *seal.SealConfig
 	var err error
 	if c.seal.RecoveryKeySupported() {
 		config, err = c.seal.RecoveryConfig(ctx)
