@@ -1465,7 +1465,7 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	if migrate && c.migrationInfo == nil {
 		return errors.New("can't perform a seal migration, no migration seal found")
 	}
-	if migrate && c.isRaftUnseal() {
+	if migrate && c.IsRaftUnseal() {
 		return errors.New("can't perform a seal migration while joining a raft cluster")
 	}
 	if !migrate && c.migrationInfo != nil {
@@ -1486,7 +1486,7 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	if err != nil {
 		return err
 	}
-	if !init && !c.isRaftUnseal() {
+	if !init && !c.IsRaftUnseal() {
 		return ErrNotInit
 	}
 
@@ -1526,7 +1526,7 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 		c.migrationInfo.unsealKey = combinedKey
 	}
 
-	if c.isRaftUnseal() {
+	if c.IsRaftUnseal() {
 		return c.unsealWithRaft(combinedKey)
 	}
 	rootKey, err := c.unsealKeyToRootKeyPreUnseal(ctx, sealToUse, combinedKey)

@@ -77,7 +77,7 @@ func (c *Core) Initialized(ctx context.Context) (bool, error) {
 		return init, err
 	}
 
-	if c.isRaftUnseal() {
+	if c.IsRaftUnseal() {
 		return true, nil
 	}
 

@@ -1283,7 +1283,7 @@ func (c *Core) RaftBootstrap(ctx context.Context, onInit bool) error {
 	return nil
 }
 
-func (c *Core) isRaftUnseal() bool {
+func (c *Core) IsRaftUnseal() bool {
 	return c.raftInfo.Load() != nil
 }
 

@@ -70,7 +70,7 @@ type Seal interface {
 	SetCachedRecoveryConfig(*SealConfig)
 	SetRecoveryKey(context.Context, []byte) error
 	VerifyRecoveryKey(context.Context, []byte) error // SealAccess
-	GetAccess() seal.Wrapper                          // SealAccess
+	GetAccess() seal.Wrapper                         // SealAccess
 	GetShamirWrapper() (*seal.ShamirWrapper, error)
 }
 
@@ -216,7 +216,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 
 	// If we are doing a raft unseal we do not want to persist the barrier config
 	// because storage isn't setup yet.
-	if d.core.isRaftUnseal() {
+	if d.core.IsRaftUnseal() {
 		d.config.Store(config.Clone())
 		return nil
 	}
