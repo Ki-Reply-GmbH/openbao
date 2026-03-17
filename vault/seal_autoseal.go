@@ -37,7 +37,7 @@ var (
 // decrypting stored keys via an underlying AutoSealAccess implementation, as
 // well as logic related to recovery keys and barrier config.
 type autoSeal struct {
-	seal.Access
+	seal.Wrapper
 
 	barrierType wrapping.WrapperType
 	core        *Core
@@ -55,9 +55,9 @@ type autoSeal struct {
 // Ensure we are implementing the Seal interface
 var _ Seal = (*autoSeal)(nil)
 
-func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
+func NewAutoSeal(lowLevel seal.Wrapper) (*autoSeal, error) {
 	ret := &autoSeal{
-		Access: lowLevel,
+		Wrapper: lowLevel,
 	}
 
 	// Having the wrapper type in a field is just a convenience since Seal.BarrierType()
@@ -75,8 +75,8 @@ func (d *autoSeal) SealWrapable() bool {
 	return true
 }
 
-func (d *autoSeal) GetAccess() seal.Access {
-	return d.Access
+func (d *autoSeal) GetAccess() seal.Wrapper {
+	return d.Wrapper
 }
 
 func (d *autoSeal) checkCore() error {
@@ -101,7 +101,7 @@ func (d *autoSeal) SetCore(core *Core) {
 }
 
 func (d *autoSeal) Init(ctx context.Context) error {
-	return d.Access.Init(ctx)
+	return d.Wrapper.Init(ctx)
 }
 
 func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
@@ -109,7 +109,7 @@ func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
 }
 
 func (d *autoSeal) Finalize(ctx context.Context) error {
-	return d.Access.Finalize(ctx)
+	return d.Wrapper.Finalize(ctx)
 }
 
 func (d *autoSeal) BarrierType() wrapping.WrapperType {
@@ -131,13 +131,13 @@ func (d *autoSeal) RecoveryKeySupported() bool {
 // SetStoredKeys uses the autoSeal.Access.Encrypts method to wrap the keys.
 // The stored entry does not need to be seal wrapped in this case.
 func (d *autoSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access, keys)
+	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Wrapper, keys)
 }
 
 // GetStoredKeys retrieves the key shares by unwrapping the encrypted key
 // using the autoseal.
 func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access)
+	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Wrapper)
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {

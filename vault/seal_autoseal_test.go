@@ -74,7 +74,7 @@ func (p *phy) Len() int {
 
 func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	core, _, _ := TestCoreUnsealed(t)
-	testSeal, toggleableWrapper := seal.NewTestSeal(nil)
+	testSeal, toggleableWrapper := seal.NewTestSealWrapper(nil)
 
 	var encKeys []string
 	changeKey := func(key string) {

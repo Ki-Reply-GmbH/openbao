@@ -400,7 +400,7 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 				return nil, logical.CodedError(http.StatusInternalServerError, "failed to setup unseal key: %v", err)
 			}
 
-			testseal := NewDefaultSeal(seal.NewAccess(shamirWrapper))
+			testseal := NewDefaultSeal(seal.NewSealWrapper(shamirWrapper))
 			testseal.SetCore(c)
 
 			cfg, err := c.seal.BarrierConfig(ctx)

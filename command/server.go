@@ -464,7 +464,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	info["Seal Type"] = sealType
 
 	var seal vault.Seal
-	defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+	defaultSeal := vault.NewDefaultSeal(vaultseal.NewSealWrapper(vaultseal.NewShamirWrapper()))
 	sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
 	wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &infoKeys, &info, sealLogger)
 	if sealConfigError != nil {
@@ -477,7 +477,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	if wrapper == nil {
 		seal = defaultSeal
 	} else {
-		seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
+		seal, err = vault.NewAutoSeal(vaultseal.NewSealWrapper(wrapper))
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("error creating auto seal: %v", err))
 		}
@@ -2412,7 +2412,7 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 	var barrierWrapper wrapping.Wrapper
 	if c.flagDevAutoSeal {
 		var err error
-		access, _ := vaultseal.NewTestSeal(nil)
+		access, _ := vaultseal.NewTestSealWrapper(nil)
 		barrierSeal, err = vault.NewAutoSeal(access)
 		if err != nil {
 			return nil, nil, nil, nil, nil, err
@@ -2442,7 +2442,7 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 		var seal vault.Seal
 		sealLogger := c.logger.ResetNamed(fmt.Sprintf("seal.%s", sealType))
 		c.allLoggers = append(c.allLoggers, sealLogger)
-		defaultSeal := vault.NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+		defaultSeal := vault.NewDefaultSeal(vaultseal.NewSealWrapper(vaultseal.NewShamirWrapper()))
 		var sealInfoKeys []string
 		sealInfoMap := map[string]string{}
 		wrapper, sealConfigError = configutil.ConfigureWrapper(configSeal, &sealInfoKeys, &sealInfoMap, sealLogger)
@@ -2456,7 +2456,7 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info m
 			seal = defaultSeal
 		} else {
 			var err error
-			seal, err = vault.NewAutoSeal(vaultseal.NewAccess(wrapper))
+			seal, err = vault.NewAutoSeal(vaultseal.NewSealWrapper(wrapper))
 			if err != nil {
 				return nil, nil, nil, nil, nil, err
 			}

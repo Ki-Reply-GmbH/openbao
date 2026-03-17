@@ -24,7 +24,7 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 
 	switch opts.StoredKeys {
 	case seal.StoredKeysSupportedShamirRoot:
-		newSeal := NewDefaultSeal(seal.NewAccess(seal.NewShamirWrapper()))
+		newSeal := NewDefaultSeal(seal.NewSealWrapper(seal.NewShamirWrapper()))
 		// Need StoredShares set or this will look like a legacy shamir seal.
 		newSeal.SetCachedBarrierConfig(&SealConfig{
 			StoredShares:    1,
@@ -36,7 +36,7 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 		t.Fatal("Legacy shamir's seal no longer supported")
 		return nil
 	default:
-		access, _ := seal.NewTestSeal(opts)
+		access, _ := seal.NewTestSealWrapper(opts)
 		seal, err := NewAutoSeal(access)
 		if err != nil {
 			t.Fatal(err)

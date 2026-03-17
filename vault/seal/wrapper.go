@@ -34,52 +34,52 @@ func (s StoredKeysSupport) String() string {
 	}
 }
 
-// Access is the embedded implementation of autoSeal that contains logic
+// Wrapper is the embedded implementation of autoSeal that contains logic
 // specific to encrypting and decrypting data, or in this case keys.
-type Access interface {
+type Wrapper interface {
 	wrapping.Wrapper
 	wrapping.InitFinalizer
 
 	GetWrapper() wrapping.Wrapper
 }
 
-type access struct {
+type wrapper struct {
 	w wrapping.Wrapper
 }
 
-var _ Access = (*access)(nil)
+var _ Wrapper = (*wrapper)(nil)
 
-func NewAccess(w wrapping.Wrapper) Access {
-	return &access{
+func NewSealWrapper(w wrapping.Wrapper) Wrapper {
+	return &wrapper{
 		w: w,
 	}
 }
 
-func (a *access) KeyId(ctx context.Context) (string, error) {
+func (a *wrapper) KeyId(ctx context.Context) (string, error) {
 	return a.w.KeyId(ctx)
 }
 
-func (a *access) SetConfig(ctx context.Context, options ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+func (a *wrapper) SetConfig(ctx context.Context, options ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	return a.w.SetConfig(ctx, options...)
 }
 
-func (a *access) GetWrapper() wrapping.Wrapper {
+func (a *wrapper) GetWrapper() wrapping.Wrapper {
 	return a.w
 }
 
-func (a *access) Init(ctx context.Context, options ...wrapping.Option) error {
+func (a *wrapper) Init(ctx context.Context, options ...wrapping.Option) error {
 	if initWrapper, ok := a.w.(wrapping.InitFinalizer); ok {
 		return initWrapper.Init(ctx, options...)
 	}
 	return nil
 }
 
-func (a *access) Type(ctx context.Context) (wrapping.WrapperType, error) {
+func (a *wrapper) Type(ctx context.Context) (wrapping.WrapperType, error) {
 	return a.w.Type(ctx)
 }
 
 // Encrypt uses the underlying seal to encrypt the plaintext and returns it.
-func (a *access) Encrypt(ctx context.Context, plaintext []byte, options ...wrapping.Option) (blob *wrapping.BlobInfo, err error) {
+func (a *wrapper) Encrypt(ctx context.Context, plaintext []byte, options ...wrapping.Option) (blob *wrapping.BlobInfo, err error) {
 	wTyp, err := a.w.Type(ctx)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func (a *access) Encrypt(ctx context.Context, plaintext []byte, options ...wrapp
 // Decrypt uses the underlying seal to decrypt the cryptotext and returns it.
 // Note that it is possible depending on the wrapper used that both pt and err
 // are populated.
-func (a *access) Decrypt(ctx context.Context, data *wrapping.BlobInfo, options ...wrapping.Option) (pt []byte, err error) {
+func (a *wrapper) Decrypt(ctx context.Context, data *wrapping.BlobInfo, options ...wrapping.Option) (pt []byte, err error) {
 	wTyp, err := a.w.Type(ctx)
 	defer func(now time.Time) {
 		metrics.MeasureSince([]string{"seal", "decrypt", "time"}, now)
@@ -122,7 +122,7 @@ func (a *access) Decrypt(ctx context.Context, data *wrapping.BlobInfo, options .
 	return a.w.Decrypt(ctx, data, options...)
 }
 
-func (a *access) Finalize(ctx context.Context, options ...wrapping.Option) error {
+func (a *wrapper) Finalize(ctx context.Context, options ...wrapping.Option) error {
 	if finalizeWrapper, ok := a.w.(wrapping.InitFinalizer); ok {
 		return finalizeWrapper.Finalize(ctx, options...)
 	}

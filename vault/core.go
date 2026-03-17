@@ -1008,7 +1008,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	if c.seal == nil {
 		wrapper := vaultseal.NewShamirWrapper()
 		wrapper.SetConfig(context.Background(), awskms.WithLogger(c.logger.Named("shamir")))
-		c.seal = NewDefaultSeal(vaultseal.NewAccess(wrapper))
+		c.seal = NewDefaultSeal(vaultseal.NewSealWrapper(wrapper))
 	}
 	c.seal.SetCore(c)
 
@@ -2713,7 +2713,7 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 		case existBarrierSealConfig.Type == wrapping.WrapperTypeShamir.String():
 			// The configured seal is not Shamir, the stored seal config is Shamir.
 			// This is a migration away from Shamir.
-			unwrapSeal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+			unwrapSeal = NewDefaultSeal(vaultseal.NewSealWrapper(vaultseal.NewShamirWrapper()))
 		default:
 			// We know at this point that there is a configured non-Shamir seal,
 			// that it does not match the stored non-Shamir seal config, and that
@@ -2868,7 +2868,7 @@ func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []
 
 	case vaultseal.StoredKeysSupportedShamirRoot:
 		if useTestSeal {
-			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+			testseal := NewDefaultSeal(vaultseal.NewSealWrapper(vaultseal.NewShamirWrapper()))
 			testseal.SetCore(c)
 			cfg, err := seal.BarrierConfig(ctx)
 			if err != nil {

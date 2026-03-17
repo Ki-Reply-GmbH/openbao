@@ -19,7 +19,7 @@ import (
 func TestCore_Init(t *testing.T) {
 	testCoreInitCommon(t, nil, &SealConfig{SecretShares: 5, SecretThreshold: 3}, nil)
 
-	testSeal, _ := seal.NewTestSeal(&seal.TestSealOpts{Name: "transit"})
+	testSeal, _ := seal.NewTestSealWrapper(&seal.TestSealOpts{Name: "transit"})
 	autoSeal, err := NewAutoSeal(testSeal)
 	require.NoError(t, err)
 	testCoreInitCommon(t, autoSeal, &SealConfig{SecretShares: 1, SecretThreshold: 1}, &SealConfig{SecretShares: 0, SecretThreshold: 0})

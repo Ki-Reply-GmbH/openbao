@@ -58,6 +58,6 @@ func (s *SealAccess) ClearCaches(ctx context.Context) {
 	}
 }
 
-func (s *SealAccess) GetAccess() seal.Access {
+func (s *SealAccess) GetAccess() seal.Wrapper {
 	return s.seal.GetAccess()
 }

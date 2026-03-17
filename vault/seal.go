@@ -70,13 +70,13 @@ type Seal interface {
 	SetCachedRecoveryConfig(*SealConfig)
 	SetRecoveryKey(context.Context, []byte) error
 	VerifyRecoveryKey(context.Context, []byte) error // SealAccess
-	GetAccess() seal.Access                          // SealAccess
+	GetAccess() seal.Wrapper                          // SealAccess
 	GetShamirWrapper() (*seal.ShamirWrapper, error)
 }
 
 type defaultSeal struct {
 	core       *Core
-	access     seal.Access
+	access     seal.Wrapper
 	metaPrefix string
 
 	config       atomic.Pointer[SealConfig]
@@ -85,7 +85,7 @@ type defaultSeal struct {
 
 var _ Seal = (*defaultSeal)(nil)
 
-func NewDefaultSeal(lowLevel seal.Access) Seal {
+func NewDefaultSeal(lowLevel seal.Wrapper) Seal {
 	return &defaultSeal{access: lowLevel}
 }
 
@@ -100,11 +100,11 @@ func (d *defaultSeal) checkCore() error {
 	return nil
 }
 
-func (d *defaultSeal) GetAccess() seal.Access {
+func (d *defaultSeal) GetAccess() seal.Wrapper {
 	return d.access
 }
 
-func (d *defaultSeal) SetAccess(access seal.Access) {
+func (d *defaultSeal) SetAccess(access seal.Wrapper) {
 	d.access = access
 }
 
@@ -436,7 +436,7 @@ func (e *ErrDecrypt) Is(target error) bool {
 	return ok || errors.Is(e.Err, target)
 }
 
-func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access, keys [][]byte) error {
+func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Wrapper, keys [][]byte) error {
 	if keys == nil {
 		return errors.New("keys were nil")
 	}
@@ -473,7 +473,7 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix s
 	return nil
 }
 
-func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Access) ([][]byte, error) {
+func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Wrapper) ([][]byte, error) {
 	pe, err := storage.Get(ctx, metaPrefix+StoredBarrierKeysPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch stored keys: %w", err)
