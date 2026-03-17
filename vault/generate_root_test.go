@@ -11,6 +11,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/v2/helper/xor"
+	"github.com/openbao/openbao/vault/seal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,8 +83,8 @@ func TestCore_GenerateRoot_Init(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	testCore_GenerateRoot_Init_Common(t, c)
 
-	bc := &SealConfig{SecretShares: 5, SecretThreshold: 3, StoredShares: 1}
-	rc := &SealConfig{SecretShares: 5, SecretThreshold: 3}
+	bc := &seal.SealConfig{SecretShares: 5, SecretThreshold: 3, StoredShares: 1}
+	rc := &seal.SealConfig{SecretShares: 5, SecretThreshold: 3}
 	c, _, _, _ = TestCoreUnsealedWithConfigs(t, bc, rc)
 	testCore_GenerateRoot_Init_Common(t, c)
 }

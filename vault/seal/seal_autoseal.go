@@ -21,7 +21,6 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/barrier"
-	"github.com/openbao/openbao/vault/seal"
 )
 
 var (
@@ -64,7 +63,7 @@ type autoSeal struct {
 // Ensure we are implementing the Seal interface
 var _ Seal = (*autoSeal)(nil)
 
-func NewAutoSeal(lowLevel seal.Wrapper) (*autoSeal, error) {
+func NewAutoSeal(lowLevel Wrapper) (*autoSeal, error) {
 	ret := &autoSeal{
 		Wrapper: lowLevel,
 	}
@@ -84,7 +83,7 @@ func (d *autoSeal) SealWrapable() bool {
 	return true
 }
 
-func (d *autoSeal) GetAccess() seal.Wrapper {
+func (d *autoSeal) GetAccess() Wrapper {
 	return d.Wrapper
 }
 
@@ -125,12 +124,12 @@ func (d *autoSeal) BarrierType() wrapping.WrapperType {
 	return d.barrierType
 }
 
-func (d *autoSeal) GetShamirWrapper() (*seal.ShamirWrapper, error) {
+func (d *autoSeal) GetShamirWrapper() (*ShamirWrapper, error) {
 	return nil, errors.New("autoSeal does not use a ShamirWrapper")
 }
 
-func (d *autoSeal) StoredKeysSupported() seal.StoredKeysSupport {
-	return seal.StoredKeysSupportedGeneric
+func (d *autoSeal) StoredKeysSupported() StoredKeysSupport {
+	return StoredKeysSupportedGeneric
 }
 
 func (d *autoSeal) RecoveryKeySupported() bool {
@@ -146,11 +145,11 @@ func (d *autoSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
 // GetStoredKeys retrieves the key shares by unwrapping the encrypted key
 // using the autoseal.
 func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical(), d.metaPrefix, d.Wrapper)
+	return readStoredKeys(ctx, d.core.Physical(), d.metaPrefix, d.Wrapper)
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
-	pe, err := d.core.physical().Get(ctx, StoredBarrierKeysPath)
+	pe, err := d.core.Physical().Get(ctx, StoredBarrierKeysPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch stored keys: %w", err)
 	}
@@ -427,7 +426,7 @@ func (d *autoSeal) RecoveryKey(ctx context.Context) ([]byte, error) {
 }
 
 func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
-	pe, err := d.core.Physical().Get(ctx, d.metaPrefix+recoveryKeyPath)
+	pe, err := d.core.Physical().Get(ctx, d.metaPrefix+RecoveryKeyPath)
 	if err != nil {
 		d.logger.Error("failed to read recovery key", "error", err)
 		return nil, fmt.Errorf("failed to read recovery key: %w", err)

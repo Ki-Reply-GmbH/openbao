@@ -142,7 +142,7 @@ func testVaultServerAllBackends(tb testing.TB) (*api.Client, func()) {
 // the function returns a client, the recovery keys, and a closer function
 func testVaultServerAutoUnseal(tb testing.TB) (*api.Client, []string, func()) {
 	testSeal, _ := seal.NewTestSealWrapper(nil)
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := seal.NewAutoSeal(testSeal)
 	if err != nil {
 		tb.Fatal("unable to create autoseal", err)
 	}
@@ -155,7 +155,7 @@ func testVaultServerUnseal(tb testing.TB) (*api.Client, []string, func()) {
 	return testVaultServerUnsealWithKVVersionWithSeal(tb, "1", nil)
 }
 
-func testVaultServerUnsealWithKVVersionWithSeal(tb testing.TB, kvVersion string, seal vault.Seal) (*api.Client, []string, func()) {
+func testVaultServerUnsealWithKVVersionWithSeal(tb testing.TB, kvVersion string, seal seal.Seal) (*api.Client, []string, func()) {
 	tb.Helper()
 	logger := log.NewInterceptLogger(&log.LoggerOptions{
 		Output:     log.DefaultOutput,
@@ -204,7 +204,7 @@ func testVaultServerCoreConfig(tb testing.TB, coreConfig *vault.CoreConfig) (*ap
 
 func testVaultServerUnauthedEndpointsEnabledWithAutoseal(tb testing.TB) (*api.Client, []string, func()) {
 	testSeal, _ := seal.NewTestSealWrapper(nil)
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := seal.NewAutoSeal(testSeal)
 	if err != nil {
 		tb.Fatal("unable to create autoseal", err)
 	}

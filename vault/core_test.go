@@ -16,6 +16,7 @@ import (
 	be "github.com/openbao/openbao/vault/backend"
 	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/routing"
+	"github.com/openbao/openbao/vault/seal"
 
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
@@ -342,7 +343,7 @@ func TestNewCore_badRedirectAddr(t *testing.T) {
 }
 
 func TestSealConfig_Invalid(t *testing.T) {
-	s := &SealConfig{
+	s := &seal.SealConfig{
 		SecretShares:    2,
 		SecretThreshold: 1,
 	}
@@ -380,7 +381,7 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	sealConf := &SealConfig{
+	sealConf := &seal.SealConfig{
 		SecretShares:    5,
 		SecretThreshold: 3,
 	}
@@ -559,7 +560,7 @@ func TestCore_Unseal_Single(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	sealConf := &SealConfig{
+	sealConf := &seal.SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
@@ -598,7 +599,7 @@ func TestCore_Unseal_Single(t *testing.T) {
 
 func TestCore_Route_Sealed(t *testing.T) {
 	c := TestCore(t)
-	sealConf := &SealConfig{
+	sealConf := &seal.SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}

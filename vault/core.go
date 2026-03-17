@@ -2892,7 +2892,7 @@ func (c *Core) unsealKeyToRootKey(ctx context.Context, s seal.Seal, combinedKey 
 		}
 		err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
 		if err != nil {
-			return nil, &vaulterrs.ErrInvalidKey{Reason: fmt.Sprintf("failed to setup unseal key: %w", err)}
+			return nil, &vaulterrs.ErrInvalidKey{Reason: fmt.Sprintf("failed to setup unseal key: %v", err)}
 		}
 		storedKeys, err := s.GetStoredKeys(ctx)
 		if storedKeys == nil && err == nil && allowMissing {

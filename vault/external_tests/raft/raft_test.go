@@ -43,7 +43,7 @@ type RaftClusterOpts struct {
 	PhysicalFactoryConfig          map[string]interface{}
 	EnableResponseHeaderRaftNodeID bool
 	NumCores                       int
-	Seal                           vault.Seal
+	Seal                           vaultseal.Seal
 	VersionMap                     map[int]string
 	EffectiveSDKVersionMap         map[int]string
 }
@@ -508,7 +508,7 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 	t.Parallel()
 
 	seal, setErr := vaultseal.NewToggleableTestSeal(nil)
-	autoSeal, err := vault.NewAutoSeal(seal)
+	autoSeal, err := vaultseal.NewAutoSeal(seal)
 	if err != nil {
 		t.Fatal(err)
 	}

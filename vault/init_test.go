@@ -17,15 +17,15 @@ import (
 )
 
 func TestCore_Init(t *testing.T) {
-	testCoreInitCommon(t, nil, &SealConfig{SecretShares: 5, SecretThreshold: 3}, nil)
+	testCoreInitCommon(t, nil, &seal.SealConfig{SecretShares: 5, SecretThreshold: 3}, nil)
 
 	testSeal, _ := seal.NewTestSealWrapper(&seal.TestSealOpts{Name: "transit"})
-	autoSeal, err := NewAutoSeal(testSeal)
+	autoSeal, err := seal.NewAutoSeal(testSeal)
 	require.NoError(t, err)
-	testCoreInitCommon(t, autoSeal, &SealConfig{SecretShares: 1, SecretThreshold: 1}, &SealConfig{SecretShares: 0, SecretThreshold: 0})
+	testCoreInitCommon(t, autoSeal, &seal.SealConfig{SecretShares: 1, SecretThreshold: 1}, &seal.SealConfig{SecretShares: 0, SecretThreshold: 0})
 }
 
-func testCoreNewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
+func testCoreNewTestCore(t *testing.T, seal seal.Seal) (*Core, *CoreConfig) {
 	logger := logging.NewVaultLogger(log.Trace)
 	inm, err := inmem.NewInmem(nil, logger)
 	require.NoError(t, err)
@@ -51,7 +51,7 @@ func testCoreNewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
 	return c, conf
 }
 
-func testCoreInitCommon(t *testing.T, seal Seal, barrierConf, recoveryConf *SealConfig) {
+func testCoreInitCommon(t *testing.T, seal seal.Seal, barrierConf, recoveryConf *seal.SealConfig) {
 	c, conf := testCoreNewTestCore(t, seal)
 	ctx := namespace.RootContext(t.Context())
 	init, err := c.Initialized(ctx)

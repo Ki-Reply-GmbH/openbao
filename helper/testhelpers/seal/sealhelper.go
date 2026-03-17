@@ -60,7 +60,7 @@ func (tss *TransitSealServer) MakeKey(t testing.T, key string) {
 	}
 }
 
-func (tss *TransitSealServer) MakeSeal(t testing.T, key string) (vault.Seal, error) {
+func (tss *TransitSealServer) MakeSeal(t testing.T, key string) (seal.Seal, error) {
 	client := tss.Cores[0].Client
 	wrapperConfig := map[string]string{
 		"address":     client.Address(),
@@ -74,5 +74,5 @@ func (tss *TransitSealServer) MakeSeal(t testing.T, key string) (vault.Seal, err
 		t.Fatalf("error setting wrapper config: %v", err)
 	}
 
-	return vault.NewAutoSeal(seal.NewSealWrapper(transitSeal))
+	return seal.NewAutoSeal(seal.NewSealWrapper(transitSeal))
 }

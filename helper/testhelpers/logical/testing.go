@@ -22,6 +22,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 // TestEnvVar must be set to a non-empty value for acceptance tests to run.
@@ -201,7 +202,7 @@ func Test(tt TestT, c TestCase) {
 	ctx := namespace.RootContext(context.Background())
 	// Initialize the core
 	init, err := core.Initialize(ctx, &vault.InitParams{
-		BarrierConfig: &vault.SealConfig{
+		BarrierConfig: &seal.SealConfig{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		},

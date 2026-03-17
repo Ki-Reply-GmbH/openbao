@@ -163,14 +163,14 @@ func TestSysUnseal(t *testing.T) {
 	}
 }
 
-func subtestBadSingleKey(t *testing.T, seal vault.Seal) {
-	core := vault.TestCoreWithSeal(t, seal, false)
+func subtestBadSingleKey(t *testing.T, s seal.Seal) {
+	core := vault.TestCoreWithSeal(t, s, false)
 	_, err := core.Initialize(namespace.RootContext(t.Context()), &vault.InitParams{
-		BarrierConfig: &vault.SealConfig{
+		BarrierConfig: &seal.SealConfig{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		},
-		RecoveryConfig: &vault.SealConfig{
+		RecoveryConfig: &seal.SealConfig{
 			SecretShares:    1,
 			SecretThreshold: 1,
 		},
@@ -246,16 +246,16 @@ func subtestBadSingleKey(t *testing.T, seal vault.Seal) {
 	}
 }
 
-func subtestBadMultiKey(t *testing.T, seal vault.Seal) {
+func subtestBadMultiKey(t *testing.T, s seal.Seal) {
 	numKeys := 3
 
-	core := vault.TestCoreWithSeal(t, seal, false)
+	core := vault.TestCoreWithSeal(t, s, false)
 	_, err := core.Initialize(namespace.RootContext(t.Context()), &vault.InitParams{
-		BarrierConfig: &vault.SealConfig{
+		BarrierConfig: &seal.SealConfig{
 			SecretShares:    numKeys,
 			SecretThreshold: numKeys,
 		},
-		RecoveryConfig: &vault.SealConfig{
+		RecoveryConfig: &seal.SealConfig{
 			SecretShares:    numKeys,
 			SecretThreshold: numKeys,
 		},

@@ -155,7 +155,7 @@ func TestSysInit_Put_ValidateParams(t *testing.T) {
 
 func TestSysInit_Put_AutoUnseal(t *testing.T) {
 	testSeal, _ := seal.NewTestSealWrapper(&seal.TestSealOpts{Name: "transit"})
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := seal.NewAutoSeal(testSeal)
 	require.NoError(t, err)
 
 	// Create the transit server.
@@ -196,7 +196,7 @@ func TestSysInit_Put_AutoUnseal(t *testing.T) {
 
 func TestSysInit_Put_ValidateParams_AutoUnseal(t *testing.T) {
 	testSeal, _ := seal.NewTestSealWrapper(&seal.TestSealOpts{Name: "transit"})
-	autoSeal, err := vault.NewAutoSeal(testSeal)
+	autoSeal, err := seal.NewAutoSeal(testSeal)
 	if err != nil {
 		t.Fatal(err)
 	}
