@@ -61,6 +61,7 @@ import (
 	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/openbao/openbao/vault/routing"
+	"github.com/openbao/openbao/vault/seal"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	"google.golang.org/grpc"
@@ -2592,8 +2593,8 @@ func (c *Core) SetActiveNodeReplicationState(val consts.ReplicationState) {
 	c.activeNodeReplicationState.Store(uint32(val))
 }
 
-func (c *Core) SealAccess() *SealAccess {
-	return NewSealAccess(c.seal)
+func (c *Core) SealAccess() seal.SealAccess {
+	return c.seal
 }
 
 // StorageType returns a string equal to the storage configuration's type.
