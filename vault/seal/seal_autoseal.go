@@ -40,7 +40,7 @@ type autoSeal struct {
 	Wrapper
 
 	barrierType wrapping.WrapperType
-	core        *Core
+	core        core
 	logger      log.Logger
 	metaPrefix  string
 
@@ -86,7 +86,7 @@ func (d *autoSeal) checkCore() error {
 	return nil
 }
 
-func (d *autoSeal) SetCore(core *Core) {
+func (d *autoSeal) SetCore(core core) {
 	d.core = core
 	if d.logger == nil {
 		d.logger = d.core.Logger().Named("autoseal")
@@ -97,7 +97,7 @@ func (d *autoSeal) SetCore(core *Core) {
 	// plain text right on the physical storage, as is the case for the
 	// root namespace. For per-namespace seals, this can be overridden by
 	// [Seal.SetConfigAccess].
-	d.configAccess = &directStorageAccess{physical: core.physical}
+	d.configAccess = &directStorageAccess{physical: core.Physical()}
 }
 
 func (d *autoSeal) Init(ctx context.Context) error {
@@ -131,17 +131,17 @@ func (d *autoSeal) RecoveryKeySupported() bool {
 // SetStoredKeys uses the autoSeal.Access.Encrypts method to wrap the keys.
 // The stored entry does not need to be seal wrapped in this case.
 func (d *autoSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Wrapper, keys)
+	return writeStoredKeys(ctx, d.core.Physical(), d.metaPrefix, d.Wrapper, keys)
 }
 
 // GetStoredKeys retrieves the key shares by unwrapping the encrypted key
 // using the autoseal.
 func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Wrapper)
+	return readStoredKeys(ctx, d.core.physical(), d.metaPrefix, d.Wrapper)
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
-	pe, err := d.core.physical.Get(ctx, StoredBarrierKeysPath)
+	pe, err := d.core.physical().Get(ctx, StoredBarrierKeysPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch stored keys: %w", err)
 	}
@@ -405,7 +405,7 @@ func (d *autoSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 		Value: value,
 	}
 
-	if err := d.core.physical.Put(ctx, be); err != nil {
+	if err := d.core.Physical().Put(ctx, be); err != nil {
 		d.logger.Error("failed to write recovery key", "error", err)
 		return fmt.Errorf("failed to write recovery key: %w", err)
 	}
@@ -418,7 +418,7 @@ func (d *autoSeal) RecoveryKey(ctx context.Context) ([]byte, error) {
 }
 
 func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
-	pe, err := d.core.physical.Get(ctx, d.metaPrefix+recoveryKeyPath)
+	pe, err := d.core.Physical().Get(ctx, d.metaPrefix+recoveryKeyPath)
 	if err != nil {
 		d.logger.Error("failed to read recovery key", "error", err)
 		return nil, fmt.Errorf("failed to read recovery key: %w", err)
@@ -442,7 +442,7 @@ func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
 }
 
 func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
-	pe, err := d.core.physical.Get(ctx, d.metaPrefix+recoveryKeyPath)
+	pe, err := d.core.Physical().Get(ctx, d.metaPrefix+recoveryKeyPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch recovery key: %w", err)
 	}
@@ -484,7 +484,7 @@ func (d *autoSeal) StartHealthCheck() {
 	healthCheck := time.NewTicker(SealHealthTestIntervalNominal)
 	d.healthCheckStop = make(chan struct{})
 	healthCheckStop := d.healthCheckStop
-	ctx := d.core.activeContext
+	ctx := d.core.ActiveContext()
 
 	go func() {
 		lastTestOk := true

@@ -4161,3 +4161,7 @@ func (c *Core) RedirectAddr() string {
 func (c *Core) UnsafeCrossNamespaceIdentity() bool {
 	return c.unsafeCrossNamespaceIdentity
 }
+
+func (c *Core) Physical() physical.Backend {
+	return c.physical
+}

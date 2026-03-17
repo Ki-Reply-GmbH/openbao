@@ -15,6 +15,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/armon/go-metrics"
+	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 
@@ -47,9 +49,18 @@ const (
 	RecoveryTypeShamir      = "shamir"
 )
 
+type core interface {
+	Physical() physical.Backend
+	Logger() hclog.Logger
+	AddLogger(hclog.Logger)
+	IsRaftUnseal() bool
+	ActiveContext() context.Context
+	MetricSink() metrics.MetricSink
+}
+
 type Seal interface {
 	SealAccess
-	SetCore(*Core)
+	SetCore(core)
 	Init(context.Context) error
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
@@ -68,7 +79,7 @@ type Seal interface {
 }
 
 type defaultSeal struct {
-	core       *Core
+	core       core
 	access     Wrapper
 	metaPrefix string
 
@@ -101,13 +112,13 @@ func (d *defaultSeal) SetAccess(access Wrapper) {
 	d.access = access
 }
 
-func (d *defaultSeal) SetCore(core *Core) {
+func (d *defaultSeal) SetCore(core core) {
 	d.core = core
 	// By default, we assume that seal config information is stored in
 	// plain text right on the physical storage, as is the case for the
 	// root namespace. For per-namespace seals, this can be overridden by
 	// [Seal.SetConfigAccess].
-	d.configAccess = &directStorageAccess{physical: core.physical}
+	d.configAccess = &directStorageAccess{physical: core.Physical()}
 }
 
 func (d *defaultSeal) Init(ctx context.Context) error {
@@ -135,11 +146,11 @@ func (d *defaultSeal) RecoveryKeySupported() bool {
 }
 
 func (d *defaultSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access, keys)
+	return writeStoredKeys(ctx, d.core.Physical(), d.metaPrefix, d.access, keys)
 }
 
 func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.access)
+	return readStoredKeys(ctx, d.core.Physical(), d.metaPrefix, d.access)
 }
 
 func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
@@ -155,13 +166,13 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	// Fetch the seal configuration
 	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
 	if err != nil {
-		d.core.logger.Error("failed to read seal configuration", "error", err)
+		d.core.Logger().Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
 	}
 
 	// If the seal configuration is missing, we are not initialized
 	if valueBytes == nil {
-		d.core.logger.Info("seal configuration missing, not initialized")
+		d.core.Logger().Info("seal configuration missing, not initialized")
 		return nil, nil
 	}
 
@@ -169,7 +180,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 
 	// Decode the barrier entry
 	if err := jsonutil.DecodeJSON(valueBytes, &conf); err != nil {
-		d.core.logger.Error("failed to decode seal configuration", "error", err)
+		d.core.Logger().Error("failed to decode seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to decode seal configuration: %w", err)
 	}
 
@@ -179,13 +190,13 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 		conf.Type = d.BarrierType().String()
 	case d.BarrierType().String():
 	default:
-		d.core.logger.Error("barrier seal type does not match expected type", "barrier_seal_type", conf.Type, "loaded_seal_type", d.BarrierType())
+		d.core.Logger().Error("barrier seal type does not match expected type", "barrier_seal_type", conf.Type, "loaded_seal_type", d.BarrierType())
 		return nil, fmt.Errorf("barrier seal type of %q does not match expected type of %q", conf.Type, d.BarrierType())
 	}
 
 	// Check for a valid seal configuration
 	if err := conf.Validate(); err != nil {
-		d.core.logger.Error("invalid seal configuration", "error", err)
+		d.core.Logger().Error("invalid seal configuration", "error", err)
 		return nil, fmt.Errorf("seal validation failed: %w", err)
 	}
 
@@ -209,7 +220,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 
 	// If we are doing a raft unseal we do not want to persist the barrier config
 	// because storage isn't setup yet.
-	if d.core.isRaftUnseal() {
+	if d.core.IsRaftUnseal() {
 		d.config.Store(config.Clone())
 		return nil
 	}
@@ -221,7 +232,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 	}
 
 	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
-		d.core.logger.Error("failed to write seal configuration", "error", err)
+		d.core.Logger().Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
 
