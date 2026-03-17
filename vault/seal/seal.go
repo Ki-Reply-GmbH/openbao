@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package seal
 
 import (
 	"bytes"
@@ -22,7 +22,6 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/vault/barrier"
-	"github.com/openbao/openbao/vault/seal"
 )
 
 const (
@@ -53,7 +52,7 @@ type Seal interface {
 	Init(context.Context) error
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
-	StoredKeysSupported() seal.StoredKeysSupport // SealAccess
+	StoredKeysSupported() StoredKeysSupport // SealAccess
 	SealWrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
@@ -70,13 +69,13 @@ type Seal interface {
 	SetCachedRecoveryConfig(*SealConfig)
 	SetRecoveryKey(context.Context, []byte) error
 	VerifyRecoveryKey(context.Context, []byte) error // SealAccess
-	GetAccess() seal.Wrapper                         // SealAccess
-	GetShamirWrapper() (*seal.ShamirWrapper, error)
+	GetAccess() Wrapper                              // SealAccess
+	GetShamirWrapper() (*ShamirWrapper, error)
 }
 
 type defaultSeal struct {
 	core       *Core
-	access     seal.Wrapper
+	access     Wrapper
 	metaPrefix string
 
 	config       atomic.Pointer[SealConfig]
@@ -85,7 +84,7 @@ type defaultSeal struct {
 
 var _ Seal = (*defaultSeal)(nil)
 
-func NewDefaultSeal(lowLevel seal.Wrapper) Seal {
+func NewDefaultSeal(lowLevel Wrapper) Seal {
 	return &defaultSeal{access: lowLevel}
 }
 
@@ -100,11 +99,11 @@ func (d *defaultSeal) checkCore() error {
 	return nil
 }
 
-func (d *defaultSeal) GetAccess() seal.Wrapper {
+func (d *defaultSeal) GetAccess() Wrapper {
 	return d.access
 }
 
-func (d *defaultSeal) SetAccess(access seal.Wrapper) {
+func (d *defaultSeal) SetAccess(access Wrapper) {
 	d.access = access
 }
 
@@ -133,8 +132,8 @@ func (d *defaultSeal) BarrierType() wrapping.WrapperType {
 	return wrapping.WrapperTypeShamir
 }
 
-func (d *defaultSeal) StoredKeysSupported() seal.StoredKeysSupport {
-	return seal.StoredKeysSupportedShamirRoot
+func (d *defaultSeal) StoredKeysSupported() StoredKeysSupport {
+	return StoredKeysSupportedShamirRoot
 }
 
 func (d *defaultSeal) RecoveryKeySupported() bool {
@@ -216,7 +215,7 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 
 	// If we are doing a raft unseal we do not want to persist the barrier config
 	// because storage isn't setup yet.
-	if d.core.IsRaftUnseal() {
+	if d.core.isRaftUnseal() {
 		d.config.Store(config.Clone())
 		return nil
 	}
@@ -272,10 +271,10 @@ func (d *defaultSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 	return errors.New("recovery not supported")
 }
 
-func (d *defaultSeal) GetShamirWrapper() (*seal.ShamirWrapper, error) {
+func (d *defaultSeal) GetShamirWrapper() (*ShamirWrapper, error) {
 	// defaultSeal is meant to be for Shamir seals, so it should always have a ShamirWrapper.
 	// Nonetheless, NewDefaultSeal does not check, so let's play it safe.
-	w, ok := d.GetAccess().GetWrapper().(*seal.ShamirWrapper)
+	w, ok := d.GetAccess().GetWrapper().(*ShamirWrapper)
 	if !ok {
 		return nil, fmt.Errorf("expected defaultSeal to have a ShamirWrapper, but found a %T instead", d.GetAccess().GetWrapper())
 	}
@@ -436,7 +435,7 @@ func (e *ErrDecrypt) Is(target error) bool {
 	return ok || errors.Is(e.Err, target)
 }
 
-func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Wrapper, keys [][]byte) error {
+func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor Wrapper, keys [][]byte) error {
 	if keys == nil {
 		return errors.New("keys were nil")
 	}
@@ -473,7 +472,7 @@ func writeStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix s
 	return nil
 }
 
-func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor seal.Wrapper) ([][]byte, error) {
+func readStoredKeys(ctx context.Context, storage physical.Backend, metaPrefix string, encryptor Wrapper) ([][]byte, error) {
 	pe, err := storage.Get(ctx, metaPrefix+StoredBarrierKeysPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch stored keys: %w", err)

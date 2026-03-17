@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package seal
 
 import (
 	"bytes"
@@ -25,19 +25,19 @@ import (
 )
 
 var (
-	autoSealUnavailableDuration = []string{"seal", "unreachable", "time"}
+	AutoSealUnavailableDuration = []string{"seal", "unreachable", "time"}
 
 	// vars for unit testings
-	sealHealthTestIntervalNominal   = 10 * time.Minute
-	sealHealthTestIntervalUnhealthy = 1 * time.Minute
-	sealHealthTestTimeout           = 1 * time.Minute
+	SealHealthTestIntervalNominal   = 10 * time.Minute
+	SealHealthTestIntervalUnhealthy = 1 * time.Minute
+	SealHealthTestTimeout           = 1 * time.Minute
 )
 
 // autoSeal is a Seal implementation that contains logic for encrypting and
 // decrypting stored keys via an underlying AutoSealAccess implementation, as
 // well as logic related to recovery keys and barrier config.
 type autoSeal struct {
-	seal.Wrapper
+	Wrapper
 
 	barrierType wrapping.WrapperType
 	core        *Core
@@ -481,7 +481,7 @@ func (d *autoSeal) StartHealthCheck() {
 	d.hcLock.Lock()
 	defer d.hcLock.Unlock()
 
-	healthCheck := time.NewTicker(sealHealthTestIntervalNominal)
+	healthCheck := time.NewTicker(SealHealthTestIntervalNominal)
 	d.healthCheckStop = make(chan struct{})
 	healthCheckStop := d.healthCheckStop
 	ctx := d.core.activeContext
@@ -493,10 +493,10 @@ func (d *autoSeal) StartHealthCheck() {
 		fail := func(msg string, args ...interface{}) {
 			d.logger.Warn(msg, args...)
 			if lastTestOk {
-				healthCheck.Reset(sealHealthTestIntervalUnhealthy)
+				healthCheck.Reset(SealHealthTestIntervalUnhealthy)
 			}
 			lastTestOk = false
-			d.core.MetricSink().SetGauge(autoSealUnavailableDuration, float32(time.Since(lastSeenOk).Milliseconds()))
+			d.core.MetricSink().SetGauge(AutoSealUnavailableDuration, float32(time.Since(lastSeenOk).Milliseconds()))
 		}
 		for {
 			select {
@@ -508,7 +508,7 @@ func (d *autoSeal) StartHealthCheck() {
 				return
 			case t := <-healthCheck.C:
 				func() {
-					ctx, cancel := context.WithTimeout(ctx, sealHealthTestTimeout)
+					ctx, cancel := context.WithTimeout(ctx, SealHealthTestTimeout)
 					defer cancel()
 
 					testVal := fmt.Sprintf("Heartbeat %d", mathrand.Intn(1000))
@@ -518,7 +518,7 @@ func (d *autoSeal) StartHealthCheck() {
 						fail("failed to encrypt seal health test value, seal backend may be unreachable", "error", err)
 					} else {
 						func() {
-							ctx, cancel := context.WithTimeout(ctx, sealHealthTestTimeout)
+							ctx, cancel := context.WithTimeout(ctx, SealHealthTestTimeout)
 							defer cancel()
 							plaintext, err := d.Decrypt(ctx, ciphertext, nil)
 							if err != nil {
@@ -530,11 +530,11 @@ func (d *autoSeal) StartHealthCheck() {
 								d.logger.Debug("seal health test passed")
 								if !lastTestOk {
 									d.logger.Info("seal backend is now healthy again", "downtime", t.Sub(lastSeenOk).String())
-									healthCheck.Reset(sealHealthTestIntervalNominal)
+									healthCheck.Reset(SealHealthTestIntervalNominal)
 								}
 								lastTestOk = true
 								lastSeenOk = t
-								d.core.MetricSink().SetGauge(autoSealUnavailableDuration, 0)
+								d.core.MetricSink().SetGauge(AutoSealUnavailableDuration, 0)
 							}
 						}()
 					}

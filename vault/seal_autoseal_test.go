@@ -85,7 +85,7 @@ func TestAutoSeal_UpgradeKeys(t *testing.T) {
 	// Set initial encryption key.
 	changeKey("kaz")
 
-	autoSeal, err := NewAutoSeal(testSeal)
+	autoSeal, err := seal.NewAutoSeal(testSeal)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,9 +193,9 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 	core, _, _ := TestCoreUnsealedWithConfig(t, &CoreConfig{
 		MetricSink: metricsutil.NewClusterMetricSink("", inmemSink),
 	})
-	sealHealthTestIntervalNominal = 10 * time.Millisecond
-	sealHealthTestIntervalUnhealthy = 10 * time.Millisecond
-	autoSeal, err := NewAutoSeal(testSealAccess)
+	seal.SealHealthTestIntervalNominal = 10 * time.Millisecond
+	seal.SealHealthTestIntervalUnhealthy = 10 * time.Millisecond
+	autoSeal, err := seal.NewAutoSeal(testSealAccess)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestAutoSeal_HealthCheck(t *testing.T) {
 	defer autoSeal.StopHealthCheck()
 	setErr(errors.New("disconnected"))
 
-	asu := strings.Join(autoSealUnavailableDuration, ".") + ";cluster=" + core.clusterName
+	asu := strings.Join(seal.AutoSealUnavailableDuration, ".") + ";cluster=" + core.clusterName
 	tries := 10
 	for ; tries > 0; tries-- {
 		intervals := inmemSink.Data()

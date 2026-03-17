@@ -1,14 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package seal
 
 import (
 	"context"
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-
-	"github.com/openbao/openbao/vault/seal"
 )
 
 // SealAccess is a wrapper around Seal that exposes accessor methods
@@ -22,7 +20,7 @@ func NewSealAccess(seal Seal) *SealAccess {
 	return &SealAccess{seal: seal}
 }
 
-func (s *SealAccess) StoredKeysSupported() seal.StoredKeysSupport {
+func (s *SealAccess) StoredKeysSupported() StoredKeysSupport {
 	return s.seal.StoredKeysSupported()
 }
 
@@ -58,6 +56,6 @@ func (s *SealAccess) ClearCaches(ctx context.Context) {
 	}
 }
 
-func (s *SealAccess) GetAccess() seal.Wrapper {
+func (s *SealAccess) GetAccess() Wrapper {
 	return s.seal.GetAccess()
 }

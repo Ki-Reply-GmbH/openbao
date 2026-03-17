@@ -13,7 +13,7 @@ import (
 	"github.com/openbao/openbao/vault/seal"
 )
 
-func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
+func NewTestSeal(t testing.T, opts *seal.TestSealOpts) seal.Seal {
 	t.Helper()
 	if opts == nil {
 		opts = &seal.TestSealOpts{}
@@ -24,9 +24,9 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 
 	switch opts.StoredKeys {
 	case seal.StoredKeysSupportedShamirRoot:
-		newSeal := NewDefaultSeal(seal.NewSealWrapper(seal.NewShamirWrapper()))
+		newSeal := seal.NewDefaultSeal(seal.NewSealWrapper(seal.NewShamirWrapper()))
 		// Need StoredShares set or this will look like a legacy shamir seal.
-		newSeal.SetCachedBarrierConfig(&SealConfig{
+		newSeal.SetCachedBarrierConfig(&seal.SealConfig{
 			StoredShares:    1,
 			SecretThreshold: 1,
 			SecretShares:    1,
@@ -37,7 +37,7 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 		return nil
 	default:
 		access, _ := seal.NewTestSealWrapper(opts)
-		seal, err := NewAutoSeal(access)
+		seal, err := seal.NewAutoSeal(access)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -45,7 +45,7 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 	}
 }
 
-func TestCoreUnsealedWithConfigs(t testing.T, barrierConf, recoveryConf *SealConfig) (*Core, [][]byte, [][]byte, string) {
+func TestCoreUnsealedWithConfigs(t testing.T, barrierConf, recoveryConf *seal.SealConfig) (*Core, [][]byte, [][]byte, string) {
 	t.Helper()
 	opts := &seal.TestSealOpts{}
 	if recoveryConf == nil {
@@ -54,7 +54,7 @@ func TestCoreUnsealedWithConfigs(t testing.T, barrierConf, recoveryConf *SealCon
 	return TestCoreUnsealedWithConfigSealOpts(t, barrierConf, recoveryConf, opts)
 }
 
-func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *SealConfig, sealOpts *seal.TestSealOpts) (*Core, [][]byte, [][]byte, string) {
+func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *seal.SealConfig, sealOpts *seal.TestSealOpts) (*Core, [][]byte, [][]byte, string) {
 	t.Helper()
 	seal := NewTestSeal(t, sealOpts)
 	core := TestCoreWithSeal(t, seal, false)
