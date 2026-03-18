@@ -200,18 +200,13 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 	// which means both that the shares will be different *AND* there would
 	// need to be a way to actually allow fetching of the generated keys by
 	// operators.
-	if c.SealAccess().StoredKeysSupported() == seal.StoredKeysSupportedGeneric {
+	if c.SealAccess().BarrierType() != seal.WrapperTypeShamir {
 		if len(barrierConfig.PGPKeys) > 0 {
-			return nil, errors.New("PGP keys not supported when storing shares")
+			return nil, errors.New("PGP keys not supported when using auto unseal")
 		}
 		barrierConfig.SecretShares = 1
 		barrierConfig.SecretThreshold = 1
-		if barrierConfig.StoredShares != 1 {
-			c.Logger().Warn("stored keys supported on init, forcing shares/threshold to 1")
-		}
 	}
-
-	barrierConfig.StoredShares = 1
 
 	// Check if the seal configuration is valid
 	if err := barrierConfig.Validate(); err != nil {
@@ -327,7 +322,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 	var sealKey []byte
 	var sealKeyShares [][]byte
 
-	if barrierConfig.StoredShares == 1 && c.seal.BarrierType() == wrapping.WrapperTypeShamir {
+	if c.seal.BarrierType() == wrapping.WrapperTypeShamir {
 		sealKey, sealKeyShares, err = c.generateShares(barrierConfig)
 		if err != nil {
 			c.logger.Error("error generating shares", "error", err)
@@ -341,7 +336,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		return nil, fmt.Errorf("failed to initialize barrier: %w", err)
 	}
 	if c.logger.IsInfo() {
-		c.logger.Info("security barrier initialized", "stored", barrierConfig.StoredShares, "shares", barrierConfig.SecretShares, "threshold", barrierConfig.SecretThreshold)
+		c.logger.Info("security barrier initialized", "shares", barrierConfig.SecretShares, "threshold", barrierConfig.SecretThreshold)
 	}
 
 	// Unseal the barrier
@@ -370,10 +365,9 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		SecretShares: [][]byte{},
 	}
 
-	// If we are storing shares, pop them out of the returned results and push
-	// them through the seal
-	switch c.seal.StoredKeysSupported() {
-	case seal.StoredKeysSupportedShamirRoot:
+	// Pop generated shares out of the returned results and push through the seal.
+	switch c.seal.BarrierType() {
+	case seal.WrapperTypeShamir:
 		keysToStore := [][]byte{barrierKey}
 		shamirWrapper, err := c.seal.GetShamirWrapper()
 		if err != nil {
@@ -388,14 +382,12 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
 		results.SecretShares = sealKeyShares
-	case seal.StoredKeysSupportedGeneric:
+	default:
 		keysToStore := [][]byte{barrierKey}
 		if err := c.seal.SetStoredKeys(ctx, keysToStore); err != nil {
 			c.logger.Error("failed to store keys", "error", err)
 			return nil, fmt.Errorf("failed to store keys: %w", err)
 		}
-	default:
-		return nil, errors.New("unsupported seal type")
 	}
 
 	// Perform initial setup
