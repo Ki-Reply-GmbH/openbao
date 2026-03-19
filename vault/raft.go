@@ -810,7 +810,7 @@ func (c *Core) getRaftChallenge(leaderInfo *raft.LeaderJoinInfo) (*raftInformati
 		return nil, errors.New("could not retrieve raft bootstrap package")
 	}
 
-	var sealConfig SealConfig
+	var sealConfig seal.SealConfig
 	err = mapstructure.Decode(secret.Data["seal_config"], &sealConfig)
 	if err != nil {
 		return nil, err
@@ -1135,7 +1135,7 @@ func (c *Core) isRaftHAOnly() bool {
 	return isRaftHA && !isRaftStorage
 }
 
-func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Access, raftInfo *raftInformation) error {
+func (c *Core) joinRaftSendAnswer(ctx context.Context, sealAccess seal.Wrapper, raftInfo *raftInformation) error {
 	if raftInfo.challenge == nil {
 		return errors.New("raft challenge is nil")
 	}
@@ -1283,7 +1283,7 @@ func (c *Core) RaftBootstrap(ctx context.Context, onInit bool) error {
 	return nil
 }
 
-func (c *Core) isRaftUnseal() bool {
+func (c *Core) IsRaftUnseal() bool {
 	return c.raftInfo.Load() != nil
 }
 

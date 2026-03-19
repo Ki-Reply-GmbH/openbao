@@ -7,6 +7,8 @@ import (
 	"context"
 	"reflect"
 	"testing"
+
+	"github.com/openbao/openbao/vault/seal"
 )
 
 // TestDefaultSeal_Config exercises Shamir SetBarrierConfig and BarrierConfig.
@@ -15,13 +17,13 @@ import (
 // of an API.  In other words if your change break this test, it might be more
 // the test's fault than your changes.
 func TestDefaultSeal_Config(t *testing.T) {
-	bc := &SealConfig{
+	bc := &seal.SealConfig{
 		SecretShares:    4,
 		SecretThreshold: 2,
 	}
 	core, _, _ := TestCoreUnsealed(t)
 
-	defSeal := NewDefaultSeal(nil)
+	defSeal := seal.NewDefaultSeal(nil)
 	defSeal.SetCore(core)
 	err := defSeal.SetBarrierConfig(context.Background(), bc)
 	if err != nil {
@@ -37,7 +39,7 @@ func TestDefaultSeal_Config(t *testing.T) {
 	}
 
 	// Now, test without the benefit of the cached value in the seal
-	defSeal = NewDefaultSeal(nil)
+	defSeal = seal.NewDefaultSeal(nil)
 	defSeal.SetCore(core)
 	newBc, err = defSeal.BarrierConfig(context.Background())
 	if err != nil {

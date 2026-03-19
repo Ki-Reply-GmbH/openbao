@@ -23,6 +23,7 @@ import (
 	"github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 const (
@@ -108,7 +109,7 @@ func ParamTestSealMigrationTransitToShamir_Post14(t *testing.T, logger hclog.Log
 
 	// Migrate the backend from transit to shamir
 	opts.UnwrapSealFunc = opts.SealFunc
-	opts.SealFunc = func() vault.Seal { return nil }
+	opts.SealFunc = func() seal.Seal { return nil }
 	leaderIdx := migratePost14(t, storage, cluster, opts, cluster.RecoveryKeys)
 	validateMigration(t, storage, cluster, leaderIdx, verifySealConfigShamir)
 
@@ -136,7 +137,7 @@ func ParamTestSealMigrationShamirToTransit_Post14(t *testing.T, logger hclog.Log
 	tss.MakeKey(t, sealKeyName)
 
 	// Migrate the backend from shamir to transit.
-	opts.SealFunc = func() vault.Seal {
+	opts.SealFunc = func() seal.Seal {
 		seal, err := tss.MakeSeal(t, sealKeyName)
 		if err != nil {
 			t.Fatal(err)
@@ -181,7 +182,7 @@ func ParamTestSealMigration_TransitToTransit(t *testing.T, logger hclog.Logger,
 
 	// Migrate the backend from transit to transit.
 	opts.UnwrapSealFunc = opts.SealFunc
-	opts.SealFunc = func() vault.Seal {
+	opts.SealFunc = func() seal.Seal {
 		seal, err := tss2.MakeSeal(t, "transit-seal-key-2")
 		if err != nil {
 			t.Fatal(err)
@@ -203,7 +204,7 @@ func ParamTestSealMigration_TransitToTransit(t *testing.T, logger hclog.Logger,
 }
 
 func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage teststorage.ReusableStorage, basePort int,
-	tss *sealhelper.TransitSealServer, sealFunc func() vault.Seal, rootToken string, recoveryKeys [][]byte,
+	tss *sealhelper.TransitSealServer, sealFunc func() seal.Seal, rootToken string, recoveryKeys [][]byte,
 ) {
 	baseClusterPort := basePort + 10
 
@@ -277,7 +278,7 @@ func migrateFromTransitToShamir_Pre14(t *testing.T, logger hclog.Logger, storage
 	cluster.EnsureCoresSealed(t)
 }
 
-func migrateFromShamirToTransit_Pre14(t *testing.T, logger hclog.Logger, storage teststorage.ReusableStorage, basePort int, tss *sealhelper.TransitSealServer, rootToken string, recoveryKeys [][]byte) func() vault.Seal {
+func migrateFromShamirToTransit_Pre14(t *testing.T, logger hclog.Logger, storage teststorage.ReusableStorage, basePort int, tss *sealhelper.TransitSealServer, rootToken string, recoveryKeys [][]byte) func() seal.Seal {
 	baseClusterPort := basePort + 10
 
 	conf := vault.CoreConfig{
@@ -291,7 +292,7 @@ func migrateFromShamirToTransit_Pre14(t *testing.T, logger hclog.Logger, storage
 		BaseClusterListenPort: baseClusterPort,
 		SkipInit:              true,
 		// N.B. Providing a transit seal puts us in migration mode.
-		SealFunc: func() vault.Seal {
+		SealFunc: func() seal.Seal {
 			seal, err := tss.MakeSeal(t, "transit-seal-key")
 			if err != nil {
 				t.Fatal(err)
@@ -556,7 +557,7 @@ func verifySealConfigTransit(t *testing.T, core *vault.TestClusterCore) {
 }
 
 // verifyBarrierConfig verifies that a barrier configuration is correct.
-func verifyBarrierConfig(t *testing.T, cfg *vault.SealConfig, sealType string, shares, threshold int, stored uint) {
+func verifyBarrierConfig(t *testing.T, cfg *seal.SealConfig, sealType string, shares, threshold int, stored uint) {
 	if cfg.Type != sealType {
 		t.Fatalf("bad seal config: %#v, expected type=%q", cfg, sealType)
 	}
@@ -723,7 +724,7 @@ func InitializeTransit(t *testing.T, logger hclog.Logger, storage teststorage.Re
 		NumCores:              numTestCores,
 		BaseListenAddress:     fmt.Sprintf("127.0.0.1:%d", basePort),
 		BaseClusterListenPort: baseClusterPort,
-		SealFunc: func() vault.Seal {
+		SealFunc: func() seal.Seal {
 			seal, err := tss.MakeSeal(t, sealKeyName)
 			if err != nil {
 				t.Fatal(err)
@@ -768,7 +769,7 @@ func InitializeTransit(t *testing.T, logger hclog.Logger, storage teststorage.Re
 }
 
 func runAutoseal(t *testing.T, logger hclog.Logger, storage teststorage.ReusableStorage,
-	basePort int, rootToken string, sealFunc func() vault.Seal,
+	basePort int, rootToken string, sealFunc func() seal.Seal,
 ) {
 	baseClusterPort := basePort + 10
 

@@ -26,8 +26,8 @@ import (
 // InitParams keeps the init function from being littered with too many
 // params, that's it!
 type InitParams struct {
-	BarrierConfig   *SealConfig
-	RecoveryConfig  *SealConfig
+	BarrierConfig   *seal.SealConfig
+	RecoveryConfig  *seal.SealConfig
 	RootTokenPGPKey string
 }
 
@@ -77,7 +77,7 @@ func (c *Core) Initialized(ctx context.Context) (bool, error) {
 		return init, err
 	}
 
-	if c.isRaftUnseal() {
+	if c.IsRaftUnseal() {
 		return true, nil
 	}
 
@@ -119,7 +119,7 @@ func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (c *Core) generateShares(sc *SealConfig) ([]byte, [][]byte, error) {
+func (c *Core) generateShares(sc *seal.SealConfig) ([]byte, [][]byte, error) {
 	// Generate a root key
 	rootKey, err := c.barrier.GenerateKey(c.secureRandomReader)
 	if err != nil {

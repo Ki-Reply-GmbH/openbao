@@ -18,7 +18,7 @@ type TestSealOpts struct {
 	Name       wrapping.WrapperType
 }
 
-func NewTestSeal(opts *TestSealOpts) (Access, *ToggleableWrapper) {
+func NewTestSealWrapper(opts *TestSealOpts) (Wrapper, *ToggleableWrapper) {
 	if opts == nil {
 		opts = new(TestSealOpts)
 	}
@@ -27,16 +27,16 @@ func NewTestSeal(opts *TestSealOpts) (Access, *ToggleableWrapper) {
 	if opts.Name != "" {
 		w.wrapperType = &opts.Name
 	}
-	return NewAccess(w), w
+	return NewSealWrapper(w), w
 }
 
-func NewToggleableTestSeal(opts *TestSealOpts) (Access, func(error)) {
+func NewToggleableTestSeal(opts *TestSealOpts) (Wrapper, func(error)) {
 	if opts == nil {
 		opts = new(TestSealOpts)
 	}
 
 	w := &ToggleableWrapper{Wrapper: wrapping.NewTestWrapper(opts.Secret)}
-	return NewAccess(w), w.SetError
+	return NewSealWrapper(w), w.SetError
 }
 
 type ToggleableWrapper struct {

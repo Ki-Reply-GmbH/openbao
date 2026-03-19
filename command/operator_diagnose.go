@@ -31,6 +31,7 @@ import (
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/diagnose"
+	"github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
 	"golang.org/x/term"
@@ -377,7 +378,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 	})
 
 	sealcontext, sealspan := diagnose.StartSpan(ctx, "Create Vault Server Configuration Seals")
-	var seals []vault.Seal
+	var seals []seal.Seal
 	var sealConfigError error
 
 	infoKeys := make([]string, 0)
@@ -393,25 +394,24 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 		goto SEALFAIL
 	}
 
-	for _, seal := range seals {
+	for _, s := range seals {
 		// There is always one nil seal. We need to skip it so we don't start an empty Finalize-Seal-Shamir
 		// section.
-		if seal == nil {
+		if s == nil {
 			continue
 		}
-		seal := seal // capture range variable
 		// Ensure that the seal finalizer is called, even if using verify-only
-		defer func(seal *vault.Seal) {
-			sealType := diagnose.CapitalizeFirstLetter((*seal).BarrierType().String())
+		defer func(seal seal.Seal) {
+			sealType := diagnose.CapitalizeFirstLetter(seal.BarrierType().String())
 			finalizeSealContext, finalizeSealSpan := diagnose.StartSpan(ctx, "Finalize "+sealType+" Seal")
-			err = (*seal).Finalize(finalizeSealContext)
+			err = seal.Finalize(finalizeSealContext)
 			if err != nil {
 				diagnose.Fail(finalizeSealContext, "Error finalizing seal.")
 				diagnose.Advise(finalizeSealContext, "This likely means that the barrier is still in use; therefore, finalizing the seal timed out.")
 				finalizeSealSpan.End()
 			}
 			finalizeSealSpan.End()
-		}(&seal)
+		}(s)
 	}
 
 	if barrierSeal == nil {

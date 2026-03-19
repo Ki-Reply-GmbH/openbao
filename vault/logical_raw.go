@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 // protectedPaths cannot be accessed via the raw APIs.
@@ -45,7 +46,7 @@ func NewRawBackend(core *Core) *RawBackend {
 	return r
 }
 
-func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAccess, error) {
+func (b *RawBackend) storageByPath(ctx context.Context, path string) (seal.StorageAccess, error) {
 	ns, rest, err := b.core.NamespaceByStoragePath(ctx, path)
 	if err != nil {
 		return nil, err
@@ -53,22 +54,22 @@ func (b *RawBackend) storageByPath(ctx context.Context, path string) (StorageAcc
 
 	// These paths use the "upper" barrier, which is the direct physical layer
 	// for the root namespace.
-	specialPath := rest == barrierSealConfigPath || rest == recoverySealConfigPath
+	specialPath := rest == seal.BarrierSealConfigPath || rest == seal.RecoverySealConfigPath
 
 	// Fast-path root, we do not need a lookup into the seal manager.
 	if ns.ID == namespace.RootNamespaceID {
 		if specialPath {
-			return &directStorageAccess{physical: b.core.physical}, nil
+			return seal.NewDirectStorageAccess(b.core.physical), nil
 		} else {
-			return &secureStorageAccess{barrier: b.core.barrier}, nil
+			return seal.NewDirectStorageAccess(b.core.physical), nil
 		}
 	}
 
 	// TODO(wslabosz): awaiting seal manager implementation
 	if specialPath {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		return seal.NewSecureStorageAccess(b.core.barrier), nil
 	} else {
-		return &secureStorageAccess{barrier: b.core.barrier}, nil
+		return seal.NewSecureStorageAccess(b.core.barrier), nil
 	}
 }
 

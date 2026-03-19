@@ -55,7 +55,7 @@ func testSysRekey_VerificationDeprecated(t *testing.T, recovery bool) {
 	}
 	switch {
 	case recovery:
-		opts.SealFunc = func() vault.Seal {
+		opts.SealFunc = func() seal.Seal {
 			return vault.NewTestSeal(t, &seal.TestSealOpts{
 				StoredKeys: seal.StoredKeysSupportedGeneric,
 			})
@@ -318,7 +318,7 @@ func testSysRotate_Verification(t *testing.T, recovery bool) {
 	}
 
 	if recovery {
-		opts.SealFunc = func() vault.Seal {
+		opts.SealFunc = func() seal.Seal {
 			return vault.NewTestSeal(t, &seal.TestSealOpts{
 				StoredKeys: seal.StoredKeysSupportedGeneric,
 			})

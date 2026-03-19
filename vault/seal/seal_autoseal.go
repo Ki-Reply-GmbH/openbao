@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package seal
 
 import (
 	"bytes"
@@ -21,26 +21,34 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/barrier"
-	"github.com/openbao/openbao/vault/seal"
 )
 
 var (
-	autoSealUnavailableDuration = []string{"seal", "unreachable", "time"}
+	AutoSealUnavailableDuration = []string{"seal", "unreachable", "time"}
 
 	// vars for unit testings
-	sealHealthTestIntervalNominal   = 10 * time.Minute
-	sealHealthTestIntervalUnhealthy = 1 * time.Minute
-	sealHealthTestTimeout           = 1 * time.Minute
+	SealHealthTestIntervalNominal   = 10 * time.Minute
+	SealHealthTestIntervalUnhealthy = 1 * time.Minute
+	SealHealthTestTimeout           = 1 * time.Minute
 )
+
+type HealthChecker interface {
+	StopHealthCheck()
+	StartHealthCheck()
+}
+
+type KeyUpgrader interface {
+	UpgradeKeys(context.Context) error
+}
 
 // autoSeal is a Seal implementation that contains logic for encrypting and
 // decrypting stored keys via an underlying AutoSealAccess implementation, as
 // well as logic related to recovery keys and barrier config.
 type autoSeal struct {
-	seal.Access
+	Wrapper
 
 	barrierType wrapping.WrapperType
-	core        *Core
+	core        core
 	logger      log.Logger
 	metaPrefix  string
 
@@ -55,9 +63,9 @@ type autoSeal struct {
 // Ensure we are implementing the Seal interface
 var _ Seal = (*autoSeal)(nil)
 
-func NewAutoSeal(lowLevel seal.Access) (*autoSeal, error) {
+func NewAutoSeal(lowLevel Wrapper) (*autoSeal, error) {
 	ret := &autoSeal{
-		Access: lowLevel,
+		Wrapper: lowLevel,
 	}
 
 	// Having the wrapper type in a field is just a convenience since Seal.BarrierType()
@@ -75,8 +83,8 @@ func (d *autoSeal) SealWrapable() bool {
 	return true
 }
 
-func (d *autoSeal) GetAccess() seal.Access {
-	return d.Access
+func (d *autoSeal) GetAccess() Wrapper {
+	return d.Wrapper
 }
 
 func (d *autoSeal) checkCore() error {
@@ -86,7 +94,7 @@ func (d *autoSeal) checkCore() error {
 	return nil
 }
 
-func (d *autoSeal) SetCore(core *Core) {
+func (d *autoSeal) SetCore(core core) {
 	d.core = core
 	if d.logger == nil {
 		d.logger = d.core.Logger().Named("autoseal")
@@ -97,11 +105,11 @@ func (d *autoSeal) SetCore(core *Core) {
 	// plain text right on the physical storage, as is the case for the
 	// root namespace. For per-namespace seals, this can be overridden by
 	// [Seal.SetConfigAccess].
-	d.configAccess = &directStorageAccess{physical: core.physical}
+	d.configAccess = &directStorageAccess{physical: core.Physical()}
 }
 
 func (d *autoSeal) Init(ctx context.Context) error {
-	return d.Access.Init(ctx)
+	return d.Wrapper.Init(ctx)
 }
 
 func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
@@ -109,19 +117,19 @@ func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
 }
 
 func (d *autoSeal) Finalize(ctx context.Context) error {
-	return d.Access.Finalize(ctx)
+	return d.Wrapper.Finalize(ctx)
 }
 
 func (d *autoSeal) BarrierType() wrapping.WrapperType {
 	return d.barrierType
 }
 
-func (d *autoSeal) GetShamirWrapper() (*seal.ShamirWrapper, error) {
+func (d *autoSeal) GetShamirWrapper() (*ShamirWrapper, error) {
 	return nil, errors.New("autoSeal does not use a ShamirWrapper")
 }
 
-func (d *autoSeal) StoredKeysSupported() seal.StoredKeysSupport {
-	return seal.StoredKeysSupportedGeneric
+func (d *autoSeal) StoredKeysSupported() StoredKeysSupport {
+	return StoredKeysSupportedGeneric
 }
 
 func (d *autoSeal) RecoveryKeySupported() bool {
@@ -131,17 +139,17 @@ func (d *autoSeal) RecoveryKeySupported() bool {
 // SetStoredKeys uses the autoSeal.Access.Encrypts method to wrap the keys.
 // The stored entry does not need to be seal wrapped in this case.
 func (d *autoSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access, keys)
+	return writeStoredKeys(ctx, d.core.Physical(), d.metaPrefix, d.Wrapper, keys)
 }
 
 // GetStoredKeys retrieves the key shares by unwrapping the encrypted key
 // using the autoseal.
 func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access)
+	return readStoredKeys(ctx, d.core.Physical(), d.metaPrefix, d.Wrapper)
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
-	pe, err := d.core.physical.Get(ctx, StoredBarrierKeysPath)
+	pe, err := d.core.Physical().Get(ctx, StoredBarrierKeysPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch stored keys: %w", err)
 	}
@@ -209,7 +217,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	sealType := "barrier"
-	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+barrierSealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+BarrierSealConfigPath)
 	if err != nil {
 		d.logger.Error("failed to read seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
@@ -263,7 +271,7 @@ func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error
 		return fmt.Errorf("failed to encode barrier seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, d.metaPrefix+barrierSealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+BarrierSealConfigPath, buf); err != nil {
 		d.logger.Error("failed to write seal configuration", "error", err)
 		return fmt.Errorf("failed to write seal configuration: %w", err)
 	}
@@ -296,7 +304,7 @@ func (d *autoSeal) RecoveryConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	sealType := "recovery"
-	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+recoverySealConfigPath)
+	valueBytes, err := d.configAccess.Get(ctx, d.metaPrefix+RecoverySealConfigPath)
 	if err != nil {
 		d.logger.Error("failed to read seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
@@ -349,7 +357,7 @@ func (d *autoSeal) SetRecoveryConfig(ctx context.Context, conf *SealConfig) erro
 		return fmt.Errorf("failed to encode recovery seal configuration: %w", err)
 	}
 
-	if err := d.configAccess.Put(ctx, d.metaPrefix+recoverySealConfigPath, buf); err != nil {
+	if err := d.configAccess.Put(ctx, d.metaPrefix+RecoverySealConfigPath, buf); err != nil {
 		d.logger.Error("failed to write recovery seal configuration", "error", err)
 		return fmt.Errorf("failed to write recovery seal configuration: %w", err)
 	}
@@ -401,11 +409,11 @@ func (d *autoSeal) SetRecoveryKey(ctx context.Context, key []byte) error {
 	}
 
 	be := &physical.Entry{
-		Key:   d.metaPrefix + recoveryKeyPath,
+		Key:   d.metaPrefix + RecoveryKeyPath,
 		Value: value,
 	}
 
-	if err := d.core.physical.Put(ctx, be); err != nil {
+	if err := d.core.Physical().Put(ctx, be); err != nil {
 		d.logger.Error("failed to write recovery key", "error", err)
 		return fmt.Errorf("failed to write recovery key: %w", err)
 	}
@@ -418,7 +426,7 @@ func (d *autoSeal) RecoveryKey(ctx context.Context) ([]byte, error) {
 }
 
 func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
-	pe, err := d.core.physical.Get(ctx, d.metaPrefix+recoveryKeyPath)
+	pe, err := d.core.Physical().Get(ctx, d.metaPrefix+RecoveryKeyPath)
 	if err != nil {
 		d.logger.Error("failed to read recovery key", "error", err)
 		return nil, fmt.Errorf("failed to read recovery key: %w", err)
@@ -442,7 +450,7 @@ func (d *autoSeal) getRecoveryKeyInternal(ctx context.Context) ([]byte, error) {
 }
 
 func (d *autoSeal) upgradeRecoveryKey(ctx context.Context) error {
-	pe, err := d.core.physical.Get(ctx, d.metaPrefix+recoveryKeyPath)
+	pe, err := d.core.Physical().Get(ctx, d.metaPrefix+RecoveryKeyPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch recovery key: %w", err)
 	}
@@ -481,10 +489,10 @@ func (d *autoSeal) StartHealthCheck() {
 	d.hcLock.Lock()
 	defer d.hcLock.Unlock()
 
-	healthCheck := time.NewTicker(sealHealthTestIntervalNominal)
+	healthCheck := time.NewTicker(SealHealthTestIntervalNominal)
 	d.healthCheckStop = make(chan struct{})
 	healthCheckStop := d.healthCheckStop
-	ctx := d.core.activeContext
+	ctx := d.core.ActiveContext()
 
 	go func() {
 		lastTestOk := true
@@ -493,10 +501,10 @@ func (d *autoSeal) StartHealthCheck() {
 		fail := func(msg string, args ...interface{}) {
 			d.logger.Warn(msg, args...)
 			if lastTestOk {
-				healthCheck.Reset(sealHealthTestIntervalUnhealthy)
+				healthCheck.Reset(SealHealthTestIntervalUnhealthy)
 			}
 			lastTestOk = false
-			d.core.MetricSink().SetGauge(autoSealUnavailableDuration, float32(time.Since(lastSeenOk).Milliseconds()))
+			d.core.MetricSink().SetGauge(AutoSealUnavailableDuration, float32(time.Since(lastSeenOk).Milliseconds()))
 		}
 		for {
 			select {
@@ -508,7 +516,7 @@ func (d *autoSeal) StartHealthCheck() {
 				return
 			case t := <-healthCheck.C:
 				func() {
-					ctx, cancel := context.WithTimeout(ctx, sealHealthTestTimeout)
+					ctx, cancel := context.WithTimeout(ctx, SealHealthTestTimeout)
 					defer cancel()
 
 					testVal := fmt.Sprintf("Heartbeat %d", mathrand.Intn(1000))
@@ -518,7 +526,7 @@ func (d *autoSeal) StartHealthCheck() {
 						fail("failed to encrypt seal health test value, seal backend may be unreachable", "error", err)
 					} else {
 						func() {
-							ctx, cancel := context.WithTimeout(ctx, sealHealthTestTimeout)
+							ctx, cancel := context.WithTimeout(ctx, SealHealthTestTimeout)
 							defer cancel()
 							plaintext, err := d.Decrypt(ctx, ciphertext, nil)
 							if err != nil {
@@ -530,11 +538,11 @@ func (d *autoSeal) StartHealthCheck() {
 								d.logger.Debug("seal health test passed")
 								if !lastTestOk {
 									d.logger.Info("seal backend is now healthy again", "downtime", t.Sub(lastSeenOk).String())
-									healthCheck.Reset(sealHealthTestIntervalNominal)
+									healthCheck.Reset(SealHealthTestIntervalNominal)
 								}
 								lastTestOk = true
 								lastSeenOk = t
-								d.core.MetricSink().SetGauge(autoSealUnavailableDuration, 0)
+								d.core.MetricSink().SetGauge(AutoSealUnavailableDuration, 0)
 							}
 						}()
 					}

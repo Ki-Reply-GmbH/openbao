@@ -37,8 +37,8 @@ func (e *ErrInvalidKey) Error() string {
 // These variables hold the config and shares we have until we reach
 // enough to verify the appropriate root key.
 type rotationConfig struct {
-	rootConfig     *SealConfig
-	recoveryConfig *SealConfig
+	rootConfig     *vaultseal.SealConfig
+	recoveryConfig *vaultseal.SealConfig
 }
 
 // These variables hold the unseal key parts to reconstruct the key and
@@ -56,7 +56,7 @@ type SealManager struct {
 	lock sync.RWMutex
 	// invalidated atomic.Bool
 
-	sealByNamespace              map[string]Seal
+	sealByNamespace              map[string]vaultseal.Seal
 	unlockInformationByNamespace map[string]*unlockInformation
 	rotationConfigByNamespace    map[string]*rotationConfig
 	barrierByNamespace           *radix.Tree
@@ -69,7 +69,7 @@ type SealManager struct {
 func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 	return &SealManager{
 		core:                         core,
-		sealByNamespace:              make(map[string]Seal),
+		sealByNamespace:              make(map[string]vaultseal.Seal),
 		unlockInformationByNamespace: make(map[string]*unlockInformation),
 		rotationConfigByNamespace:    make(map[string]*rotationConfig),
 		logger:                       logger,
@@ -90,7 +90,7 @@ func (sm *SealManager) Reset() {
 		"": sm.core.barrier,
 	})
 
-	sm.sealByNamespace = map[string]Seal{
+	sm.sealByNamespace = map[string]vaultseal.Seal{
 		namespace.RootNamespaceUUID: sm.core.seal,
 	}
 
@@ -105,7 +105,7 @@ func (sm *SealManager) Reset() {
 
 // SetSeal creates a seal with provided config and sets it as provided namespace seal;
 // Initializes seal, creating security barrier and persisting seal config.
-func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
+func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *vaultseal.SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
@@ -118,7 +118,7 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	metaPrefix := NamespaceStoragePathPrefix(ns)
 
 	// Seal type would depend on the provided arguments
-	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+	defaultSeal := vaultseal.NewDefaultSeal(vaultseal.NewSealWrapper(vaultseal.NewShamirWrapper()))
 	defaultSeal.SetCore(sm.core)
 	defaultSeal.SetMetaPrefix(metaPrefix)
 
@@ -211,7 +211,7 @@ func (sm *SealManager) namespaceBarrier(nsPath string) barrier.SecurityBarrier {
 }
 
 // NamespaceSeal returns a namespace's seal by namespace UUID.
-func (sm *SealManager) NamespaceSeal(nsUUID string) Seal {
+func (sm *SealManager) NamespaceSeal(nsUUID string) vaultseal.Seal {
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
 
@@ -386,8 +386,8 @@ func (sm *SealManager) recordUnsealPart(ns *namespace.Namespace, key []byte) (bo
 // returns the combined key if the key share threshold is met.
 // If the key fragments are part of a recovery key, also verify that
 // it matches the stored recovery key on disk.
-func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespace.Namespace) ([]byte, error) {
-	var sealConfig *SealConfig
+func (sm *SealManager) getUnsealKey(ctx context.Context, seal vaultseal.Seal, ns *namespace.Namespace) ([]byte, error) {
+	var sealConfig *vaultseal.SealConfig
 	var err error
 
 	raftInfo := sm.core.raftInfo.Load()
@@ -395,7 +395,7 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 	switch {
 	case seal.RecoveryKeySupported():
 		sealConfig, err = seal.RecoveryConfig(ctx)
-	case sm.core.isRaftUnseal():
+	case sm.core.IsRaftUnseal():
 		// Ignore follower's seal config and refer to leader's barrier
 		// configuration.
 		sealConfig = raftInfo.leaderBarrierConfig
@@ -460,7 +460,7 @@ func (sm *SealManager) getUnsealKey(ctx context.Context, seal Seal, ns *namespac
 // valid.
 // If allowMissing is true, a failure to find the root key in storage results
 // in a nil error and a nil root key being returned.
-func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
+func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal vaultseal.Seal, combinedKey []byte, useTestSeal bool, allowMissing bool) ([]byte, error) {
 	switch seal.StoredKeysSupported() {
 	case vaultseal.StoredKeysSupportedGeneric:
 		if err := seal.VerifyRecoveryKey(ctx, combinedKey); err != nil {
@@ -468,7 +468,7 @@ func (sm *SealManager) unsealKeyToRootKey(ctx context.Context, seal Seal, combin
 		}
 	case vaultseal.StoredKeysSupportedShamirRoot:
 		if useTestSeal {
-			testseal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+			testseal := vaultseal.NewDefaultSeal(vaultseal.NewSealWrapper(vaultseal.NewShamirWrapper()))
 			testseal.SetCore(sm.core)
 			cfg, err := seal.BarrierConfig(ctx)
 			if err != nil {

@@ -47,6 +47,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/routing"
+	"github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
 	"golang.org/x/crypto/sha3"
 )
@@ -4346,7 +4347,7 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*CoreSealStatus
 		return nil, err
 	}
 
-	var sealConfig *SealConfig
+	var sealConfig *seal.SealConfig
 	var recoveryType string
 	if core.SealAccess().RecoveryKeySupported() {
 		sealConfig, err = core.SealAccess().RecoveryConfig(ctx)

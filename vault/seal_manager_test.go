@@ -13,6 +13,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault/barrier"
+	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +30,7 @@ func TestSealManager_Reset(t *testing.T) {
 	require.Len(t, c.sealManager.unlockInformationByNamespace, 1)
 	require.Len(t, c.sealManager.rotationConfigByNamespace, 1)
 
-	sealConfig := &SealConfig{
+	sealConfig := &vaultseal.SealConfig{
 		Type:            "shamir",
 		SecretShares:    1,
 		SecretThreshold: 1,
@@ -62,14 +63,14 @@ func TestSealManager_SetSeal(t *testing.T) {
 
 	tc := []struct {
 		name           string
-		config         *SealConfig
+		config         *vaultseal.SealConfig
 		ns             *namespace.Namespace
 		writeToStorage bool
 		wantErr        error
 	}{
 		{
 			name: "happy path",
-			config: &SealConfig{
+			config: &vaultseal.SealConfig{
 				Type:            "shamir",
 				SecretShares:    1,
 				SecretThreshold: 1,
@@ -78,7 +79,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 		},
 		{
 			name: "happy path, config saved to storage",
-			config: &SealConfig{
+			config: &vaultseal.SealConfig{
 				Type:            "shamir",
 				SecretShares:    1,
 				SecretThreshold: 1,
@@ -88,7 +89,7 @@ func TestSealManager_SetSeal(t *testing.T) {
 		},
 		{
 			name: "validation failure",
-			config: &SealConfig{
+			config: &vaultseal.SealConfig{
 				Type:            "shamir",
 				SecretShares:    1,
 				SecretThreshold: 3,
@@ -149,7 +150,8 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 	_, err := c.sealManager.InitializeBarrier(ctx, flawedNS)
 	require.ErrorIs(t, err, ErrNotSealable)
 
-	tSeal := &defaultSeal{core: c}
+	tSeal := vaultseal.NewDefaultSeal(nil)
+	tSeal.SetCore(c)
 	tSeal.SetConfigAccess(c.barrier)
 
 	c.sealManager.sealByNamespace["notpresent"] = tSeal
@@ -163,7 +165,7 @@ func TestSealManager_InitializeBarrier(t *testing.T) {
 	// dummy barrier is sealed
 	require.ErrorContains(t, err, "failed to retrieve seal config")
 
-	sealConfig := &SealConfig{
+	sealConfig := &vaultseal.SealConfig{
 		Type:            "shamir",
 		SecretShares:    3,
 		SecretThreshold: 2,
@@ -214,7 +216,7 @@ func TestSealManager_SealStatus(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotSealable)
 	require.Nil(t, sealStatus)
 
-	sealConfig := &SealConfig{
+	sealConfig := &vaultseal.SealConfig{
 		Type:            "shamir",
 		SecretShares:    3,
 		SecretThreshold: 2,
@@ -271,7 +273,7 @@ func TestSealManager_UnsealBarrier(t *testing.T) {
 	c.SetupSealManager()
 	ctx := namespace.RootContext(t.Context())
 
-	sealConfig := &SealConfig{
+	sealConfig := &vaultseal.SealConfig{
 		Type:            "shamir",
 		SecretShares:    3,
 		SecretThreshold: 2,

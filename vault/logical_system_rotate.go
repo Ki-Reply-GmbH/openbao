@@ -19,6 +19,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 func (b *SystemBackend) rotatePaths() []*framework.Path {
@@ -572,7 +573,7 @@ func (b *SystemBackend) handleRotateInitGet() framework.OperationFunc {
 // endpoints starting the rotation process, returning the operation status.
 func (b *SystemBackend) handleRotateInitPut() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		rotateConf := &SealConfig{}
+		rotateConf := &seal.SealConfig{}
 		secretShares, ok, err := data.GetOkErr("secret_shares")
 		if err != nil {
 			return handleError(err)

@@ -12,6 +12,7 @@ import (
 
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 func handleSysRekeyInit(core *vault.Core, recovery bool) http.Handler {
@@ -118,7 +119,7 @@ func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool,
 	}
 
 	// Initialize the rekey
-	err := core.RekeyInit(&vault.SealConfig{
+	err := core.RekeyInit(&seal.SealConfig{
 		SecretShares:         req.SecretShares,
 		SecretThreshold:      req.SecretThreshold,
 		StoredShares:         req.StoredShares,
