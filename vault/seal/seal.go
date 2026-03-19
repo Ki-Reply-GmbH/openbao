@@ -293,13 +293,6 @@ func (d *defaultSeal) GetShamirWrapper() (*ShamirWrapper, error) {
 	return w, nil
 }
 
-func ClearCaches(seal Seal, ctx context.Context) {
-	seal.SetBarrierConfig(ctx, nil)
-	if seal.RecoveryKeySupported() {
-		seal.SetRecoveryConfig(ctx, nil)
-	}
-}
-
 // SealConfig is used to describe the seal configuration
 type SealConfig struct {
 	// The type, for sanity checking
