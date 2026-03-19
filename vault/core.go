@@ -2600,8 +2600,8 @@ func (c *Core) SetActiveNodeReplicationState(val consts.ReplicationState) {
 	c.activeNodeReplicationState.Store(uint32(val))
 }
 
-func (c *Core) SealAccess() seal.SealAccess {
-	return c.seal
+func (c *Core) SealAccess() *seal.SealAccess {
+	return seal.NewSealAccess(c.seal)
 }
 
 // StorageType returns a string equal to the storage configuration's type.

@@ -27,7 +27,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/xor"
 	"github.com/openbao/openbao/vault"
-	"github.com/openbao/openbao/vault/seal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -173,12 +172,7 @@ func AttemptUnsealCore(c *vault.TestCluster, core *vault.TestClusterCore) error 
 		return nil
 	}
 
-	s, ok := core.SealAccess().(seal.Seal)
-	if !ok {
-		return fmt.Errorf("SealAccess must be Seal")
-	}
-
-	seal.ClearCaches(s, context.Background())
+	core.SealAccess().ClearCaches(context.Background())
 	if err := core.UnsealWithStoredKeys(context.Background()); err != nil {
 		return err
 	}

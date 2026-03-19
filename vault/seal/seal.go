@@ -60,21 +60,28 @@ type core interface {
 }
 
 type Seal interface {
-	SealAccess
 	SetCore(core)
 	Init(context.Context) error
 	SetMetaPrefix(string)
 	Finalize(context.Context) error
+	StoredKeysSupported() StoredKeysSupport // SealAccess
 	SealWrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
+	BarrierType() wrapping.WrapperType                  // SealAccess
+	BarrierConfig(context.Context) (*SealConfig, error) // SealAccess
 	SetBarrierConfig(context.Context, *SealConfig) error
 	SetCachedBarrierConfig(*SealConfig)
 	SetConfigAccess(barrier.SecurityBarrier)
+	RecoveryKeySupported() bool                          // SealAccess
+	RecoveryType() string                                // SealAccess
+	RecoveryConfig(context.Context) (*SealConfig, error) // SealAccess
 	RecoveryKey(context.Context) ([]byte, error)
 	SetRecoveryConfig(context.Context, *SealConfig) error
 	SetCachedRecoveryConfig(*SealConfig)
 	SetRecoveryKey(context.Context, []byte) error
+	VerifyRecoveryKey(context.Context, []byte) error // SealAccess
+	GetAccess() Wrapper                              // SealAccess
 	GetShamirWrapper() (*ShamirWrapper, error)
 }
 
