@@ -1450,10 +1450,11 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 		Type:        "noop",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	err := c.mount(namespace.RootContext(t.Context()), me)
+	ctx := namespace.RootContext(t.Context())
+	err := c.mount(ctx, me)
 	require.NoError(t, err)
 
-	ns, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(t.Context()), "foo/", nil)
+	ns, _, err := c.namespaceStore.ModifyNamespaceByPath(ctx, "foo/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
@@ -1461,7 +1462,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	// object lying around. This meant that list and subsequent create
 	// namespace operations returned this ghost structure and did not error
 	// properly. Retrying the create ensures no ghost object exists.
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(t.Context()), "foo/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, "foo/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
@@ -1472,23 +1473,23 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 		Type:        "noop",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	err = c.mount(namespace.RootContext(t.Context()), me)
+	err = c.mount(ctx, me)
 	require.NoError(t, err)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(t.Context()), "fud/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, "fud/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(t.Context()), "fud/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(ctx, "fud/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
 	// Creating a new namespace should succeed.
-	nsBar, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(t.Context()), "bar/", nil)
+	nsBar, _, err := c.namespaceStore.ModifyNamespaceByPath(ctx, "bar/", nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, nsBar)
 
-	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar)
+	barCtx := namespace.ContextWithNamespace(ctx, nsBar)
 
 	// Doing the above inside bar should behave the same.
 	me = &routing.MountEntry{
@@ -1500,11 +1501,11 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
@@ -1517,11 +1518,11 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	ns, _, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil, nil)
 	require.Error(t, err)
 	require.Nil(t, ns)
 
@@ -1532,7 +1533,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 		Type:        "noop",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	err = c.mount(namespace.RootContext(t.Context()), me)
+	err = c.mount(ctx, me)
 	require.Error(t, err)
 
 	me = &routing.MountEntry{
@@ -1541,7 +1542,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 		Type:        "noop",
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	err = c.mount(namespace.RootContext(t.Context()), me)
+	err = c.mount(ctx, me)
 	require.Error(t, err)
 
 	// Ensure creating sibling mounts still works.
