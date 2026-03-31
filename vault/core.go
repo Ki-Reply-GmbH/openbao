@@ -57,6 +57,7 @@ import (
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/vault/barrier"
 	"github.com/openbao/openbao/vault/cluster"
+	"github.com/openbao/openbao/vault/extkey"
 	"github.com/openbao/openbao/vault/forwarding"
 	ident "github.com/openbao/openbao/vault/identity"
 	"github.com/openbao/openbao/vault/policy"
@@ -373,6 +374,9 @@ type Core struct {
 
 	// identityStore is used to manage client entities
 	identityStore *ident.IdentityStore
+
+	// externalKeys is used to manage External Keys
+	externalKeys *extkey.Registry
 
 	// metricsCh is used to stop the metrics streaming
 	metricsCh chan struct{}
@@ -2220,6 +2224,9 @@ func (readonlyUnsealStrategy) unsealShared(ctx context.Context, c *Core, standby
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
+
+	c.setupExternalKeys()
+
 	if err := c.loadMounts(ctx, standby); err != nil {
 		return err
 	}
@@ -2447,6 +2454,8 @@ func (c *Core) preSeal() error {
 	if err := c.teardownNamespaceStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))
 	}
+
+	c.teardownExternalKeys()
 
 	if c.autoRotateCancel != nil {
 		c.autoRotateCancel()
@@ -3448,6 +3457,14 @@ func (c *Core) ReloadIntrospectionEndpointEnabled() {
 	c.introspectionEnabledLock.Lock()
 	defer c.introspectionEnabledLock.Unlock()
 	c.introspectionEnabled = conf.EnableIntrospectionEndpoint
+}
+
+func (c *Core) setupExternalKeys() {
+	c.externalKeys = extkey.NewRegistry()
+}
+
+func (c *Core) teardownExternalKeys() {
+	c.externalKeys = nil
 }
 
 type PeerNode struct {

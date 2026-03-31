@@ -6,10 +6,13 @@ package vault
 import (
 	"context"
 	"net/http"
+	"path"
 	"strings"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault/extkey"
 )
 
 func (b *SystemBackend) externalKeyPaths() []*framework.Path {
@@ -48,7 +51,7 @@ func (b *SystemBackend) externalKeyPaths() []*framework.Path {
 			Pattern: "external-keys/configs/" + framework.GenericNameRegex("config"),
 
 			Fields: map[string]*framework.FieldSchema{
-				"config": &framework.FieldSchema{
+				"config": {
 					Type:        framework.TypeString,
 					Required:    true,
 					Description: "Name of the config.",
@@ -97,7 +100,7 @@ func (b *SystemBackend) externalKeyPaths() []*framework.Path {
 			Pattern: "external-keys/configs/" + framework.GenericNameRegex("config") + "/keys/?",
 
 			Fields: map[string]*framework.FieldSchema{
-				"config": &framework.FieldSchema{
+				"config": {
 					Type:        framework.TypeString,
 					Required:    true,
 					Description: "Name of the config.",
@@ -136,12 +139,12 @@ func (b *SystemBackend) externalKeyPaths() []*framework.Path {
 				"/keys/" + framework.GenericNameRegex("key"),
 
 			Fields: map[string]*framework.FieldSchema{
-				"config": &framework.FieldSchema{
+				"config": {
 					Type:        framework.TypeString,
 					Required:    true,
 					Description: "Name of the config.",
 				},
-				"key": &framework.FieldSchema{
+				"key": {
 					Type:        framework.TypeString,
 					Required:    true,
 					Description: "Name of the key.",
@@ -186,12 +189,12 @@ func (b *SystemBackend) externalKeyPaths() []*framework.Path {
 				"/keys/" + framework.GenericNameRegex("key") + "/grants/?",
 
 			Fields: map[string]*framework.FieldSchema{
-				"config": &framework.FieldSchema{
+				"config": {
 					Type:        framework.TypeString,
 					Required:    true,
 					Description: "Name of the config.",
 				},
-				"key": &framework.FieldSchema{
+				"key": {
 					Type:        framework.TypeString,
 					Required:    true,
 					Description: "Name of the key.",
@@ -230,12 +233,12 @@ func (b *SystemBackend) externalKeyPaths() []*framework.Path {
 				"/keys/" + framework.GenericNameRegex("key") + "/grants/(?P<mount>.+)",
 
 			Fields: map[string]*framework.FieldSchema{
-				"config": &framework.FieldSchema{
+				"config": {
 					Type:        framework.TypeString,
 					Required:    true,
 					Description: "Name of the config.",
 				},
-				"key": &framework.FieldSchema{
+				"key": {
 					Type:        framework.TypeString,
 					Required:    true,
 					Description: "Name of the key.",
@@ -277,12 +280,24 @@ func (b *SystemBackend) externalKeyPaths() []*framework.Path {
 
 // LIST /sys/external-keys/configs
 func (b *SystemBackend) handleExternalKeysConfigList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return nil, nil
+	keys, err := req.Storage.List(ctx, extkey.KMSConfigPath)
+	if err != nil {
+		return handleError(err)
+	}
+	return logical.ListResponse(keys), nil
 }
 
 // GET /sys/external-keys/configs/:config-name
 func (b *SystemBackend) handleExternalKeysConfigRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return nil, nil
+	name := d.Get("config").(string)
+	config, err := extkey.ReadKMSConfig(ctx, req.Storage, path.Join(extkey.KMSConfigPath, name))
+	switch {
+	case err != nil:
+		return handleError(err)
+	case config == nil:
+		return nil, nil
+	}
+	return &logical.Response{Data: config.AsMap()}, nil
 }
 
 // PUT /sys/external-keys/configs/:config-name
@@ -292,17 +307,49 @@ func (b *SystemBackend) handleExternalKeysConfigWrite(ctx context.Context, req *
 
 // DELETE /sys/external-keys/configs/:config-name
 func (b *SystemBackend) handleExternalKeysConfigDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	name := d.Get("config").(string)
+
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	defer b.Core.externalKeys.Lock(ns.Path)()
+
+	// First, delete all key entries.
+	view := logical.NewStorageView(req.Storage, path.Join(extkey.KeyConfigPath, name))
+	if err := logical.ClearViewWithLogging(ctx, view, b.logger); err != nil {
+		return handleError(err)
+	}
+
+	// Then delete the config entry itself.
+	if err := req.Storage.Delete(ctx, path.Join(extkey.KMSConfigPath, name)); err != nil {
+		return handleError(err)
+	}
+
 	return nil, nil
 }
 
 // LIST /sys/external-keys/configs/:config-name/keys
 func (b *SystemBackend) handleExternalKeysKeyList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return nil, nil
+	keys, err := req.Storage.List(ctx, path.Join(extkey.KeyConfigPath, d.Get("config").(string))+"/")
+	if err != nil {
+		return handleError(err)
+	}
+	return logical.ListResponse(keys), nil
 }
 
 // GET /sys/external-keys/configs/:config-name/keys/:key-name
 func (b *SystemBackend) handleExternalKeysKeyRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	return nil, nil
+	configName, keyName := d.Get("config").(string), d.Get("key").(string)
+	config, err := extkey.ReadKeyConfig(ctx, req.Storage, path.Join(extkey.KeyConfigPath, configName, keyName))
+	switch {
+	case err != nil:
+		return handleError(err)
+	case config == nil:
+		return nil, logical.CodedError(http.StatusNotFound, "key %q not found", keyName)
+	}
+	return &logical.Response{Data: config.ConfigMap}, nil
 }
 
 // PUT /sys/external-keys/configs/:config-name/keys/:key-name
@@ -312,6 +359,12 @@ func (b *SystemBackend) handleExternalKeysKeyWrite(ctx context.Context, req *log
 
 // DELETE /sys/external-keys/configs/:config-name/keys/:key-name
 func (b *SystemBackend) handleExternalKeysKeyDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	if err := req.Storage.Delete(
+		ctx,
+		path.Join(extkey.KeyConfigPath, d.Get("config").(string), d.Get("key").(string)),
+	); err != nil {
+		return handleError(err)
+	}
 	return nil, nil
 }
 
