@@ -1,0 +1,35 @@
+on:
+  workflow_dispatch:
+    inputs:
+      test-package:
+        description: Path to the package to run the test from
+        required: true
+        type: string
+      test-name:
+        description: The test to run
+        required: true
+        type: string
+
+jobs:
+  test-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: ./.github/actions/set-up-go
+        name: Setup Git configuration (public)
+      - run: mkdir -p test-results/go-test
+      - id: run-go-tests
+        name: Run Go tests
+        env:
+          INPUTS_TEST_PACKAGE: ${{ inputs.test-package }}
+          INPUTS_TEST_NAME: ${{ inputs.test-name }}
+        run: |
+          set -exo pipefail
+
+          # Build the dynamically generated source files.
+          make prep
+
+          go run gotest.tools/gotestsum@latest --format=short-verbose "$INPUTS_TEST_PACKAGE" -run "$INPUTS_TEST_NAME"
