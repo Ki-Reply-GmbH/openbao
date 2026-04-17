@@ -18,6 +18,8 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
+var errNamespaceNotFound = errors.New("requested namespace does not exist")
+
 var namespacePathSchema = &framework.FieldSchema{
 	Type:        framework.TypeString,
 	Required:    false,
@@ -404,9 +406,13 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
+		if _, ok := data.Raw["custom_metadata"]; !ok {
+			return logical.ErrorResponse("request body must include custom_metadata"), logical.ErrInvalidRequest
+		}
+
 		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, nil, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
-				return nil, fmt.Errorf("requested namespace does not exist")
+				return nil, errNamespaceNotFound
 			}
 
 			current := make(map[string]interface{})
@@ -428,6 +434,9 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return ns, nil
 		})
 		if err != nil {
+			if errors.Is(err, errNamespaceNotFound) {
+				return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
+			}
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 

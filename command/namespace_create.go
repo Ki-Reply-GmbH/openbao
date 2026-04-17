@@ -4,10 +4,12 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -96,20 +98,36 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
-	data := map[string]interface{}{
-		"custom_metadata": c.flagCustomMetadata,
-	}
-
-	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath, data)
+	resp, err := client.Sys().CreateNamespace(namespacePath, &api.CreateNamespaceInput{
+		CustomMetadata: c.flagCustomMetadata,
+	})
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating namespace: %s", err))
 		return 2
 	}
 
-	// Handle single field output
-	if c.flagField != "" {
-		return PrintRawField(c.UI, secret, c.flagField)
+	out, err := structToMap(resp)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error formatting response: %s", err))
+		return 2
 	}
 
-	return OutputSecret(c.UI, secret)
+	if c.flagField != "" {
+		return PrintRawField(c.UI, out, c.flagField)
+	}
+
+	return OutputData(c.UI, out)
+}
+
+// structToMap converts a struct to map[string]interface{} via JSON round-trip.
+func structToMap(v interface{}) (map[string]interface{}, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
