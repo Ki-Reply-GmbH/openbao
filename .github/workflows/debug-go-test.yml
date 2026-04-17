@@ -32,4 +32,8 @@ jobs:
           # Build the dynamically generated source files.
           make prep
 
+          go build -out bao .
+
+          export BAO_BINARY=$(pwd)/bao
+
           go run gotest.tools/gotestsum@latest --format=short-verbose "$INPUTS_TEST_PACKAGE" -run "$INPUTS_TEST_NAME"
