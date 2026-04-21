@@ -39,7 +39,7 @@ permissions:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Disable release on nightly repository
         if: ${{ !inputs.nightly }}
