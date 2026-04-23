@@ -234,3 +234,49 @@ func (c *Sys) ReadNamespaceWithContext(ctx context.Context, name string) (*Names
 	}
 	return result.Data, nil
 }
+
+type UnsealNamespaceInput struct {
+	Path  string `json:"path"`
+	Key   string `json:"key"`
+	Reset bool   `json:"reset"`
+}
+
+type NamespaceSealStatusResponse struct {
+	Type        string `json:"type"`
+	Initialized bool   `json:"initialized"`
+	Sealed      bool   `json:"sealed"`
+	T           int    `json:"t"`
+	N           int    `json:"n"`
+	Progress    int    `json:"progress"`
+	Nonce       string `json:"nonce"`
+}
+
+func (s *Sys) UnsealNamespace(req *UnsealNamespaceInput) (*NamespaceSealStatusResponse, error) {
+	return s.UnsealNamespaceWithContext(context.Background(), req)
+}
+
+func (s *Sys) UnsealNamespaceWithContext(ctx context.Context, req *UnsealNamespaceInput) (*NamespaceSealStatusResponse, error) {
+	body := map[string]any{"key": req.Key, "reset": req.Reset}
+
+	r := s.c.NewRequest(http.MethodPut, fmt.Sprintf("/v1/sys/namespaces/%s/unseal", req.Path))
+	if err := r.SetJSONBody(body); err != nil {
+		return nil, err
+	}
+
+	ctx, cancelFunc := s.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	resp, err := s.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	//nolint:errcheck // ignoring the error here as its only fulfilling the signature and not returning any sensible error
+	defer resp.Body.Close()
+
+	var result struct {
+		Data *NamespaceSealStatusResponse
+	}
+	err = resp.DecodeJSON(&result)
+	return result.Data, err
+}
