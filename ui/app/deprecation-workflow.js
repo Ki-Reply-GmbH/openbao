@@ -15,7 +15,11 @@ export const deprecationWorkflowConfig = {
     { handler: 'log', matchId: 'ember-data:deprecate-promise-proxies' },
     { handler: 'log', matchId: 'ember-data:deprecate-has-record-for-id' },
     { handler: 'log', matchId: 'ember-data:deprecate-promise-many-array-behaviors' },
+    { handler: 'log', matchId: 'ember-data:no-a-with-array-like' },
     { handler: 'log', matchId: 'setting-on-hash' },
+    { handler: 'log', matchId: 'ember-cli-page-object.multiple' },
+    { handler: 'log', matchId: 'ember-cli-mirage-config-routes-only-export' },
+    { handler: 'log', machtId: 'ember-engines.deprecation-camelized-engine-names' },
   ],
 };
 

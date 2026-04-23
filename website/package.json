@@ -30,7 +30,7 @@
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
     "lodash": "^4.18.1",
-    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#f5e06e9c317afe9d6fe114e9500ed4d120ed4fd6",
+    "openbao-ecosystem-logos": "github:openbao/openbao-ecosystem-logos#9f47314c3a9973a70109ca2a8144c3c812a3804e",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
@@ -41,7 +41,7 @@
     "@docusaurus/types": "^3.10.0",
     "markdownlint": "^0.40.0",
     "markdownlint-cli2": "^0.22.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   },
   "browserslist": {
     "production": [

@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package vault
+package policy
 
 import (
 	"fmt"
@@ -59,7 +59,7 @@ path "secret/split/definition" {
 path "secret/split/definition" {
 	mfa_methods = ["mfa_method_7", "mfa_method_8", "mfa_method_9"]
 }
-	`
+`
 
 	policy, err := ParseACLPolicy(ns, mfaRules)
 	if err != nil {
@@ -983,13 +983,6 @@ path "kv/path/longer3" {
 
 path "kv/deny" {
 	capabilities = ["update"]
-}
-`
-
-var tokenCreationPolicy = `
-name = "tokenCreation"
-path "auth/token/create*" {
-	capabilities = ["update", "create", "sudo"]
 }
 `
 

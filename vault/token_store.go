@@ -39,6 +39,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/openbao/openbao/vault/barrier"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/routing"
 	"github.com/openbao/openbao/vault/tokens"
 	"google.golang.org/protobuf/proto"
@@ -879,7 +880,7 @@ func (ts *TokenStore) teardown() {
 }
 
 func (ts *TokenStore) baseView(ns *namespace.Namespace) barrier.View {
-	return ts.core.NamespaceView(ns).SubView(systemBarrierPrefix + tokenSubPath)
+	return ts.core.NamespaceView(ns).SubView(barrier.SystemBarrierPrefix + tokenSubPath)
 }
 
 func (ts *TokenStore) idView(ns *namespace.Namespace) barrier.View {
@@ -1272,7 +1273,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry, per
 
 	// Validate the inline policy if it's set
 	if entry.InlinePolicy != "" {
-		if _, err := ParseACLPolicy(tokenNS, entry.InlinePolicy); err != nil {
+		if _, err := policy.ParseACLPolicy(tokenNS, entry.InlinePolicy); err != nil {
 			return fmt.Errorf("failed to parse inline policy for token entry: %v", err)
 		}
 	}
@@ -2336,18 +2337,15 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 			if err != nil {
 				return nil, err
 			}
-			if accessorNS != nil {
-				if accessorNS.ID != ns.ID {
-					ns = accessorNS
-					ctx = namespace.ContextWithNamespace(ctx, accessorNS)
-				}
+			if accessorNS != nil && accessorNS.ID != ns.ID {
+				return nil, fmt.Errorf("cannot lookup token in different namespace")
 			}
-		} else {
-			// Any non-root-ns token should have an accessor and child
-			// namespaces cannot have custom IDs. If someone omits or tampers
+		} else if ns.ID != namespace.RootNamespaceID {
+			// Any non-root-ns token should have an accessor and child.
+			//
+			// Namespaces cannot have custom IDs. If someone omits or tampers
 			// with it, the lookup in the root namespace simply won't work.
-			ns = namespace.RootNamespace
-			ctx = namespace.ContextWithNamespace(ctx, ns)
+			return nil, fmt.Errorf("cannot lookup token in different namespace")
 		}
 
 		lookupID, err = ts.SaltID(ctx, id)
@@ -3184,7 +3182,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 	}
 
 	for _, p := range te.Policies {
-		policy, err := ts.core.policyStore.GetPolicy(ctx, p, PolicyTypeToken)
+		policy, err := ts.core.policyStore.GetPolicy(ctx, p, policy.TypeToken)
 		if err != nil {
 			return logical.ErrorResponse("could not look up policy %s", p), nil
 		}
@@ -4348,9 +4346,9 @@ func (ts *TokenStore) resolveTokenPolicies(ctx context.Context, req *logical.Req
 	}
 
 	// Prevent internal policies from being assigned to tokens
-	for _, policy := range finalPolicies {
-		if slices.Contains(nonAssignablePolicies, policy) {
-			return logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", policy)), nil, nil
+	for _, pol := range finalPolicies {
+		if slices.Contains(policy.NonAssignablePolicies, pol) {
+			return logical.ErrorResponse(fmt.Sprintf("cannot assign policy %q", pol)), nil, nil
 		}
 	}
 

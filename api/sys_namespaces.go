@@ -15,6 +15,7 @@ import (
 // CreateNamespaceInput is the input for the CreateNamespace operation.
 type CreateNamespaceInput struct {
 	CustomMetadata map[string]string `json:"custom_metadata"`
+	Seal           string            `json:"seal,omitempty"`
 }
 
 // PatchNamespaceInput is the input for the PatchNamespace operation.

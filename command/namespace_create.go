@@ -5,6 +5,7 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -22,6 +23,7 @@ type NamespaceCreateCommand struct {
 	*BaseCommand
 
 	flagCustomMetadata map[string]string
+	flagSealConfigPath string
 }
 
 func (c *NamespaceCreateCommand) Synopsis() string {
@@ -61,6 +63,13 @@ func (c *NamespaceCreateCommand) Flags() *FlagSets {
 			"This can be specified multiple times to add multiple pieces of metadata.",
 	})
 
+	f.StringVar(&StringVar{
+		Name:       "seal",
+		Target:     &c.flagSealConfigPath,
+		Completion: complete.PredictFiles("*.hcl"),
+		Usage:      "Path to a HCL file with exactly one seal stanza.",
+	})
+
 	return set
 }
 
@@ -98,8 +107,15 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
+	sealConfig, err := c.readSealConfig()
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error while parsing seal configs: %s", err))
+		return 2
+	}
+
 	resp, err := client.Sys().CreateNamespace(namespacePath, &api.CreateNamespaceInput{
 		CustomMetadata: c.flagCustomMetadata,
+		Seal:           string(sealConfig),
 	})
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating namespace: %s", err))
@@ -132,4 +148,13 @@ func structToMap(v interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+func (c *NamespaceCreateCommand) readSealConfig() ([]byte, error) {
+	path := c.flagSealConfigPath
+	if path == "" {
+		return nil, nil
+	}
+
+	return os.ReadFile(path)
 }

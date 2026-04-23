@@ -41,6 +41,7 @@ import (
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/command/server"
 	fwd "github.com/openbao/openbao/helper/forwarding"
+	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -60,6 +61,7 @@ import (
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/forwarding"
 	ident "github.com/openbao/openbao/vault/identity"
+	"github.com/openbao/openbao/vault/policy"
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/openbao/openbao/vault/routing"
 	vaultseal "github.com/openbao/openbao/vault/seal"
@@ -149,6 +151,10 @@ var logger = logging.NewVaultLogger(log.Trace)
 // displayed but not cause a program exit
 type NonFatalError struct {
 	Err error
+}
+
+func (e *NonFatalError) Unwrap() error {
+	return e.Err
 }
 
 func (e *NonFatalError) WrappedErrors() []error {
@@ -360,7 +366,7 @@ type Core struct {
 	rollback *RollbackManager
 
 	// policy store is used to manage named ACL policies
-	policyStore *PolicyStore
+	policyStore *policy.Store
 
 	// token store is used to manage authentication tokens
 	tokenStore *TokenStore
@@ -630,6 +636,8 @@ type Core struct {
 	// instance.
 	allowUnauthedWorkflows bool
 	workflowStore          *WorkflowStore
+
+	unsafeRelativePaths bool
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -783,6 +791,8 @@ type CoreConfig struct {
 	UnsafeCrossNamespaceIdentity bool
 
 	AllowUnauthenticatedWorkflows bool
+
+	UnsafeRelativePaths bool
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -938,6 +948,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		detectDeadlocks:                detectDeadlocks,
 		unsafeCrossNamespaceIdentity:   conf.UnsafeCrossNamespaceIdentity,
 		allowUnauthedWorkflows:         conf.AllowUnauthenticatedWorkflows,
+		unsafeRelativePaths:            conf.UnsafeRelativePaths,
 	}
 
 	c.standby.Store(true)
@@ -1106,7 +1117,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	c.configureAuditBackends(conf.AuditBackends)
 
 	// UI
-	uiStoragePrefix := systemBarrierPrefix + "ui"
+	uiStoragePrefix := barrier.SystemBarrierPrefix + "ui"
 	c.uiConfig = NewUIConfig(conf.EnableUI, physical.NewView(c.physical, uiStoragePrefix), barrier.NewView(c.barrier, uiStoragePrefix))
 
 	// Listeners
@@ -1848,6 +1859,10 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 		return err
 	}
 
+	if err := c.checkSelfInit(ctx); err != nil {
+		return err
+	}
+
 	if err := c.startClusterListener(ctx); err != nil {
 		return err
 	}
@@ -2062,7 +2077,7 @@ func (c *Core) sealInitCommon(ctx context.Context, req *logical.Request) (retErr
 	}
 
 	// Verify that this operation is allowed
-	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &PolicyCheckOpts{
+	authResults := c.performPolicyChecks(ctx, acl, te, req, entity, &policy.CheckOpts{
 		RootPrivsRequired: true,
 	})
 	if !authResults.Allowed {
@@ -2438,28 +2453,42 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 			c.logger.Warn("post-unseal upgrade seal keys failed", "error", err)
 		}
 
-		// Start a periodic but infrequent heartbeat to detect auto-seal backend outages at runtime rather than being
-		// surprised by this at the next need to unseal.
+		// Start a periodic but infrequent heartbeat to detect auto-seal backend
+		// outages at runtime rather than being surprised by this at the next
+		// need to unseal.
 		seal.StartHealthCheck()
 	}
 
-	// This is intentionally the last block in this function. We want to allow
-	// writes just before allowing client requests, to ensure everything has
-	// been set up properly before any writes can have happened.
-	//
-	// Use a small temporary worker pool to run postUnsealFuncs in parallel
+	// This is intentionally (almost) the last block in this function. We want
+	// to allow writes just before allowing client requests, to ensure
+	// everything has been set up properly before any writes happen.
+	c.runPostUnsealFuncs(c.postUnsealFuncs)
+
+	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
+		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
+	}
+
+	c.loginMFABackend.usedCodes = zcache.New[string, struct{}](0, 30*time.Second)
+	c.loginMFABackend.rateLimits = zcache.New[string, uint32](0, 30*time.Second)
+
+	c.logger.Info("post-unseal setup complete")
+	return nil
+}
+
+// runPostUnsealFuncs uses a small temporary worker pool to run postUnsealFuncs in parallel.
+func (c *Core) runPostUnsealFuncs(postUnsealFuncs []func()) {
 	postUnsealFuncConcurrency := runtime.NumCPU() * 2
 	if v := api.ReadBaoVariable("BAO_POSTUNSEAL_FUNC_CONCURRENCY"); v != "" {
 		pv, err := strconv.Atoi(v)
 		if err != nil || pv < 1 {
-			c.logger.Warn("invalid value for VAULT_POSTUNSEAL_FUNC_CURRENCY, must be a positive integer", "error", err, "value", pv)
+			c.logger.Warn("invalid value for BAO_POSTUNSEAL_FUNC_CURRENCY, must be a positive integer", "error", err, "value", pv)
 		} else {
 			postUnsealFuncConcurrency = pv
 		}
 	}
 	if postUnsealFuncConcurrency <= 1 {
 		// Out of paranoia, keep the old logic for parallism=1
-		for _, v := range c.postUnsealFuncs {
+		for _, v := range postUnsealFuncs {
 			v()
 		}
 	} else {
@@ -2473,23 +2502,13 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 				}
 			}()
 		}
-		for _, v := range c.postUnsealFuncs {
+		for _, v := range postUnsealFuncs {
 			wg.Add(1)
 			jobs <- v
 		}
 		wg.Wait()
 		close(jobs)
 	}
-
-	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
-		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
-	}
-
-	c.loginMFABackend.usedCodes = zcache.New[string, struct{}](0, 30*time.Second)
-	c.loginMFABackend.rateLimits = zcache.New[string, uint32](0, 30*time.Second)
-
-	c.logger.Info("post-unseal setup complete")
-	return nil
 }
 
 // preSeal is invoked before the barrier is sealed, allowing
@@ -4139,4 +4158,57 @@ func (c *Core) RedirectAddr() string {
 
 func (c *Core) UnsafeCrossNamespaceIdentity() bool {
 	return c.unsafeCrossNamespaceIdentity
+}
+
+func (c *Core) performPolicyChecks(ctx context.Context, acl *policy.ACL, te *logical.TokenEntry, req *logical.Request, inEntity *identity.Entity, opts *policy.CheckOpts) *policy.AuthResults {
+	ret := new(policy.AuthResults)
+
+	// First, perform normal ACL checks if requested. The only time no ACL
+	// should be applied is if we are only processing EGPs against a login
+	// path in which case opts.Unauth will be set.
+	if acl != nil && !opts.Unauth {
+		ret.ACLResults = acl.AllowOperation(ctx, req, false)
+		ret.RootPrivs = ret.ACLResults.RootPrivs
+		// Root is always allowed; skip Sentinel/MFA checks
+		if ret.ACLResults.IsRoot {
+			ret.Allowed = true
+			return ret
+		}
+		if !ret.ACLResults.Allowed {
+			return ret
+		}
+		// Since HelpOperation was fast-pathed inside AllowOperation, RootPrivs will not have been populated in this
+		// case, so we need to special-case that here as well, or we'll block HelpOperation on all sudo-protected paths.
+		if !ret.RootPrivs && opts.RootPrivsRequired && req.Operation != logical.HelpOperation {
+			return ret
+		}
+	}
+
+	ret.Allowed = true
+
+	return ret
+}
+
+// setupPolicyStore is used to initialize the policy store
+// when the vault is being unsealed.
+func (c *Core) setupPolicyStore(ctx context.Context) error {
+	// Create the policy store
+	var err error
+	sysView := &dynamicSystemView{core: c}
+	psLogger := c.baseLogger.Named("policy")
+	c.AddLogger(psLogger)
+	c.policyStore, err = policy.NewStore(ctx, c, c.systemBarrierView, sysView, psLogger)
+	if err != nil {
+		return err
+	}
+
+	// Ensure that the default policy exists, and if not, create it
+	return c.policyStore.LoadDefaultPolicies(ctx)
+}
+
+// teardownPolicyStore is used to reverse setupPolicyStore
+// when the vault is being sealed.
+func (c *Core) teardownPolicyStore() error {
+	c.policyStore = nil
+	return nil
 }
