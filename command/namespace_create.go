@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-viper/mapstructure/v2"
 	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
@@ -106,30 +106,11 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
-	out, err := structToMap(resp)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Error formatting response: %s", err))
-		return 2
-	}
+	out := structtomap.Map(resp)
 
 	if c.flagField != "" {
 		return PrintRawField(c.UI, out, c.flagField)
 	}
 
 	return OutputData(c.UI, out)
-}
-
-func structToMap(v interface{}) (map[string]interface{}, error) {
-	m := map[string]interface{}{}
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		TagName: "json",
-		Result:  &m,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if err := decoder.Decode(v); err != nil {
-		return nil, err
-	}
-	return m, nil
 }
