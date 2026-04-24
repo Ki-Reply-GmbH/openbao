@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/cli"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 	"github.com/posener/complete"
 )
 
@@ -96,20 +98,19 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
-	data := map[string]interface{}{
-		"custom_metadata": c.flagCustomMetadata,
-	}
-
-	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath, data)
+	resp, err := client.Sys().CreateNamespace(namespacePath, &api.CreateNamespaceInput{
+		CustomMetadata: c.flagCustomMetadata,
+	})
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error creating namespace: %s", err))
 		return 2
 	}
 
-	// Handle single field output
+	out := structtomap.Map(resp)
+
 	if c.flagField != "" {
-		return PrintRawField(c.UI, secret, c.flagField)
+		return PrintRawField(c.UI, out, c.flagField)
 	}
 
-	return OutputSecret(c.UI, secret)
+	return OutputData(c.UI, out)
 }
