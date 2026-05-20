@@ -61,29 +61,9 @@ const (
 		1 /* final view clearing */
 )
 
-// ErrNamespaceSealed is returned by DeleteNamespace when the target namespace
-// is sealed and the caller has not provided sudo privilege.
-var ErrNamespaceSealed = errors.New("namespace is sealed; sudo privilege is required to delete physically")
-
 // ErrNamespaceHasChildren is returned by DeleteNamespace when child namespaces
 // exist, regardless of whether the caller holds sudo privilege.
 var ErrNamespaceHasChildren = errors.New("namespace has child namespaces; delete children first")
-
-type contextKeyType int
-
-const contextKeySudo contextKeyType = iota
-
-// contextWithSudoPrivilege stores sudo privilege in ctx for DeleteNamespace.
-func contextWithSudoPrivilege(ctx context.Context, sudo bool) context.Context {
-	return context.WithValue(ctx, contextKeySudo, sudo)
-}
-
-// sudoPrivilegeFromContext returns the sudo privilege stored by the handler.
-// Defaults to false when not set, so callers without sudo cannot force deletion.
-func sudoPrivilegeFromContext(ctx context.Context) bool {
-	v, _ := ctx.Value(contextKeySudo).(bool)
-	return v
-}
 
 // NamespaceStore is used to provide durable storage of namespace. It is
 // a singleton store across the Core and contains all child namespaces.
@@ -1141,9 +1121,8 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, parent, namespaceT
 }
 
 // DeleteNamespace deletes the named namespace. If the namespace is sealed,
-// sudo privilege must be present in ctx via contextWithSudoPrivilege;
-// otherwise ErrNamespaceSealed is returned.
-func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (string, error) {
+// sudo must be true; otherwise a permission-denied error is returned.
+func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string, sudo bool) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
 
 	unlock, err := ns.lockWithInvalidation(ctx, true)
@@ -1170,10 +1149,8 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 	// the required privilege always receive a consistent 403, regardless
 	// of whether child namespaces exist.
 	sealed := ns.core.NamespaceSealed(namespaceToDelete)
-	if sealed {
-		if !sudoPrivilegeFromContext(ctx) {
-			return "", ErrNamespaceSealed
-		}
+	if sealed && !sudo {
+		return "", logical.CodedError(http.StatusForbidden, "namespace is sealed; sudo privilege is required to delete physically")
 	}
 
 	// Physical storage check for child namespaces. Key names are never
@@ -1613,45 +1590,6 @@ func (ns *NamespaceStore) newNamespaceSealedDeletionJob(parent *namespace.Namesp
 
 func (j *namespaceSealedDeletionJob) Execute() error {
 	ctx := namespace.ContextWithNamespace(j.store.creationDeletionJobContext, j.target)
-
-	// Clear auth mounts from memory; storage is inaccessible through the sealed barrier.
-	j.store.core.authLock.Lock()
-	authMountEntries, err := j.store.core.auth.FindAllNamespaceMounts(ctx)
-	j.store.core.authLock.Unlock()
-	if err != nil {
-		return fmt.Errorf("failed to retrieve namespace auth mounts: %w", err)
-	}
-	for _, me := range authMountEntries {
-		err := j.store.core.disableCredentialInternal(ctx, me.Path, false /* updateStorage */)
-		if err != nil {
-			if errors.Is(err, errNoMatchingMount) {
-				continue
-			}
-			return fmt.Errorf("failed to unmount namespace auth mount (%v): %w", me.Path, err)
-		}
-	}
-
-	// Clear secret mounts from memory; storage is inaccessible through the sealed barrier.
-	j.store.core.mountsLock.Lock()
-	mountEntries, err := j.store.core.mounts.FindAllNamespaceMounts(ctx)
-	j.store.core.mountsLock.Unlock()
-	if err != nil {
-		return fmt.Errorf("failed to retrieve namespace secret mounts: %w", err)
-	}
-	for _, me := range mountEntries {
-		err := j.store.core.unmountInternal(ctx, me.Path, false /* updateStorage */)
-		if err != nil {
-			if errors.Is(err, errNoMatchingMount) {
-				continue
-			}
-			return fmt.Errorf("failed to unmount namespace secret mount (%v): %w", me.Path, err)
-		}
-	}
-
-	// Remove identity store entries for this namespace.
-	if err := j.store.core.identityStore.RemoveNamespaceView(j.target); err != nil {
-		return fmt.Errorf("failed to clean identity store: %w", err)
-	}
 
 	// Wipe the entire storage prefix for this namespace via the root barrier.
 	// The root barrier is unsealed and can delete entries without decrypting

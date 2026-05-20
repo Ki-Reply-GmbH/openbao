@@ -93,7 +93,7 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, ns[0].UUID, itemUUID)
 
 	// Delete that item.
-	status, err := s.DeleteNamespace(ctx, itemPath)
+	status, err := s.DeleteNamespace(ctx, itemPath, false)
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
@@ -165,13 +165,13 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 
 	// delete namespace
-	status, err := s.DeleteNamespace(ctx, "test")
+	status, err := s.DeleteNamespace(ctx, "test", false)
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
 	maxRetries := 50
 	for range maxRetries {
-		status, err := s.DeleteNamespace(ctx, "test")
+		status, err := s.DeleteNamespace(ctx, "test", false)
 		require.NoError(t, err)
 		if status == "in-progress" {
 			time.Sleep(1 * time.Millisecond)
@@ -195,7 +195,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.Equal(t, s.namespacesByPath.size, 1)
 
 	// try to delete root
-	_, err = s.DeleteNamespace(ctx, "")
+	_, err = s.DeleteNamespace(ctx, "", false)
 	require.Error(t, err)
 
 	// try to delete namespace with child namespaces
@@ -209,16 +209,16 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 
 	// failed to delete as it contains a child namespace
-	_, err = s.DeleteNamespace(ctx, "parent")
+	_, err = s.DeleteNamespace(ctx, "parent", false)
 	require.Error(t, err)
 
 	// delete the child namespace
-	status, err = s.DeleteNamespace(parentCtx, "child")
+	status, err = s.DeleteNamespace(parentCtx, "child", false)
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
 	for range maxRetries {
-		status, err := s.DeleteNamespace(parentCtx, "child")
+		status, err := s.DeleteNamespace(parentCtx, "child", false)
 		require.NoError(t, err)
 		if status == "in-progress" {
 			time.Sleep(1 * time.Millisecond)
@@ -902,7 +902,7 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 	nsKeys := TestCoreCreateUnsealedNamespaces(t, c, namespaces...)
 
 	t.Run("cannot seal tainted namespace", func(t *testing.T) {
-		_, err := s.DeleteNamespace(ctx, "ns1")
+		_, err := s.DeleteNamespace(ctx, "ns1", false)
 		require.NoError(t, err)
 
 		require.Error(t, s.SealNamespace(ctx, "ns1"))
@@ -913,14 +913,14 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 		require.False(t, c.NamespaceSealed(ns))
 
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
-			status, err := s.DeleteNamespace(ctx, "ns1")
+			status, err := s.DeleteNamespace(ctx, "ns1", false)
 			require.NoError(collect, err)
 			require.Empty(collect, status)
 		}, time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("seal core while deleting namespace", func(t *testing.T) {
-		_, err := s.DeleteNamespace(ctx, "ns2")
+		_, err := s.DeleteNamespace(ctx, "ns2", false)
 		require.NoError(t, err)
 
 		require.NoError(t, TestCoreSeal(c))
@@ -938,7 +938,7 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, ns.Tainted)
 
-		_, err = s.DeleteNamespace(ctx, "ns2")
+		_, err = s.DeleteNamespace(ctx, "ns2", false)
 		require.Error(t, err)
 
 		for _, key := range nsKeys["ns2/"] {
@@ -951,7 +951,7 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 		require.False(t, c.NamespaceSealed(ns))
 
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
-			status, err := s.DeleteNamespace(ctx, "ns2")
+			status, err := s.DeleteNamespace(ctx, "ns2", false)
 			require.NoError(collect, err)
 			require.Empty(collect, status)
 		}, time.Second, 100*time.Millisecond)
@@ -960,8 +960,8 @@ func TestNamespaceDeletionSealingInteraction(t *testing.T) {
 	t.Run("cannot delete currently sealed namespace", func(t *testing.T) {
 		require.NoError(t, s.SealNamespace(ctx, "ns3"))
 
-		_, err := s.DeleteNamespace(ctx, "ns3")
-		require.ErrorIs(t, err, ErrNamespaceSealed)
+		_, err := s.DeleteNamespace(ctx, "ns3", false)
+		require.ErrorContains(t, err, "namespace is sealed")
 	})
 }
 
@@ -974,8 +974,6 @@ func TestNamespaceStore_DeleteSudoSealed(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	s := c.namespaceStore
 	ctx := namespace.RootContext(t.Context())
-	sudoCtx := contextWithSudoPrivilege(ctx, true)
-
 	// Sudo must not bypass in-memory child namespace protection.
 	parent := &namespace.Namespace{Path: "sudo-parent/"}
 	require.NoError(t, s.SetNamespace(ctx, parent))
@@ -983,7 +981,7 @@ func TestNamespaceStore_DeleteSudoSealed(t *testing.T) {
 	child := &namespace.Namespace{Path: "sudo-parent/sudo-child/"}
 	require.NoError(t, s.SetNamespace(ctx, child))
 
-	_, err := s.DeleteNamespace(sudoCtx, "sudo-parent")
+	_, err := s.DeleteNamespace(ctx, "sudo-parent", true)
 	require.Error(t, err, "sudo must not bypass child namespace protection")
 	require.ErrorContains(t, err, "child namespaces")
 
@@ -998,7 +996,7 @@ func TestNamespaceStore_DeleteSudoSealed(t *testing.T) {
 	TestCoreCreateNamespaces(t, c, &namespace.Namespace{Path: "sealed-with-child/sealed-child/"})
 	require.NoError(t, s.SealNamespace(ctx, "sealed-with-child"))
 
-	_, err = s.DeleteNamespace(sudoCtx, "sealed-with-child")
+	_, err = s.DeleteNamespace(ctx, "sealed-with-child", true)
 	require.Error(t, err, "sudo must not bypass child protection for sealed namespace")
 	require.ErrorContains(t, err, "child namespaces")
 
@@ -1006,7 +1004,7 @@ func TestNamespaceStore_DeleteSudoSealed(t *testing.T) {
 	TestCoreCreateUnsealedNamespaces(t, c, &namespace.Namespace{Path: "sealed-sudo-test/"})
 	require.NoError(t, s.SealNamespace(ctx, "sealed-sudo-test"))
 
-	status, err := s.DeleteNamespace(sudoCtx, "sealed-sudo-test")
+	status, err := s.DeleteNamespace(ctx, "sealed-sudo-test", true)
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 

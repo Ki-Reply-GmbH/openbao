@@ -496,14 +496,13 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 		nsEntry, _ := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
 		isSealed := nsEntry != nil && b.Core.NamespaceSealed(nsEntry)
 
-		ctx = contextWithSudoPrivilege(ctx, isSudo)
-		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path)
+		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path, isSudo)
 		if err != nil {
-			if errors.Is(err, ErrNamespaceSealed) {
-				return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
-			}
 			if errors.Is(err, ErrNamespaceHasChildren) {
 				return logical.RespondWithStatusCode(logical.ErrorResponse(err.Error()), req, http.StatusConflict)
+			}
+			if coded, ok := err.(logical.HTTPCodedError); ok && coded.Code() == http.StatusForbidden {
+				return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
 			}
 			return handleError(err)
 		}
