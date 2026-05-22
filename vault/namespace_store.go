@@ -1154,14 +1154,10 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string, sudo
 	}
 
 	// Physical storage check for child namespaces. Key names are never
-	// encrypted, so the parent's barrier (or the root barrier as fallback)
-	// can list them even when the in-memory tree is incomplete — for example,
-	// after a restart when children of sealed namespaces are not reloaded.
-	baseStorage := logical.Storage(ns.storage)
-	if b := ns.core.sealManager.NamespaceBarrier(parent.Path); b != nil && !b.Sealed() {
-		baseStorage = b
-	}
-	view := NamespaceScopedView(baseStorage, namespaceToDelete)
+	// encrypted, so the barrier can list them even when the in-memory tree
+	// is incomplete — for example, after a restart when children of sealed
+	// namespaces are not reloaded.
+	view := NamespaceScopedView(ns.core.sealManager.NamespaceBarrierByLongestPrefix(parent.Path), namespaceToDelete)
 	childKeys, err := view.List(ctx, namespaceStoreSubPath)
 	if err != nil {
 		return "", fmt.Errorf("cannot verify child namespaces for %q: %w", namespaceToDelete.Path, err)
