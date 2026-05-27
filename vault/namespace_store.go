@@ -61,6 +61,10 @@ const (
 		1 /* final view clearing */
 )
 
+// ErrNamespaceHasChildren is returned by DeleteNamespace when child namespaces
+// exist, regardless of whether the caller holds sudo privilege.
+var ErrNamespaceHasChildren = errors.New("namespace has child namespaces; delete children first")
+
 // NamespaceStore is used to provide durable storage of namespace. It is
 // a singleton store across the Core and contains all child namespaces.
 type NamespaceStore struct {
@@ -1116,8 +1120,9 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, parent, namespaceT
 	return ns.pushToMounts(ctx, namespaceToTaint.Clone(false))
 }
 
-// DeleteNamespace is used to delete the named namespace
-func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (string, error) {
+// DeleteNamespace deletes the named namespace. If the namespace is sealed,
+// sudo must be true; otherwise a permission-denied error is returned.
+func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string, sudo bool) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
 
 	unlock, err := ns.lockWithInvalidation(ctx, true)
@@ -1134,8 +1139,31 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 		return "", nil
 	}
 
-	if ns.core.NamespaceSealed(namespaceToDelete) {
-		return "", errors.New("cannot delete sealed namespace")
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error loading parent namespace from context: %w", err)
+	}
+
+	// Authorization gate: sealed namespaces require sudo privilege.
+	// This check precedes all state validation so that callers without
+	// the required privilege always receive a consistent 403, regardless
+	// of whether child namespaces exist.
+	sealed := ns.core.NamespaceSealed(namespaceToDelete)
+	if sealed && !sudo {
+		return "", logical.CodedError(http.StatusForbidden, "namespace is sealed; sudo privilege is required to delete physically")
+	}
+
+	// Physical storage check for child namespaces. Key names are never
+	// encrypted, so the barrier can list them even when the in-memory tree
+	// is incomplete — for example, after a restart when children of sealed
+	// namespaces are not reloaded.
+	view := NamespaceScopedView(ns.core.sealManager.NamespaceBarrierByLongestPrefix(parent.Path), namespaceToDelete)
+	childKeys, err := view.List(ctx, namespaceStoreSubPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot verify child namespaces for %q: %w", namespaceToDelete.Path, err)
+	}
+	if len(childKeys) > 0 {
+		return "", fmt.Errorf("namespace %q has child namespaces; please delete children first: %w", namespaceToDelete.Path, ErrNamespaceHasChildren)
 	}
 
 	isNamespaceDeleting := ns.creationDeletionMap[namespaceToDelete.UUID]
@@ -1154,12 +1182,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 	}
 
 	if len(childNS) > 0 {
-		return "", fmt.Errorf("cannot delete namespace (%q) containing child namespaces", namespaceToDelete.Path)
-	}
-
-	parent, err := namespace.FromContext(ctx)
-	if err != nil {
-		return "", fmt.Errorf("error loading parent namespace from context: %w", err)
+		return "", fmt.Errorf("namespace %q has child namespaces: %w", namespaceToDelete.Path, ErrNamespaceHasChildren)
 	}
 
 	if !namespaceToDelete.Tainted {
@@ -1169,7 +1192,12 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (str
 	}
 
 	ns.creationDeletionMap[namespaceToDelete.UUID] = true
-	ns.deletionDispatcher.AddJob(ns.newNamespaceDeletionJob(parent, namespaceToDelete), parent.UUID)
+
+	if sealed {
+		ns.deletionDispatcher.AddJob(ns.newNamespaceSealedDeletionJob(parent, namespaceToDelete), parent.UUID)
+	} else {
+		ns.deletionDispatcher.AddJob(ns.newNamespaceDeletionJob(parent, namespaceToDelete), parent.UUID)
+	}
 
 	return "in-progress", nil
 }
@@ -1534,6 +1562,61 @@ func (j *namespaceDeletionJob) Execute() error {
 
 func (j *namespaceDeletionJob) OnFailure(err error) {
 	j.store.logger.Error("failed to handle namespace deletion; job may be retried", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error())
+}
+
+// namespaceSealedDeletionJob removes a sealed namespace by wiping its physical
+// storage prefix directly, without requiring barrier access. Mount table
+// entries are removed from memory only; sealed barrier data is cleared in bulk.
+type namespaceSealedDeletionJob struct {
+	store  *NamespaceStore
+	parent *namespace.Namespace
+	target *namespace.Namespace
+}
+
+func (ns *NamespaceStore) newNamespaceSealedDeletionJob(parent *namespace.Namespace, target *namespace.Namespace) fairshare.Job {
+	return &namespaceSealedDeletionJob{
+		store:  ns,
+		parent: parent,
+		target: target,
+	}
+}
+
+func (j *namespaceSealedDeletionJob) Execute() error {
+	ctx := namespace.ContextWithNamespace(j.store.creationDeletionJobContext, j.target)
+
+	// Wipe the entire storage prefix for this namespace via the root barrier.
+	// The root barrier is unsealed and can delete entries without decrypting
+	// them, covering all data including leases, tokens, mounts, and policies.
+	view := NamespaceScopedView(j.store.core.barrier, j.target)
+	if err := logical.ClearViewWithLogging(j.store.creationDeletionJobContext,
+		view, j.store.logger); err != nil {
+		return fmt.Errorf("failed to wipe storage for sealed namespace: %w", err)
+	}
+
+	j.store.lock.Lock()
+	defer j.store.lock.Unlock()
+	defer delete(j.store.creationDeletionMap, j.target.UUID)
+
+	if err := j.store.namespacesByPath.Delete(j.target.Path); err != nil {
+		return fmt.Errorf("failed to delete namespace entry in namespace tree: %w", err)
+	}
+
+	delete(j.store.namespacesByUUID, j.target.UUID)
+	delete(j.store.namespacesByAccessor, j.target.ID)
+
+	j.store.core.sealManager.RemoveNamespace(j.target)
+
+	// Remove the namespace metadata entry from the parent namespace store.
+	parentView := NamespaceScopedView(j.store.storage, j.parent).SubView(namespaceStoreSubPath)
+	if err := parentView.Delete(ctx, j.target.UUID); err != nil {
+		return fmt.Errorf("failed to delete namespace storage entry: %w", err)
+	}
+
+	return nil
+}
+
+func (j *namespaceSealedDeletionJob) OnFailure(err error) {
+	j.store.logger.Error("failed to handle sealed namespace deletion; job may be retried", "namespace", j.target.Path, "ns_uuid", j.target.UUID, "error", err.Error())
 }
 
 // namespaceCreationFailureJob is used with NamespaceStore.setNamespaceLocked

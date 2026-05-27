@@ -36,9 +36,13 @@ Usage: bao namespace delete [options] PATH
 
       $ bao namespace delete ns1
 
-  Delete a namespace namespace from a parent namespace (e.g. ns1/ns2/):
+  Delete a namespace from a parent namespace (e.g. ns1/ns2/):
 
       $ bao namespace delete -namespace=ns1 ns2
+
+  Delete a sealed namespace (requires sudo privilege on the path):
+
+      $ bao namespace delete ns1
 
 ` + c.Flags().Help()
 
@@ -89,15 +93,21 @@ func (c *NamespaceDeleteCommand) Run(args []string) int {
 		return 2
 	}
 
-	if secret != nil {
-		// Likely, we have warnings
-		return OutputSecret(c.UI, secret)
+	if secret == nil || secret.Data == nil {
+		if secret != nil {
+			return OutputSecret(c.UI, secret)
+		}
+		c.UI.Warn("Requested namespace does not exist")
+		return 0
 	}
 
 	if !strings.HasSuffix(namespacePath, "/") {
 		namespacePath = namespacePath + "/"
 	}
 
-	c.UI.Output(fmt.Sprintf("Success! Namespace deleted at: %s", namespacePath))
+	for _, w := range secret.Warnings {
+		c.UI.Warn(w)
+	}
+	c.UI.Output(fmt.Sprintf("Success! Namespace deletion scheduled: %s", namespacePath))
 	return 0
 }

@@ -528,8 +528,21 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path)
+		isSudo := b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken)
+
+		// Pre-check whether the target is sealed so we can attach a warning
+		// to the response without a second round-trip into the store.
+		nsEntry, _ := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		isSealed := nsEntry != nil && b.Core.NamespaceSealed(nsEntry)
+
+		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path, isSudo)
 		if err != nil {
+			if errors.Is(err, ErrNamespaceHasChildren) {
+				return logical.RespondWithStatusCode(logical.ErrorResponse(err.Error()), req, http.StatusConflict)
+			}
+			if coded, ok := err.(logical.HTTPCodedError); ok && coded.Code() == http.StatusForbidden {
+				return logical.ErrorResponse(err.Error()), logical.ErrPermissionDenied
+			}
 			return handleError(err)
 		}
 
@@ -539,11 +552,15 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			return resp, nil
 		}
 
-		return &logical.Response{
+		resp := &logical.Response{
 			Data: map[string]interface{}{
 				"status": status,
 			},
-		}, nil
+		}
+		if isSealed && isSudo {
+			resp.AddWarning("sealed namespace deletion performed using sudo capabilities")
+		}
+		return resp, nil
 	}
 }
 
