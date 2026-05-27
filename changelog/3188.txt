@@ -1,0 +1,3 @@
+```release-note:improvement
+namespaces: allow sudo-privileged deletion of sealed namespaces via physical storage wipe; child namespace protection enforced via physical storage scan for all namespaces.
+```
