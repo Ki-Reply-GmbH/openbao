@@ -1163,9 +1163,6 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string, sudo
 		return "", fmt.Errorf("cannot verify child namespaces for %q: %w", namespaceToDelete.Path, err)
 	}
 	if len(childKeys) > 0 {
-		if sealed {
-			return "", fmt.Errorf("sealed namespace %q has child namespaces; please unseal the namespace barrier and delete children before retrying: %w", namespaceToDelete.Path, ErrNamespaceHasChildren)
-		}
 		return "", fmt.Errorf("namespace %q has child namespaces; please delete children first: %w", namespaceToDelete.Path, ErrNamespaceHasChildren)
 	}
 
