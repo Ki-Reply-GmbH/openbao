@@ -17,28 +17,6 @@ builds:
       - >-
         {{- if eq .Arch "amd64"}}CC=x86_64-linux-gnu-gcc{{- end}}
         {{- if eq .Arch "arm64"}}CC=aarch64-linux-gnu-gcc{{- end}}
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-    ignore:
-      - goos: darwin
-      - goos: dragonfly
-      - goos: freebsd
-      - goos: illumos
-      - goos: netbsd
-      - goos: openbsd
-      - goos: wasip1
-      - goos: windows
-      - goos: linux
-        goarch: arm
-      - goos: linux
-        goarch: ppc64le
-      - goos: linux
-        goarch: s390x
-      - goos: linux
-        goarch: riscv
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
 
@@ -105,8 +83,10 @@ nfpms:
           - openssl
 
 checksum:
-  name_template: "checksums-linux-hsm.txt"
-  disable: false
+  disable: true
+
+changelog:
+  disable: true
 
 archives:
   - format_overrides:
@@ -138,15 +118,6 @@ sboms:
   - id: package
     artifacts: package
 
-changelog:
-  disable: "{{ if gt (len .Env.NIGHTLY_RELEASE) 0 }}true{{ end }}"
-  use: github
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-
 signs:
   - id: cosign
     artifacts: all
@@ -166,6 +137,6 @@ release:
   prerelease: auto
   disable: false
 
-  draft: false
-  replace_existing_draft: false
+  draft: true
+  use_existing_draft: true
   replace_existing_artifacts: false
