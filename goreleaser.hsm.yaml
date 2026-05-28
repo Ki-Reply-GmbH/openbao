@@ -109,12 +109,6 @@ nfpms:
       archlinux:
         dependencies:
           - openssl
-    deb:
-      signature:
-        key_file: "{{ .Env.GPG_KEY_FILE }}"
-    rpm:
-      signature:
-        key_file: "{{ .Env.GPG_KEY_FILE }}"
 
 checksum:
   name_template: "checksums-linux-hsm.txt"
@@ -420,17 +414,6 @@ signs:
       - "--bundle=${signature}" # needed on cosign 3.0.0+
       - "${artifact}"
       - "--yes" # needed on cosign 2.0.0+
-  - id: gpg
-    artifacts: all
-    signature: "${artifact}.gpgsig"
-    cmd: gpg
-    stdin: "{{ .Env.GPG_PASSWORD }}"
-    args:
-      - "--batch"
-      - "--default-key={{ .Env.GPG_FINGERPRINT }}"
-      - "--output=${signature}"
-      - "--detach-sign"
-      - "${artifact}"
 
 docker_signs:
   - artifacts: all
@@ -442,7 +425,7 @@ docker_signs:
 release:
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
-    name: openbao{{ .Env.NIGHTLY_RELEASE }}
+    name: openbao
 
   prerelease: auto
   disable: false

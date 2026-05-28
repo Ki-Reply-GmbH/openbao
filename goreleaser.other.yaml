@@ -122,22 +122,11 @@ signs:
       - "--bundle=${signature}" # needed on cosign 3.0.0+
       - "${artifact}"
       - "--yes" # needed on cosign 2.0.0+
-  - id: gpg
-    artifacts: all
-    signature: "${artifact}.gpgsig"
-    cmd: gpg
-    stdin: "{{ .Env.GPG_PASSWORD }}"
-    args:
-      - "--batch"
-      - "--default-key={{ .Env.GPG_FINGERPRINT }}"
-      - "--output=${signature}"
-      - "--detach-sign"
-      - "${artifact}"
 
 release:
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
-    name: openbao{{ .Env.NIGHTLY_RELEASE }}
+    name: openbao
 
   prerelease: auto
   disable: false
