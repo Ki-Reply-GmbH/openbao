@@ -104,6 +104,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0 # Required by GoReleaser.
 
       - name: Set up Go
         uses: ./.github/actions/set-up-go
@@ -147,7 +149,7 @@ jobs:
           git tag '${{ inputs.version }}'
 
           yq eval "$query" "$file" \
-            | goreleaser release --clean --verbose --timeout=60m -f -
+            | goreleaser release --clean --verbose --timeout=30m -f -
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
