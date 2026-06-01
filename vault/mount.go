@@ -2184,6 +2184,36 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 			routerPath = path.Join(routing.CredentialRoutePrefix, routerPath) + "/"
 		}
 
+		if desiredMountEntry.Path != actualMountEntry.Path {
+			if table == routing.CredentialTableType {
+				err = c.removeCredEntryWithLock(ctx, actualMountEntry.Path, false)
+			} else {
+				err = c.removeMountEntryWithLock(ctx, actualMountEntry.Path, false)
+			}
+			if err != nil {
+				return err
+			}
+
+			if err := c.router.Unmount(ctx, routerPath); err != nil {
+				return err
+			}
+
+			if c.quotaManager != nil {
+				if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, actualMountEntry.APIPathNoNamespace()); err != nil {
+					c.logger.Error("failed to update quotas after disabling mount", "error", err, "namespace", ns.Path, "uuid", uuid)
+					return err
+				}
+			}
+
+			// bail out from reload, we don't need to check anything else as we remounted
+			if table == routing.CredentialTableType {
+				return c.enableCredentialInternalWithLock(ctx, desiredMountEntry, false)
+			} else {
+				c.logger.Info("calling mount internal", "path", desiredMountEntry.Path)
+				return c.mountInternalWithLock(ctx, desiredMountEntry, false)
+			}
+		}
+
 		if desiredMountEntry.Tainted != actualMountEntry.Tainted {
 			if desiredMountEntry.Tainted {
 				err = c.router.Taint(ctx, routerPath)
@@ -2206,10 +2236,7 @@ func (c *Core) reloadMountInternalWithLock(ctx context.Context, table, uuid stri
 		}
 
 		if desiredMountEntry.Options["version"] != actualMountEntry.Options["version"] {
-			err = c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
-			if err != nil {
-				return err
-			}
+			return c.reloadBackendCommon(ctx, desiredMountEntry, table == routing.CredentialTableType)
 		}
 	}
 

@@ -326,7 +326,6 @@ func (c *Core) removeCredEntry(ctx context.Context, path string, updateStorage b
 }
 
 func (c *Core) removeCredEntryWithLock(ctx context.Context, path string, updateStorage bool) error {
-	// Taint the entry from the auth table
 	newTable := c.auth.ShallowClone()
 	entry, err := newTable.Remove(ctx, path)
 	if err != nil {
