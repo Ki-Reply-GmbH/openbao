@@ -5,7 +5,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v7.34.0
-// source: vault/forwarding/request_forwarding_service.proto
+// source: internal/vault/forwarding/request_forwarding_service.proto
 
 package forwarding
 
@@ -159,5 +159,5 @@ var RequestForwarding_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "vault/forwarding/request_forwarding_service.proto",
+	Metadata: "internal/vault/forwarding/request_forwarding_service.proto",
 }
