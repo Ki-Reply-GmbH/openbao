@@ -17,7 +17,7 @@ builds:
       - ui
       - hsm
     ldflags:
-      - -X github.com/openbao/openbao/version.fullVersion={{ .Version }} -X github.com/openbao/openbao/version.GitCommit={{ .Commit }} -X github.com/openbao/openbao/version.CommitDate={{ .Date }} -X github.com/openbao/openbao/version.VersionMetadata=hsm
+      - -X github.com/openbao/openbao/v2/internal/version.fullVersion={{ .Version }} -X github.com/openbao/openbao/v2/internal/version.GitCommit={{ .Commit }} -X github.com/openbao/openbao/v2/internal/version.CommitDate={{ .Date }} -X github.com/openbao/openbao/v2/internal/version.VersionMetadata=hsm
     env:
       - CGO_ENABLED=1
       - >-

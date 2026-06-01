@@ -141,7 +141,7 @@ bootstrap:
 	done
 
 static-assets-dir:
-	@mkdir -p ./http/web_ui
+	@mkdir -p ./internal/http/web_ui
 
 install-ui-dependencies:
 	@echo "--> Installing JavaScript assets"
