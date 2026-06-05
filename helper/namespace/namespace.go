@@ -66,7 +66,7 @@ func (n *Namespace) Validate() error {
 		if segment == "" {
 			return fmt.Errorf("namespace name cannot be empty")
 		}
-		if slices.Contains(reservedNames, segment) {
+		if CheckReservedName(segment) {
 			return fmt.Errorf("%q is a reserved path and cannot be used as a namespace name", segment)
 		}
 
@@ -329,4 +329,8 @@ func (mpd *MountPathDetails) GetRelativePath(currNs *Namespace) string {
 
 func (mpd *MountPathDetails) GetFullPath() string {
 	return mpd.Namespace.Path + mpd.MountPath
+}
+
+func CheckReservedName(segment string) bool {
+	return slices.Contains(reservedNames, segment)
 }

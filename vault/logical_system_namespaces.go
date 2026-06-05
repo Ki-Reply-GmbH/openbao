@@ -345,6 +345,10 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			return logical.ErrorResponse("path must not contain /"), logical.ErrInvalidRequest
 		}
 
+		if namespace.CheckReservedName(path) {
+			return logical.ErrorResponse(fmt.Sprintf("name %q is reserved", data.Get("path").(string))), logical.ErrInvalidRequest
+		}
+
 		imetadata, ok := data.GetOk("custom_metadata")
 		var metadata map[string]string
 		if ok {
