@@ -189,6 +189,9 @@ jobs:
         run: ./scripts/release/goreleaser-build.sh
         env:
           VERSION: ${{ needs.setup.outputs.version }}
+          TARGET_OS: ${{ matrix.target.os }}
+          TARGET_ARM: ${{ matrix.target.arm }}
+          TARGET_ARCH: ${{ matrix.target.arch }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
