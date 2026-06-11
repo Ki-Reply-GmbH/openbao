@@ -1,6 +1,12 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
+# This is a helper stage used to ensure the /usr/bin/bao binary layer is always
+# the same, no matter which base image it is copied into.
+FROM scratch AS bin
+ARG TARGETARCH
+COPY bin/${TARGETARCH}/bao /usr/bin/bao
+
 # This is {docker.io,quay.io,ghcr.io}/openbao/openbao{,-hsm}.
 FROM alpine:3.24.0 AS default
 
@@ -11,11 +17,9 @@ RUN addgroup openbao && adduser -S -G openbao openbao
 
 RUN apk add --no-cache ca-certificates libcap su-exec dumb-init tzdata gcompat
 
-# The OpenBao binary is built externally in CI and copied into the container
-# build.
-ARG TARGETARCH
-COPY bin/${TARGETARCH}/bao /bin/
-RUN ln -s /bin/bao /bin/vault
+# Copy the binary stage.
+COPY --from=bin . /
+RUN ln -s /usr/bin/bao /usr/bin/vault
 
 # /openbao/logs is made available to use as a location to store audit logs, if
 # desired; /openbao/file is made available to use as a location with the file
@@ -65,11 +69,9 @@ RUN groupadd --gid 1000 openbao && \
     adduser --uid 100 --system -g openbao openbao && \
     usermod -a -G root openbao
 
-# The OpenBao binary is built externally in CI and copied into the container
-# build.
-ARG TARGETARCH
-COPY bin/${TARGETARCH}/bao /bin/
-RUN ln -s /bin/bao /bin/vault
+# Copy the binary stage.
+COPY --from=bin . /
+RUN ln -s /usr/bin/bao /usr/bin/vault
 
 # /openbao/logs is made available to use as a location to store audit logs, if
 # desired; /openbao/file is made available to use as a location with the file
@@ -115,10 +117,8 @@ FROM gcr.io/distroless/static:nonroot@sha256:963fa6c544fe5ce420f1f54fb88b6fb0147
 
 COPY LICENSE /licenses/mozilla.txt
 
-# The OpenBao binary is built externally in CI and copied into the container
-# build.
-ARG TARGETARCH
-COPY bin/${TARGETARCH}/bao /bin/
+# Copy the binary stage.
+COPY --from=bin . /
 
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.
@@ -126,5 +126,5 @@ EXPOSE 8200
 
 # By default you'll get a single-node development server that stores everything
 # in RAM and bootstraps itself. Don't use this configuration for production.
-ENTRYPOINT ["/bin/bao"]
+ENTRYPOINT ["/usr/bin/bao"]
 CMD ["server", "-dev", "-dev-no-store-token"]

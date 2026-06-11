@@ -173,7 +173,7 @@ jobs:
 
       - name: Get date
         id: date
-        run: echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+        run: echo "epoch=$(git log -1 --format=%ct "$VERSION")" >> "$GITHUB_OUTPUT"
 
       - name: Build and push images
         id: build
@@ -182,10 +182,11 @@ jobs:
           push: true
           context: .
           target: ${{ matrix.distro.target }}
+          output: registry,rewrite-timestamp=true
+          build-args: SOURCE_DATE_EPOCH=${{ steps.date.outputs.epoch }}
           tags: ${{ join(fromJSON(steps.tags.outputs.tags), ',') }}
           platforms: ${{ join(matrix.distro.platforms, ',') }}
           labels: |
-            org.opencontainers.image.created=${{ steps.date.outputs.date }}
             org.opencontainers.image.authors=OpenBao <openbao@lists.openssf.org>
             org.opencontainers.image.url=https://github.com/openbao/openbao
             org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md
