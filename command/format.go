@@ -280,6 +280,11 @@ func (t TableFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) 
 		return t.OutputList(ui, nil, data)
 	case map[string]interface{}:
 		return t.OutputMap(ui, data)
+	case api.SealStatusResponse:
+		ui.Output(tableOutput(t.namespaceSealStatusStruct(data), &columnize.Config{
+			Delim: "|",
+		}))
+		return nil
 	case SealStatusOutput:
 		return t.OutputSealStatusStruct(ui, data)
 	default:
@@ -287,8 +292,8 @@ func (t TableFormatter) Output(ui cli.Ui, secret *api.Secret, data interface{}) 
 	}
 }
 
-func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data interface{}) error {
-	status := data.(SealStatusOutput)
+func (t TableFormatter) namespaceSealStatusStruct(data interface{}) []string {
+	status := data.(api.SealStatusResponse)
 	var sealPrefix string
 
 	out := []string{}
@@ -309,6 +314,13 @@ func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data interface{}) erro
 		out = append(out, fmt.Sprintf("Unseal Progress | %d/%d", status.Progress, status.T))
 		out = append(out, fmt.Sprintf("Unseal Nonce | %s", status.Nonce))
 	}
+
+	return out
+}
+
+func (t TableFormatter) OutputSealStatusStruct(ui cli.Ui, data interface{}) error {
+	status := data.(SealStatusOutput)
+	out := t.namespaceSealStatusStruct(status)
 
 	if status.Migration {
 		out = append(out, fmt.Sprintf("Seal Migration in Progress | %t", status.Migration))
