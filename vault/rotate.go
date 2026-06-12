@@ -436,7 +436,9 @@ func (sm *SealManager) performRootRotation(ctx context.Context, ns *namespace.Na
 			}
 		}
 
+		// unset VerificationKey and Nonce as we completed the rotation.
 		rotationConfig.VerificationKey = nil
+		rotationConfig.Nonce = ""
 
 		if err := seal.SetBarrierConfig(ctx, rotationConfig); err != nil {
 			sm.logger.Error("error saving rotate seal configuration", "error", err)
