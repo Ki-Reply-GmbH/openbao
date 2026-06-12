@@ -555,7 +555,8 @@ type Core struct {
 
 	quotaManager *quotas.Manager
 
-	clusterHeartbeatInterval time.Duration
+	clusterHeartbeatInterval     time.Duration
+	clusterNamespaceSyncInterval time.Duration
 
 	// activeTime is set on active nodes indicating the time at which this node
 	// became active.
@@ -751,7 +752,8 @@ type CoreConfig struct {
 
 	ClusterNetworkLayer cluster.NetworkLayer
 
-	ClusterHeartbeatInterval time.Duration
+	ClusterHeartbeatInterval     time.Duration
+	ClusterNamespaceSyncInterval time.Duration
 
 	// number of workers to use for lease revocation in the expiration manager
 	NumExpirationWorkers int
@@ -858,6 +860,15 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		clusterHeartbeatInterval = 5 * time.Second
 	}
 
+	clusterNamespaceSyncInterval := conf.ClusterNamespaceSyncInterval
+	if clusterNamespaceSyncInterval == 0 {
+		// We don't want namespaces to take forever to unseal, but we also
+		// want to avoid spamming the leader. This seems like a reasonable
+		// middle ground. By tying it to clusterHeartbeatInterval, tests
+		// can run faster automatically.
+		clusterNamespaceSyncInterval = 3 * clusterHeartbeatInterval
+	}
+
 	if conf.NumExpirationWorkers == 0 {
 		conf.NumExpirationWorkers = numExpirationWorkersDefault
 	}
@@ -925,6 +936,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		raftJoinDoneCh:                 make(chan struct{}),
 		pendingRaftPeerChallengeKey:    make([]byte, 32),
 		clusterHeartbeatInterval:       clusterHeartbeatInterval,
+		clusterNamespaceSyncInterval:   clusterNamespaceSyncInterval,
 		numExpirationWorkers:           conf.NumExpirationWorkers,
 		raftFollowerStates:             raft.NewFollowerStates(),
 		disableAutopilot:               conf.DisableAutopilot,
@@ -1061,7 +1073,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	}
 
 	// Construct a new AES-GCM barrier
-	c.barrier = barrier.NewAESGCMBarrier(c.physical, "")
+	c.barrier = barrier.NewAESGCMBarrier(c.physical, nil)
 	c.SetupSealManager()
 
 	// We create the funcs here, then populate the given config with it so that
@@ -1805,20 +1817,14 @@ func (c *Core) unsealInternal(ctx context.Context, rootKey []byte) error {
 	c.sealed.Store(false)
 	c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
 
-	if c.logger.IsInfo() {
-		c.logger.Info("vault is unsealed")
-	}
+	c.logger.Info("vault is unsealed")
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifySealedStateChange(false); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify unsealed status", "error", err)
-			}
+			c.logger.Warn("failed to notify unsealed status", "error", err)
 		}
 		if err := c.serviceRegistration.NotifyInitializedStateChange(true); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify initialized status", "error", err)
-			}
+			c.logger.Warn("failed to notify initialized status", "error", err)
 		}
 	}
 	return nil
@@ -2114,9 +2120,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock bool) error {
 
 	if c.serviceRegistration != nil {
 		if err := c.serviceRegistration.NotifySealedStateChange(true); err != nil {
-			if c.logger.IsWarn() {
-				c.logger.Warn("failed to notify sealed status", "error", err)
-			}
+			c.logger.Warn("failed to notify sealed status", "error", err)
 		}
 	}
 
@@ -3873,10 +3877,11 @@ func (c *Core) refreshRequestForwardingConnection(ctx context.Context, clusterAd
 	c.rpcForwardingClient = forwarding.NewClient(
 		c,
 		forwarding.NewRequestForwardingClient(c.rpcClientConn),
-		time.NewTicker(c.clusterHeartbeatInterval),
 		dctx,
+		time.NewTicker(c.clusterHeartbeatInterval),
+		time.NewTicker(c.clusterNamespaceSyncInterval),
 	)
-	c.rpcForwardingClient.StartHeartbeat()
+	c.rpcForwardingClient.Start()
 
 	return nil
 }

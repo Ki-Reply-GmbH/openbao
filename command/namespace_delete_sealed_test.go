@@ -1,4 +1,4 @@
-// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
+// Copyright (c) 2026 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package command
@@ -10,18 +10,18 @@ import (
 	"github.com/hashicorp/cli"
 )
 
-func testNamespaceScanCommand(tb testing.TB) (*cli.MockUi, *NamespaceScanCommand) {
+func testNamespaceDeleteSealedCommand(tb testing.TB) (*cli.MockUi, *NamespaceDeleteCommand) {
 	tb.Helper()
 
 	ui := cli.NewMockUi()
-	return ui, &NamespaceScanCommand{
+	return ui, &NamespaceDeleteCommand{
 		BaseCommand: &BaseCommand{
 			UI: ui,
 		},
 	}
 }
 
-func TestNamespaceScanCommand_Run(t *testing.T) {
+func TestNamespaceDeleteSealedCommand_Run(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -31,10 +31,10 @@ func TestNamespaceScanCommand_Run(t *testing.T) {
 		code int
 	}{
 		{
-			"no_entries",
+			"not_enough_args",
 			[]string{},
-			"No namespaces found",
-			2,
+			"Not enough arguments",
+			1,
 		},
 		{
 			"too_many_args",
@@ -51,7 +51,7 @@ func TestNamespaceScanCommand_Run(t *testing.T) {
 			client, closer := testVaultServer(t)
 			defer closer()
 
-			ui, cmd := testNamespaceScanCommand(t)
+			ui, cmd := testNamespaceDeleteSealedCommand(t)
 			cmd.client = client
 
 			code := cmd.Run(tc.args)
@@ -69,7 +69,7 @@ func TestNamespaceScanCommand_Run(t *testing.T) {
 	t.Run("no_tabs", func(t *testing.T) {
 		t.Parallel()
 
-		_, cmd := testNamespaceScanCommand(t)
+		_, cmd := testNamespaceDeleteSealedCommand(t)
 		assertNoTabs(t, cmd)
 	})
 }
