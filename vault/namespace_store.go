@@ -1497,7 +1497,7 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, entry *
 			ns.logger.Debug("bug: removing entry remaining in namespace storage after all mounts were removed", "namespace", entry.Path, "path", path)
 			return true, nil
 		}); err != nil {
-			return fmt.Errorf("failed to clear namespace view: %w", err)
+			return fmt.Errorf("failed to clear namespace view for %q: %w", entry.Path, err)
 		}
 	}
 
