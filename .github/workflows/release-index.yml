@@ -1,0 +1,34 @@
+name: Update release index
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-index
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Generate release index
+        run: ./scripts/release/index.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Upload release index
+        run: aws s3 sync dist/index "s3://${BUCKET}/release-index"
+        env:
+          BUCKET: ${{ secrets.PKG_S3_BUCKET_NAME }}
+          AWS_ENDPOINT_URL: https://${{ secrets.PKG_S3_SERVER_NAME }}
+          AWS_REGION: ${{ secrets.PKG_S3_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.PKG_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PKG_S3_SECRET }}
