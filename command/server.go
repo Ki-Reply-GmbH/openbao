@@ -1126,6 +1126,10 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink)
+	coreConfig.SealWrapperFactory = func(ctx context.Context, sealType string, cfg map[string]string) (wrapping.Wrapper, error) {
+		w, _, err := kms.ConfigureWrapper(ctx, sealType, wrapping.WithConfigMap(cfg))
+		return w, err
+	}
 	if c.flagDevThreeNode {
 		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}

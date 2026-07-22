@@ -316,6 +316,12 @@ type SealConfig struct {
 
 	// Stores the progress of the verification operation (key shares)
 	VerificationProgress [][]byte `json:"-"`
+
+	// KMSConfig holds provider-specific configuration for non-Shamir seal
+	// types (e.g. transit, awskms). Stored as part of the seal config and
+	// encrypted at rest by the parent namespace's barrier, so it is readable
+	// without opening the child barrier. Not used for Shamir seals.
+	KMSConfig map[string]string `json:"kms_config,omitempty" mapstructure:"kms_config"`
 }
 
 // baseValidate is used as a shared base between `Validate` and `ValidateRecovery`
@@ -351,8 +357,13 @@ func (s *SealConfig) baseValidate() error {
 	return nil
 }
 
-// Validate is used to sanity check the (barrier) seal configuration
+// Validate is used to sanity check the (barrier) seal configuration.
+// Non-Shamir seals skip the share/threshold checks; those fields are
+// unused when a KMS wrapper handles key storage.
 func (s *SealConfig) Validate() error {
+	if s.Type != "" && s.Type != "shamir" {
+		return nil
+	}
 	if s.SecretShares < 1 {
 		return errors.New("shares must be at least one")
 	}

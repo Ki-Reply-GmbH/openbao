@@ -240,6 +240,11 @@ type Core struct {
 	// seal is our seal, for seal configuration information
 	seal Seal
 
+	// sealWrapperFactory builds a wrapping.Wrapper from a KMS type name and
+	// config map. Injected at startup by the command layer via CoreConfig so
+	// that the SealManager can create namespace KMS seals at runtime.
+	sealWrapperFactory func(ctx context.Context, sealType string, config map[string]string) (wrapping.Wrapper, error)
+
 	// raftJoinDoneCh is used by the raft retry join routine to inform unseal process
 	// that the join is complete
 	raftJoinDoneCh chan struct{}
@@ -679,6 +684,11 @@ type CoreConfig struct {
 	// shamir seal.  In migration scenarios this is the new seal.
 	Seal Seal
 
+	// SealWrapperFactory creates a wrapping.Wrapper for a given KMS type and
+	// configuration map. Injected by the command layer (which owns the plugin
+	// catalog). If nil, non-Shamir namespace seals cannot be created.
+	SealWrapperFactory func(ctx context.Context, sealType string, config map[string]string) (wrapping.Wrapper, error)
+
 	// Unwrap seal is the optional seal marked "disabled"; this is the old
 	// seal in migration scenarios.
 	UnwrapSeal Seal
@@ -1022,6 +1032,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		c.seal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
 	}
 	c.seal.SetCore(c)
+	c.sealWrapperFactory = conf.SealWrapperFactory
 
 	// Create the invalidation manager.
 	c.NewInvalidationManager()

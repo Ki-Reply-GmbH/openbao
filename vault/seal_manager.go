@@ -104,25 +104,55 @@ func (sm *SealManager) Reset() {
 // SetSeal creates a seal with provided config and sets it as provided namespace seal;
 // Initializes seal, creating security barrier and persisting seal config.
 func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-
-	// Check if we have the seal present; if so, don't set any seal
-	// information as we don't want to overwrite what we have.
-	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
-		return nil
-	}
-
+	// Validate and build the seal before acquiring the write lock. KMS wrappers
+	// (e.g. transit) call Encrypt during SetConfig to validate the key, which
+	// re-enters this server and needs sm.lock.RLock for the namespace barrier
+	// lookup. Holding sm.lock.Lock() here would produce a deadlock.
 	if err := sealConfig.Validate(); err != nil {
 		return fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
-	metaPrefix := NamespaceStoragePathPrefix(ns)
+	// Fast idempotence check under read lock so we skip the expensive wrapper
+	// creation when the namespace seal is already registered.
+	sm.lock.RLock()
+	_, alreadySet := sm.sealByNamespace[ns.UUID]
+	sm.lock.RUnlock()
+	if alreadySet {
+		return nil
+	}
 
-	// Seal type would depend on the provided arguments
-	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-	defaultSeal.SetCore(sm.core)
-	defaultSeal.SetMetaPrefix(metaPrefix)
+	var nsSeal Seal
+	if sealConfig.Type != "" && sealConfig.Type != "shamir" {
+		if sm.core.sealWrapperFactory == nil {
+			return fmt.Errorf("cannot create %q namespace seal: no KMS wrapper factory available", sealConfig.Type)
+		}
+		wrapper, err := sm.core.sealWrapperFactory(ctx, sealConfig.Type, sealConfig.KMSConfig)
+		if err != nil {
+			return fmt.Errorf("failed to configure %q seal for namespace %q: %w", sealConfig.Type, ns.Path, err)
+		}
+		autoSeal, err := NewAutoSeal(vaultseal.NewAccess(wrapper))
+		if err != nil {
+			return fmt.Errorf("failed to create auto-seal for namespace %q: %w", ns.Path, err)
+		}
+		nsSeal = autoSeal
+	} else {
+		nsSeal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+	}
+
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	// Re-check under write lock: a concurrent call may have registered this
+	// namespace's seal between the read-lock check above and now. Finalize the
+	// seal we just built so its resources (e.g. KMS HTTP client) are released.
+	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
+		_ = nsSeal.Finalize(ctx)
+		return nil
+	}
+
+	metaPrefix := NamespaceStoragePathPrefix(ns)
+	nsSeal.SetCore(sm.core)
+	nsSeal.SetMetaPrefix(metaPrefix)
 
 	// The configuration access should always at least use the parent's seal
 	// configuration information.
@@ -131,19 +161,19 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("cannot seal the root namespace via this approach")
 	}
 	parentBarrier := sm.namespaceBarrierByLongestPrefix(parent)
-	defaultSeal.SetConfigAccess(parentBarrier)
+	nsSeal.SetConfigAccess(parentBarrier)
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
-	if err := defaultSeal.Init(ctx); err != nil {
+	if err := nsSeal.Init(ctx); err != nil {
 		return fmt.Errorf("error initializing seal: %w", err)
 	}
 
 	nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
 	sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
-	sm.sealByNamespace[ns.UUID] = defaultSeal
+	sm.sealByNamespace[ns.UUID] = nsSeal
 
 	if writeToStorage {
-		if err := defaultSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
+		if err := nsSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}
 	}
