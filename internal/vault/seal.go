@@ -318,10 +318,9 @@ type SealConfig struct {
 	// Stores the progress of the verification operation (key shares)
 	VerificationProgress [][]byte `json:"-"`
 
-	// KMSConfig holds provider-specific configuration for non-Shamir seal
-	// types (e.g. transit, awskms). Stored as part of the seal config and
-	// encrypted at rest by the parent namespace's barrier, so it is readable
-	// without opening the child barrier. Not used for Shamir seals.
+	// KMSConfig holds provider-specific configuration for auto-seal types
+	// (e.g. transit, awskms). Stored encrypted in the parent namespace barrier
+	// without unsealing the respective namespace barrier. Not used for Shamir seals.
 	KMSConfig map[string]string `json:"kms_config,omitempty" mapstructure:"kms_config"`
 }
 

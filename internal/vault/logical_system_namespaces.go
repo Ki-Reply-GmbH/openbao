@@ -398,7 +398,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 					sealConfig.PGPKeys = pgpkeys.([]string)
 				}
 			} else {
-				// Non-Shamir (KMS) seal: the entire config map is provider-specific.
+				// Auto-seal: the entire config map is provider-specific.
 				// Shares and threshold are not applicable.
 				sealConfig.KMSConfig = kms.Config
 			}
