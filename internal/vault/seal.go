@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"sync/atomic"
 
@@ -399,9 +400,7 @@ func (s *SealConfig) Clone() *SealConfig {
 	}
 	if len(s.KMSConfig) > 0 {
 		ret.KMSConfig = make(map[string]string, len(s.KMSConfig))
-		for k, v := range s.KMSConfig {
-			ret.KMSConfig[k] = v
-		}
+		maps.Copy(ret.KMSConfig, s.KMSConfig)
 	}
 	return ret
 }
