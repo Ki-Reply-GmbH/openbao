@@ -61,9 +61,6 @@ plugin_download_behavior = "fail"
 		t.Fatal("secret-aws plugin not found")
 	}
 
-	if awsPlugin.URL() != "ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1" {
-		t.Errorf("Expected AWS plugin URL 'ghcr.io/openbao/openbao-plugin-secrets-aws:v0.0.1', got '%s'", awsPlugin.URL())
-	}
 	if awsPlugin.BinaryName != "openbao-plugin-secrets-aws" {
 		t.Errorf("Expected AWS plugin binary 'openbao-plugin-secrets-aws', got '%s'", awsPlugin.BinaryName)
 	}

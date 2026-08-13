@@ -1160,22 +1160,23 @@ func (c *PluginCatalog) setInternal(ctx context.Context, name string, pluginType
 		return nil, fmt.Errorf("error while validating the command path: %w", err)
 	}
 
-	switch isOci {
-	case true:
+	ok := symAbs == c.directory
+	if !ok && isOci {
+		// May also be a symlink into the legacy OCI cache path.
+		// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>
 		if len(sha256) < 8 {
 			return nil, errors.New("valid sha256 must be provided when registering OCI plugins")
 		}
+		ok = symAbs == filepath.Join(
+			c.directory,
+			oci.PluginCacheDirV1,
+			fmt.Sprintf("%s-%s", pluginType.String(), name),
+			hex.EncodeToString(sha256)[:8],
+		)
+	}
 
-		// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>
-		shaPrefix := hex.EncodeToString(sha256)[:8]
-		ociCachePath := filepath.Join(c.directory, oci.PluginCacheDir, fmt.Sprintf("%s-%s", pluginType.String(), name), shaPrefix)
-		if symAbs != ociCachePath {
-			return nil, errors.New("cannot execute files outside of configured plugin directory")
-		}
-	case false:
-		if symAbs != c.directory {
-			return nil, errors.New("cannot execute files outside of configured plugin directory")
-		}
+	if !ok {
+		return nil, errors.New("cannot execute files outside of configured plugin directory")
 	}
 
 	// entryTmp should only be used for the below type and version checks, it uses the

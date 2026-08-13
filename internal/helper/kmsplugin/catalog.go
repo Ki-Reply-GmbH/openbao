@@ -202,16 +202,15 @@ func (c *Catalog) checkFilePath(plugin *server.PluginConfig) error {
 		return fmt.Errorf("error while validating the command path: %w", err)
 	}
 
-	var ok bool
-	if plugin.Image == "" {
-		// Declarative, manual plugin.
-		ok = filepath.Dir(path) == c.pluginDirectory
-	} else {
-		// Declarative, OCI-based plugin.
+	ok := filepath.Dir(path) == c.pluginDirectory
+	if !ok && plugin.Image != "" {
+		// May also be a symlink into the legacy OCI cache path.
+		// Format: <plugin_directory>/.oci-cache/<plugin_slug>/<sha256_prefix>
 		ok = filepath.Dir(path) == filepath.Join(
-			c.pluginDirectory, oci.PluginCacheDir, plugin.Slug(), plugin.SHA256Sum[:8],
+			c.pluginDirectory, oci.PluginCacheDirV1, plugin.Slug(), plugin.SHA256Sum[:8],
 		)
 	}
+
 	if !ok {
 		return errors.New("cannot execute files outside of configured plugin directory")
 	}

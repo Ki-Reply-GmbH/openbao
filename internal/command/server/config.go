@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
@@ -320,10 +319,6 @@ type PluginConfig struct {
 	Env        []string `hcl:"env"`
 }
 
-func (p *PluginConfig) URL() string {
-	return fmt.Sprintf("%s:%s", p.Image, p.Version)
-}
-
 func (p *PluginConfig) Slug() string {
 	return fmt.Sprintf("%s-%s", p.Type, p.Name)
 }
@@ -380,18 +375,7 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 		})
 	}
 
-	isOCI := p.Image != ""
-
-	if isOCI {
-		// Ensure Image:Version is a valid image reference
-		if _, err := name.ParseReference(p.URL()); err != nil {
-			results = append(results, configutil.ConfigError{
-				Problem: fmt.Sprintf("plugin %q: image and version do not form a valid image reference. %v", p.Slug(), err),
-			})
-		}
-	}
-
-	if isOCI || typ != consts.PluginTypeKMS {
+	if p.Image != "" || typ != consts.PluginTypeKMS {
 		// Validate version is not empty. KMS plugins do not require or enforce
 		// that a version is set. OCI-based plugins however require a version be
 		// set at all times.
@@ -403,9 +387,7 @@ func (p *PluginConfig) Validate(sourceFilePath string) []configutil.ConfigError 
 	}
 
 	switch {
-	case len(p.SHA256Sum) == 0 && !isOCI:
-		// sha256sum may be omitted unless OCI images are used, where they are
-		// required as cache sentinels.
+	case len(p.SHA256Sum) == 0:
 	case len(p.SHA256Sum) != 64:
 		// Unless omitted, validate sha256sum is exactly 64 hex characters.
 		results = append(results, configutil.ConfigError{
