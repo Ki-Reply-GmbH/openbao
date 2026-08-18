@@ -46,15 +46,26 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
 
-      - name: Install reprepro from Debian experimental
+      - name: Install reprepro
         run: |
-          # sudo apt update && sudo apt install -y debian-archive-keyring
-          # # Required for reprepro with "Limit" support.
-          # echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian experimental main" | sudo tee /etc/apt/sources.list.d/debian-experimental.list > /dev/null
-          # # Required for libgpgme45 >= 1.23.2.
-          # echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://ftp.debian.org/debian sid main" | sudo tee /etc/apt/sources.list.d/debian-trixie.list > /dev/null
-          # sudo apt update && sudo apt install -t experimental -y reprepro
-          sudo apt update && sudo apt install -y reprepro
+          cd "$(mktemp -d)"
+          # Install dependencies:
+          sudo apt install -y libarchive-dev libgpgme-dev libdb-dev
+          # Get and unpack sources:
+          SOURCE="reprepro-reprepro-${REPREPRO_VERSION}"
+          ARCHIVE="${SOURCE}.tar.gz"
+          curl -LO \
+            "https://salsa.debian.org/debian/reprepro/-/archive/reprepro-${REPREPRO_VERSION}/${ARCHIVE}" \
+            && sha256sum -c - <<< "${REPREPRO_SHA256}  ${ARCHIVE}" \
+            && tar xvf "$ARCHIVE" && cd "$SOURCE"
+          # Build and install:
+          ./autogen.sh
+          ./configure
+          make -j$(nproc)
+          sudo make install
+        env:
+          REPREPRO_VERSION: 5.4.8
+          REPREPRO_SHA256: 4a55ecabb962d11aa32553606b2ff4449dad6c673e4cd0e0741cd8b992a1b1a3
 
       - name: Download db and dists
         run: |
