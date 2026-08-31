@@ -1,0 +1,3 @@
+```release-note:improvement
+sys/namespaces: Add auto-seal support to the namespace creation API; auto-seal types (e.g. transit, awskms) can now be configured via the `seal` parameter when creating a namespace.
+```
