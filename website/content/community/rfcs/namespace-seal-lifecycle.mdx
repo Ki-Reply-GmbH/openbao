@@ -1,0 +1,373 @@
+---
+sidebar_label: Namespace Seal Lifecycle
+description: |-
+  An RFC proposing auto-seal (HSM/KMS) support for sealable namespaces, a
+  dedicated credential update endpoint, and the authorization and cluster
+  coordination required to operate namespace seals safely.
+---
+
+# Namespace Seal Lifecycle
+
+## Summary
+
+Per-namespace sealing, introduced in OpenBao v2.6, allows individual namespaces
+to maintain their own barrier protected by a dedicated seal. Operators who
+already manage an HSM or KMS for root auto-unseal expect to use the same
+infrastructure for namespace seals. Requiring per-namespace Shamir key management
+alongside an existing KMS setup adds operational overhead with no security
+benefit. Currently, only Shamir seals are accepted at namespace creation; auto-seal
+support for per-namespace barriers does not yet exist. This RFC defines how
+per-namespace auto-seals should work: seal types accepted at creation, a
+dedicated API for credential updates, and the authorization and cluster
+coordination model required to operate them safely.
+
+## Problem Statement
+
+**No auto-seal support at creation time.** The namespace creation endpoint
+accepts a `seal` parameter but explicitly rejects non-Shamir types
+(`logical_system_namespaces.go`, `handleNamespacesSet`). Operators who want to
+use an HSM or KMS for namespace auto-unseal have no supported path.
+
+**No credential update path.** There is no endpoint for updating the credentials
+or configuration of an existing namespace seal (`logical_system_namespaces_seals.go`,
+`namespaceSealPaths`). Expired credentials, endpoint changes, or provider
+switches have no defined resolution.
+
+**No authorization model for seal configuration.** The `sys/namespaces` path is
+not in `PathsSpecial.Root` (`logical_system.go`). Any token with `update`
+capability on that path can modify namespace properties. A dedicated privileged
+endpoint is needed.
+
+**Undefined behavior under failure.** What happens when the KMS provider is
+unreachable, credentials expire, or a key is decommissioned is not documented.
+
+**No cluster coordination for seal changes.** After a credential update, standby
+nodes may hold stale credentials in memory and fail to unseal the namespace. The
+existing invalidation framework (`invalidation.go`, `isCoreKeyPath`) does not
+cover namespace seal configuration changes.
+
+## User-Facing Description
+
+### Creating a Sealable Namespace with an Auto-Seal
+
+Auto-seal configuration is provided at namespace creation time via the existing
+`seal` parameter on `POST /v1/sys/namespaces/<path>`. The syntax follows the
+seal stanza format already supported for global sealing.
+
+```bash
+curl --header "X-Vault-Token: ..." \
+     --request POST \
+     --data '{
+       "seal": {
+         "type": "awskms",
+         "region": "us-east-1",
+         "kms_key_id": "alias/my-key"
+       }
+     }' \
+     http://127.0.0.1:8200/v1/sys/namespaces/tenant1
+```
+
+### Updating Seal Credentials
+
+To update seal credentials without replacing the underlying cryptographic key:
+
+| Method | Path |
+|--------|------|
+| `PUT`  | `/v1/sys/namespaces/<path>/config/seal` |
+
+This endpoint requires sudo privilege. Before committing, OpenBao verifies that
+the new credentials can decrypt the existing root key (test-before-swap). If
+verification fails, the update is rejected and the existing configuration is
+kept.
+
+Key replacement and seal type changes are migrations and require a separate
+endpoint; see Unresolved Questions.
+
+### Reading Seal Configuration
+
+| Method | Path |
+|--------|------|
+| `GET`  | `/v1/sys/namespaces/<path>/config/seal` |
+
+Returns the current seal configuration with sensitive fields redacted. Provider
+type, endpoint, and key identifier are returned. Credentials, tokens, and
+passwords are omitted.
+
+This endpoint is distinct from `/v1/sys/namespaces/<path>/seal-status`, which
+reports operational state (sealed or unsealed, unseal progress). `/config/seal`
+is for verifying that the configuration is correct; `/seal-status` is for
+observing runtime state.
+
+### Removing a Seal Configuration
+
+The active seal configuration cannot be deleted directly. Once a namespace has
+been migrated to a different seal, the previous seal stanza can be removed.
+This is consistent with the treatment of active seal stanzas at the global
+level.
+
+### Migration
+
+Three migration cases exist. The first two are in scope for this RFC. The third
+is out of scope and tracked separately.
+
+**KMS key change**: the namespace remains sealable; the cryptographic key
+changes. The root key is re-encrypted under the new seal. No storage copying is
+required.
+
+**Seal type change**: the namespace remains sealable; the seal type changes
+between auto-seal and Shamir. The root key is re-encrypted under the new seal.
+No storage copying is required. When moving from auto-seal to Shamir, the
+operator receives key shares in the response. When moving from Shamir to
+auto-seal, the operator supplies existing key shares to authorize the change.
+
+**Normal &lt;=&gt; sealable conversion**: the namespace changes type, gaining or losing
+a dedicated barrier. All storage must be migrated under a different barrier. This
+operation is out of scope for this RFC and is tracked in
+https://github.com/openbao/openbao/issues/3333.
+
+| Method | Path |
+|--------|------|
+| `POST` | `/v1/sys/namespaces/<path>/reseal` |
+
+The endpoint name is provisional and may be revised during implementation to
+avoid conflicts with existing OpenBao conventions.
+
+This endpoint requires sudo privilege. The request body follows the same seal
+configuration format as namespace creation. For Shamir to auto-seal migration,
+existing key shares must be supplied to authorize the operation. For auto-seal
+to Shamir migration, the new key shares are returned in the response.
+
+Migration is asynchronous. Root key re-encryption may take significant time,
+particularly under high load or with large keyrings. The endpoint returns
+immediately; completion is tracked via a crash-recovery journal in storage
+(see Technical Description). The journal is cleared on successful completion;
+its presence indicates a migration is in progress or was interrupted.
+
+### Failure Conditions
+
+If the KMS provider is temporarily unreachable, the namespace remains sealed
+until connectivity is restored. No operator action is required.
+
+If credentials expire, the operator must update them via `PUT /config/seal`
+before the namespace can be unsealed. This endpoint must remain reachable even
+when the namespace is sealed.
+
+The [Emergency Seal](emergency-seal.mdx) and [Parallel Unseal](parallel-unseal.mdx)
+RFCs address recovery paths for persistent KMS failures.
+
+## Technical Description
+
+### Test-Before-Swap Guard
+
+The `PUT /config/seal` endpoint calls `SetSeal` in `seal_manager.go`, which
+already handles seal initialization and credential management but is not yet
+exposed via API. The test-before-swap guard is added within that function.
+
+After initializing the new seal wrapper, OpenBao calls `GetStoredKeys` to
+confirm that the new credentials can decrypt the existing root key. If this call
+fails, the new wrapper is finalized and the existing configuration is kept.
+
+```go
+// test-before-swap guard in SetSeal update path
+if prevSeal != nil {
+    if _, err := nsSeal.GetStoredKeys(ctx); err != nil {
+        _ = nsSeal.Finalize(ctx)
+        return fmt.Errorf("new seal cannot read existing root key: %w", err)
+    }
+}
+_ = prevSeal.Finalize(ctx)
+sm.sealByNamespace[ns.UUID] = nsSeal
+```
+
+### Migration -- Root Key Re-encryption
+
+`SetSeal` in `seal_manager.go` explicitly reserves seal type changes for a
+future migration path. This RFC defines that path. The new entry point is
+`MigrateBarrierKey`, called from the `POST /reseal` handler
+registered in `namespaceSealPaths` in `logical_system_namespaces_seals.go`.
+
+Migration is asynchronous. The handler returns immediately and queues the
+re-encryption job via the `jobDispatcher` in `namespace_store.go`, following
+the same pattern used by https://github.com/openbao/openbao/pull/3660 for
+namespace barrier migration. A `BarrierMigrationState` entry is written to
+storage at the start and cleared on successful completion, serving as a
+crash-recovery journal: if the node restarts mid-migration, the journal
+allows the operation to be detected and resumed.
+
+Two in-scope migration cases share the same mechanism: the root key is decrypted
+under the old seal and re-encrypted under the new one. Recovery keys, if supported
+by the seal type, must also be re-encrypted. No storage copying is required; the
+namespace data remains in place.
+
+**KMS key change**: an already-sealable namespace changes which cryptographic key
+protects its root key. The seal type remains the same; only the key identifier
+changes.
+
+**Seal type change**: an already-sealable namespace changes its seal type between
+auto-seal and Shamir. When converting from auto-seal to Shamir, the operator
+receives key shares in the response after re-encryption. When converting from
+Shamir to auto-seal, the operator supplies existing key shares to authorize the
+re-encryption.
+
+Both cases use a two-phase commit. The new encrypted root key is written to
+storage before the old seal is finalized. A migration flag in storage records
+that the operation is in progress. If the node fails between write and activation,
+the flag allows the operation to be detected and completed on next startup. This
+is the same pattern used by root seal migration at the global level.
+
+```go
+// MigrateBarrierKey sketch -- illustrative only
+func (sm *SealManager) MigrateBarrierKey(
+    ctx context.Context,
+    ns *namespace.Namespace,
+    newSeal Seal,
+) error {
+    rootKey, err := sm.GetRootKey(ctx, ns)
+    if err != nil {
+        return err
+    }
+    if err := newSeal.Init(ctx); err != nil {
+        return err
+    }
+    // write new encrypted root key; set migration flag before finalizing old seal
+    return sm.NamespaceBarrier(ns.Path).Rekey(ctx, rootKey, newSeal)
+}
+```
+
+### Namespace Type Change
+
+Converting between a normal and a sealable namespace requires migrating all
+storage under a different barrier. That operation is out of scope for this RFC
+and is tracked in https://github.com/openbao/openbao/issues/3333.
+
+### Authorization
+
+All operations on `/v1/sys/namespaces/<path>/config/seal` require sudo privilege.
+The new routes are registered in `namespaceSealPaths` in
+`logical_system_namespaces_seals.go`. The path must be added to
+`PathsSpecial.Root` in `logical_system.go`. This
+closes the existing gap: `sys/namespaces` is not currently in the root paths,
+allowing tokens with `update` capability to reach seal-adjacent namespace
+properties.
+
+```go
+// add /config/seal to PathsSpecial.Root
+Root: []string{
+    "auth/*",
+    // ... existing entries ...
+    "namespaces/+/config/seal",
+},
+```
+
+### Cluster Behavior
+
+All seal lifecycle operations must be initiated on the active node. This is
+consistent with the general behavior of writes in OpenBao.
+
+After a credential update, standby nodes may hold stale seal wrappers and be
+unable to unseal the namespace. The existing invalidation framework will be extended in
+`buildInvalidateJobForKey` in `invalidation.go` to cover seal configuration
+changes. On detecting an update to a namespace seal configuration in storage,
+all nodes reload the seal wrapper for that namespace.
+
+```go
+// extend invalidation to cover seal config changes
+case strings.HasPrefix(key, "sys/namespaces/") &&
+    strings.HasSuffix(key, "/config/seal"):
+    ns := c.extractNamespaceFromKey(key)
+    c.sealManager.ReloadSealConfig(ctx, ns)
+```
+
+### Audit
+
+Standard OpenBao request/response audit logging is sufficient for all seal
+lifecycle operations covered by this RFC. Credentials and key material are
+HMAC'd by default unless `log_raw` is enabled.
+
+## Rationale and Alternatives
+
+A dedicated `/config/seal` endpoint is preferred over extending
+`POST /sys/namespaces/<path>` for two reasons. First, it allows the sudo
+requirement to be scoped precisely to seal configuration operations, without
+changing the authorization model for other namespace operations. Second, it
+avoids accidental seal removal when omitting the `seal` parameter in a
+general-purpose namespace update.
+
+The GET endpoint returning a redacted response is preferred over no GET. Operators
+need to verify that a credential rotation was applied correctly. Returning only
+non-sensitive fields (provider type, endpoint, key identifier) provides this
+without exposing credentials.
+
+The migration endpoint for in-scope cases (`POST /reseal`) is kept
+separate from the normal-to-sealable conversion endpoint being implemented in
+https://github.com/openbao/openbao/pull/3660. The two operations differ
+fundamentally: root key re-encryption leaves the namespace online throughout,
+while storage migration taints the namespace and makes it inaccessible during
+the operation. A unified endpoint would require the server to infer operator
+intent from namespace state, introducing the risk of accidentally triggering a
+taint on a production namespace when a credential rotation was intended. Separate
+endpoints make intent explicit.
+
+Extending the `seal` parameter at namespace creation to accept auto-seal types is
+backwards compatible for operators. Existing namespaces and Shamir-only
+configurations are not affected. No previously-accepted input changes its
+behavior; only a previously-rejected input now succeeds. The rejection was an
+explicit implementation limitation, not an intended invariant, and the error
+message already states this. Integrations that currently test for that specific
+error would need to update their assumptions, but there is no reason for an
+operator to rely on auto-seal being rejected as a correctness property.
+
+## Security Implications
+
+The test-before-swap guard prevents a misconfigured credential update from
+locking the namespace. The sudo requirement on `/config/seal` ensures that seal
+configuration changes require the same privilege as global seal operations. The
+GET endpoint returns only non-sensitive fields.
+
+## Downsides
+
+The sudo requirement on `/config/seal` (enforced via `PathsSpecial.Root` in
+`logical_system.go`) separates seal credential management from general namespace
+management. An operator with `update` capability on `sys/namespaces` today will
+not be able to rotate seal credentials without additional privilege. Operations
+teams may need elevated access paths they did not previously require.
+
+Migration introduces a window during which both the old and new seal must remain
+reachable, a consequence of the two-phase commit described in the Technical
+Description. Decommissioning the old KMS key before the migration flag is
+cleared makes the namespace root key unrecoverable. Operators must not treat the
+old seal as decommissioned until migration completes.
+
+Each seal configuration change triggers `buildInvalidateJobForKey` in
+`invalidation.go` across all cluster nodes, adding coordination overhead per
+credential update.
+
+## User/Developer Experience
+
+Existing Shamir-based namespace deployments are unaffected. No previously
+accepted input changes behavior.
+
+Operators rotating KMS credentials will use the new `PUT /config/seal` endpoint.
+The test-before-swap guard rejects the update if the new credentials cannot
+decrypt the existing root key. No silent partial update is possible.
+
+The migration endpoint (`POST /reseal`) is a new asynchronous
+operation. Operators must confirm completion before decommissioning the old seal.
+
+## Unresolved Questions
+
+**Invalidation window.** What is an acceptable window during which a standby
+node may use stale seal credentials after a rotation completes on the active
+node?
+
+## Related Issues
+
+- https://github.com/openbao/openbao/issues/3333
+- https://github.com/openbao/openbao/pull/3660
+
+## Proof of Concept
+
+A partial proof of concept implementing auto-seal support at namespace creation
+is available at https://github.com/Ki-Reply-GmbH/openbao/pull/82. This is a
+work in progress on a Ki-Reply fork of OpenBao and is not a pending upstream
+pull request.
