@@ -80,6 +80,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/authenticated-rekey",
                 "rfcs/self-init",
                 "rfcs/namespace-sealing",
+                "rfcs/namespace-seal-lifecycle",
                 "rfcs/external-keys",
                 "rfcs/config-audit-devices",
                 "rfcs/opentelemetry",
