@@ -1665,7 +1665,7 @@ func (c *Core) cleanLeaderPrefix(ctx context.Context, uuid string, leaderLostCh 
 		case <-timer.C:
 			if keys[0] != uuid {
 				if err := c.barrier.Delete(ctx, coreLeaderPrefix+keys[0]); err != nil {
-					c.logger.Error("error deleting leader entry", "error", err)
+					c.logger.Error("error deleting leader entry")
 				}
 			}
 			keys = keys[1:]
