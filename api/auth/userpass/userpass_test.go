@@ -48,15 +48,10 @@ func TestLogin(t *testing.T) {
 	allowedPassword := "my-password"
 
 	content := []byte(allowedPassword)
-	tmpfile, err := os.CreateTemp("", "file-containing-password")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "file-containing-password")
 	if err != nil {
 		t.Fatalf("error creating temp file: %v", err)
 	}
-	defer func() {
-		if err := os.Remove(tmpfile.Name()); err != nil { // clean up
-			t.Errorf("error removing temp file: %v", err)
-		}
-	}()
 	err = os.Setenv(passwordEnvVar, allowedPassword)
 	if err != nil {
 		t.Fatalf("error writing password to env var: %v", err)
