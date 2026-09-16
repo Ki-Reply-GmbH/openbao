@@ -92,22 +92,22 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
   :::
 
-- `slot` `(string: <slot or token label required>)`: The slot number to use,
-  specified as a string (e.g. `"2305843009213693953"`). May also be specified by
-  the `BAO_HSM_SLOT` environment variable.
+- `slot` `(string: <optional>)`: The slot number to use, specified as a string
+  (e.g., a decimal `"2305843009213693953"` or a hex `"0x2000000000000001"`). May
+  also be specified by the `BAO_HSM_SLOT` environment variable.
+
+- `serial` `(string: <optional>)`. The token serial number to use. May also be
+  specified by the `BAO_HSM_SERIAL` environment variable.
+
+- `token_label` `(string: <optional>)`: The slot token label to
+  use. May also be specified by the `BAO_HSM_TOKEN_LABEL` environment variable.
 
   :::info
 
-  Slots are typically listed as hex-decimal values in the OS setup utility but
-  this configuration uses their decimal equivalent. For example, using the HSM
-  command-line `pkcs11-tool`, a slot listed as `0x2000000000000001`in hex is
-  equal to `2305843009213693953` in decimal; these values may be listed shorter
-  or differently as determined by the HSM in use.
+  One of `slot`, `serial` and `token_label` is required. If more than one option
+  is set, a token is only selected if it matches all provided parameters.
 
   :::
-
-- `token_label` `(string: <slot or token label required>)`: The slot token label to
-  use. May also be specified by the `BAO_HSM_TOKEN_LABEL` environment variable.
 
 - `pin` `(string: <required>)`: The PIN for login. May also be specified by the
   `BAO_HSM_PIN` environment variable. _If set via the environment variable,
@@ -163,6 +163,7 @@ environment variables:
 BAO_SEAL_TYPE
 BAO_HSM_LIB
 BAO_HSM_SLOT
+BAO_HSM_SERIAL
 BAO_HSM_TOKEN_LABEL
 BAO_HSM_PIN
 BAO_HSM_KEY_LABEL

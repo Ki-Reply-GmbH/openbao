@@ -1,0 +1,54 @@
+---
+description: >-
+  The PKCS#11 plugin for OpenBao's External Keys offloads cryptographic
+  operations to PKCS#11 tokens.
+---
+
+# PKCS#11
+
+## Supported algorithms
+
+This plugin supports the following key types and algorithms:
+
+**AES keys (`CKK_AES`):**
+
+- AES-GCM (`CKM_AES_GCM`) for encrypt/decrypt, including support for AAD.
+
+**RSA keys (`CKK_RSA`):**
+
+- RSA-OAEP (`CKM_RSA_PKCS_OAEP`) for encrypt/decrypt.
+- RSA-PSS (`CKM_RSA_PKCS_PSS`) for sign/verify. Note that message-signing
+  `CKM_SHA{X}_RSA_PKCS_PSS` variants are not (yet) supported.
+
+**EC keys (`CKK_EC`):**
+
+- ECDSA (`CKM_ECDSA`) for sign/verify, including support for the P-224, P-256,
+  P-384, and P-521 NIST curves.
+
+## Parameters
+
+...
+
+- `lib` `(string: <required>)` -
+
+- `slot` `(uint: <optional>)` -
+
+- `serial` `(string: <optional>)` -
+
+- `token_label` `(string: <optional>)` -
+
+- `pin` `(string: <optional>)` -
+
+- `disable_software_encryption` `(bool: false)` -
+
+...
+
+- `id` `(string: <optional>)` -
+
+- `label` `(string: <optional>)` -
+
+- `mechanism` `(string: <optional>)` -
+
+- `rsa_oaep_hash` `(string: <optional>)` -
+
+## Examples

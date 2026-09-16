@@ -1,0 +1,45 @@
+---
+description: >-
+  The Transit plugin for OpenBao's External Keys proxies cryptographic
+  operations to a remote OpenBao Transit engine.
+---
+
+# Transit
+
+## Supported algorithms
+
+This plugin supports all key types and algorithms supported by the [Transit
+engine](../../../../secrets/transit/index.mdx) except for HMACs and keys with
+convergent encryption and/or key derivation enabled.
+
+## Parameters
+
+...
+
+- `address` `(string: "https://127.0.0.1:8200")`
+
+- `token` `(string: <required>)` -
+
+- `namespace` `(string: <optional>)` -
+
+- `mount_path` `(string: "transit")` -
+
+- `tls_server_name` `(string: <optional>)` -
+
+- `tls_skip_verify` `(bool: false)` -
+
+- `tls_ca_cert_bytes` `(string: <optional>)` -
+
+- `tls_client_cert_bytes` `(string: <optional>)` -
+
+- `tls_client_key_bytes` `(string: <optional>)` -
+
+...
+
+- `name` `(string: <required>)` -
+
+- `version` `(uint: <required>)` -
+
+- `disable_prehashing` `(bool: false)` -
+
+## Examples
