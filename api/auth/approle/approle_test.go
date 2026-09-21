@@ -35,12 +35,8 @@ func testHTTPServer(
 }
 
 func init() {
-	if err := os.Setenv("BAO_TOKEN", ""); err != nil {
-		panic(fmt.Errorf("error resetting BAO_TOKEN: %v", err))
-	}
-	if err := os.Setenv("VAULT_TOKEN", ""); err != nil {
-		panic(fmt.Errorf("error resetting VAULT_TOKEN: %v", err))
-	}
+	os.Unsetenv("BAO_TOKEN")   //nolint:errcheck
+	os.Unsetenv("VAULT_TOKEN") //nolint:errcheck
 }
 
 func TestLogin(t *testing.T) {
