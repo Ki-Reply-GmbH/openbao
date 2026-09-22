@@ -857,7 +857,11 @@ func (c *TestCluster) start(t testing.T) {
 		if core.Server != nil {
 			for _, ln := range core.Listeners {
 				c.Logger.Info("starting listener for test core", "core", i, "port", ln.Address.Port)
-				go core.Server.Serve(ln)
+				go func() {
+					if err := core.Server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
+						c.Logger.Error("HTTP test server exited with error", "error", err)
+					}
+				}()
 			}
 		}
 	}
@@ -1020,7 +1024,9 @@ func (c *TestClusterCore) stop() error {
 
 	if c.Listeners != nil {
 		for _, ln := range c.Listeners {
-			ln.Close()
+			if err := ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+				c.Logger().Error("error closing test listener", "error", err)
+			}
 		}
 		c.Logger().Info("listeners successfully shut down")
 	}
@@ -1481,7 +1487,9 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		}
 		certGetter := reloadutil.NewCertificateGetter(certFile, keyFile, "")
 		certGetters = append(certGetters, certGetter)
-		certGetter.Reload()
+		if err := certGetter.Reload(); err != nil {
+			t.Fatal("error loading TLS certificate: ", err)
+		}
 		tlsConfig := &tls.Config{
 			Certificates:   []tls.Certificate{tlsCert},
 			RootCAs:        testCluster.RootCAs,
@@ -1857,7 +1865,11 @@ func (cluster *TestCluster) StartCore(t testing.T, idx int, opts *TestClusterOpt
 	// Start listeners
 	for _, ln := range tcc.Listeners {
 		tcc.Logger().Info("starting listener for core", "port", ln.Address.Port)
-		go tcc.Server.Serve(ln)
+		go func() {
+			if err := tcc.Server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) {
+				cluster.Logger.Error("HTTP test server exited with error", "error", err)
+			}
+		}()
 	}
 
 	tcc.Logger().Info("restarted test core", "core", idx)
