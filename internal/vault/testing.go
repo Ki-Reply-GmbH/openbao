@@ -1023,12 +1023,12 @@ func (c *TestClusterCore) stop() error {
 	c.Logger().Info("stopping vault test core")
 
 	if c.Listeners != nil {
+		c.Logger().Info("shutting down listeners")
 		for _, ln := range c.Listeners {
 			if err := ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 				c.Logger().Error("error closing test listener", "error", err)
 			}
 		}
-		c.Logger().Info("listeners successfully shut down")
 	}
 
 	if err := c.Shutdown(); err != nil {
