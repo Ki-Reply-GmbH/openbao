@@ -857,11 +857,11 @@ func (c *TestCluster) start(t testing.T) {
 		if core.Server != nil {
 			for _, ln := range core.Listeners {
 				c.Logger.Info("starting listener for test core", "core", i, "port", ln.Address.Port)
-				go func() {
-					if err := core.Server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
+				go func(server *http.Server, ln net.Listener) {
+					if err := server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
 						c.Logger.Error("HTTP test server exited with error", "error", err)
 					}
-				}()
+				}(core.Server, ln.Listener)
 			}
 		}
 	}
@@ -1865,11 +1865,11 @@ func (cluster *TestCluster) StartCore(t testing.T, idx int, opts *TestClusterOpt
 	// Start listeners
 	for _, ln := range tcc.Listeners {
 		tcc.Logger().Info("starting listener for core", "port", ln.Address.Port)
-		go func() {
-			if err := tcc.Server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
+		go func(server *http.Server, ln net.Listener) {
+			if err := server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
 				cluster.Logger.Error("HTTP test server exited with error", "error", err)
 			}
-		}()
+		}(tcc.Server, ln.Listener)
 	}
 
 	tcc.Logger().Info("restarted test core", "core", idx)
