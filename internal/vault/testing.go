@@ -1866,7 +1866,7 @@ func (cluster *TestCluster) StartCore(t testing.T, idx int, opts *TestClusterOpt
 	for _, ln := range tcc.Listeners {
 		tcc.Logger().Info("starting listener for core", "port", ln.Address.Port)
 		go func() {
-			if err := tcc.Server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) {
+			if err := tcc.Server.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, http.ErrServerClosed) {
 				cluster.Logger.Error("HTTP test server exited with error", "error", err)
 			}
 		}()
