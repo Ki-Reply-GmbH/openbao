@@ -226,13 +226,17 @@ DONELISTHANDLING:
 			(&jose.SignerOptions{}).WithType("JWT"),
 		)
 		if err != nil {
-			c.tokenStore.revokeOrphan(ctx, te.ID)
+			if revokeErr := c.tokenStore.revokeOrphan(ctx, te.ID); revokeErr != nil {
+				c.logger.Error("failed to revoke token", "error", revokeErr)
+			}
 			c.logger.Error("failed to create JWT builder", "error", err)
 			return nil, ErrInternalError
 		}
 		ser, err := jwt.Signed(sig).Claims(claims).Claims(priClaims).Serialize()
 		if err != nil {
-			c.tokenStore.revokeOrphan(ctx, te.ID)
+			if revokeErr := c.tokenStore.revokeOrphan(ctx, te.ID); revokeErr != nil {
+				c.logger.Error("failed to revoke wrapping token", "error", revokeErr)
+			}
 			c.logger.Error("failed to serialize JWT", "error", err)
 			return nil, ErrInternalError
 		}
@@ -273,7 +277,9 @@ DONELISTHANDLING:
 
 		marshaledResponse, err := json.Marshal(httpResponse)
 		if err != nil {
-			c.tokenStore.revokeOrphan(ctx, te.ID)
+			if revokeErr := c.tokenStore.revokeOrphan(ctx, te.ID); revokeErr != nil {
+				c.logger.Error("failed to revoke token", "error", revokeErr)
+			}
 			c.logger.Error("failed to marshal wrapped response", "error", err)
 			return nil, ErrInternalError
 		}
@@ -284,12 +290,16 @@ DONELISTHANDLING:
 	cubbyResp, err := c.router.Route(ctx, cubbyReq)
 	if err != nil {
 		// Revoke since it's not yet being tracked for expiration
-		c.tokenStore.revokeOrphan(ctx, te.ID)
+		if revokeErr := c.tokenStore.revokeOrphan(ctx, te.ID); revokeErr != nil {
+			c.logger.Error("failed to revoke token", "error", revokeErr)
+		}
 		c.logger.Error("failed to store wrapped response information", "error", err)
 		return nil, ErrInternalError
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
-		c.tokenStore.revokeOrphan(ctx, te.ID)
+		if revokeErr := c.tokenStore.revokeOrphan(ctx, te.ID); revokeErr != nil {
+			c.logger.Error("failed to revoke token", "error", revokeErr)
+		}
 		c.logger.Error("failed to store wrapped response information", "error", cubbyResp.Data["error"])
 		return cubbyResp, nil
 	}
@@ -310,12 +320,16 @@ DONELISTHANDLING:
 	cubbyResp, err = c.router.Route(ctx, cubbyReq)
 	if err != nil {
 		// Revoke since it's not yet being tracked for expiration
-		c.tokenStore.revokeOrphan(ctx, te.ID)
+		if revokeErr := c.tokenStore.revokeOrphan(ctx, te.ID); revokeErr != nil {
+			c.logger.Error("failed to revoke token", "error", revokeErr)
+		}
 		c.logger.Error("failed to store wrapping information", "error", err)
 		return nil, ErrInternalError
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
-		c.tokenStore.revokeOrphan(ctx, te.ID)
+		if revokeErr := c.tokenStore.revokeOrphan(ctx, te.ID); revokeErr != nil {
+			c.logger.Error("failed to revoke token", "error", revokeErr)
+		}
 		c.logger.Error("failed to store wrapping information", "error", cubbyResp.Data["error"])
 		return cubbyResp, nil
 	}
@@ -333,7 +347,9 @@ DONELISTHANDLING:
 	// lookup here as we are not logging in, and only logins apply to role based quotas.
 	if err := c.expiration.RegisterAuth(ctx, &te, wAuth, "", true /* persist */); err != nil {
 		// Revoke since it's not yet being tracked for expiration
-		c.tokenStore.revokeOrphan(ctx, te.ID)
+		if revokeErr := c.tokenStore.revokeOrphan(ctx, te.ID); revokeErr != nil {
+			c.logger.Error("failed to revoke token", "error", revokeErr)
+		}
 		c.logger.Error("failed to register cubbyhole wrapping token lease", "request_path", req.Path, "error", err)
 		return nil, ErrInternalError
 	}
