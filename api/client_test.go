@@ -26,8 +26,8 @@ import (
 
 func init() {
 	// Ensure our special envvars are not present
-	os.Setenv("BAO_ADDR", "")
-	os.Setenv("BAO_TOKEN", "")
+	os.Setenv("BAO_ADDR", "")  //nolint:errcheck
+	os.Setenv("BAO_TOKEN", "") //nolint:errcheck
 }
 
 func TestNewConfig_envvar(t *testing.T) {
@@ -152,7 +152,7 @@ func TestClientToken(t *testing.T) {
 	handler := func(w http.ResponseWriter, req *http.Request) {}
 
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	client, err := NewClient(config)
 	if err != nil {
@@ -175,10 +175,13 @@ func TestClientToken(t *testing.T) {
 
 func TestClientHostHeader(t *testing.T) {
 	handler := func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte(req.Host))
+		if _, err := w.Write([]byte(req.Host)); err != nil {
+			t.Errorf("err: %s", err)
+			return
+		}
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	config.Address = strings.ReplaceAll(config.Address, "127.0.0.1", "localhost")
 	client, err := NewClient(config)
@@ -196,7 +199,9 @@ func TestClientHostHeader(t *testing.T) {
 
 	// Copy the response
 	var buf bytes.Buffer
-	io.Copy(&buf, resp.Body)
+	if _, err := io.Copy(&buf, resp.Body); err != nil {
+		t.Fatalf("err: %s", err)
+	}
 
 	// Verify we got the response from the primary
 	if buf.String() != strings.ReplaceAll(config.Address, "http://", "") {
@@ -208,7 +213,7 @@ func TestClientBadToken(t *testing.T) {
 	handler := func(w http.ResponseWriter, req *http.Request) {}
 
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	client, err := NewClient(config)
 	if err != nil {
@@ -258,7 +263,7 @@ func TestClientDisableRedirects(t *testing.T) {
 
 			config, ln := testHTTPServer(t, http.HandlerFunc(respFunc))
 			config.DisableRedirects = test.disableRedirects
-			defer ln.Close()
+			defer ln.Close() //nolint:errcheck
 
 			client, err := NewClient(config)
 			if err != nil {
@@ -292,17 +297,19 @@ func TestClientDisableRedirects(t *testing.T) {
 
 func TestClientRedirect(t *testing.T) {
 	primary := func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("test"))
+		if _, err := w.Write([]byte("test")); err != nil {
+			t.Errorf("err: %s", err)
+		}
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(primary))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	standby := func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Location", config.Address)
 		w.WriteHeader(307)
 	}
 	config2, ln2 := testHTTPServer(t, http.HandlerFunc(standby))
-	defer ln2.Close()
+	defer ln2.Close() //nolint:errcheck
 
 	client, err := NewClient(config2)
 	if err != nil {
@@ -320,7 +327,9 @@ func TestClientRedirect(t *testing.T) {
 
 	// Copy the response
 	var buf bytes.Buffer
-	io.Copy(&buf, resp.Body)
+	if _, err := io.Copy(&buf, resp.Body); err != nil {
+		t.Fatalf("err: %s", err)
+	}
 
 	// Verify we got the response from the primary
 	if buf.String() != "test" {
@@ -711,7 +720,7 @@ func TestClientEnvNamespace(t *testing.T) {
 		seenNamespace = req.Header.Get(NamespaceHeaderName)
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	t.Setenv(EnvVaultNamespace, "test")
 
@@ -775,7 +784,9 @@ func TestParsingErrorCase(t *testing.T) {
 func TestClientTimeoutSetting(t *testing.T) {
 	t.Setenv(EnvVaultClientTimeout, "10")
 	config := DefaultConfig()
-	config.ReadEnvironment()
+	if err := config.ReadEnvironment(); err != nil {
+		t.Fatalf("error reading environment: %v", err)
+	}
 	_, err := NewClient(config)
 	if err != nil {
 		t.Fatal(err)
@@ -1045,7 +1056,7 @@ func TestClientWithNamespace(t *testing.T) {
 		ns = req.Header.Get(NamespaceHeaderName)
 	}
 	config, ln := testHTTPServer(t, http.HandlerFunc(handler))
-	defer ln.Close()
+	defer ln.Close() //nolint:errcheck
 
 	// set up a client with a namespace
 	client, err := NewClient(config)
