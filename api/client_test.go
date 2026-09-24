@@ -26,12 +26,8 @@ import (
 
 func init() {
 	// Ensure our special envvars are not present
-	if err := os.Setenv("BAO_ADDR", ""); err != nil {
-		panic(fmt.Errorf("error resetting BAO_ADDR: %s", err))
-	}
-	if err := os.Setenv("BAO_TOKEN", ""); err != nil {
-		panic(fmt.Errorf("error resetting BAO_TOKEN: %s", err))
-	}
+	os.Setenv("BAO_ADDR", "")  //nolint:errcheck
+	os.Setenv("BAO_TOKEN", "") //nolint:errcheck
 }
 
 func TestNewConfig_envvar(t *testing.T) {
