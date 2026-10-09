@@ -1210,6 +1210,8 @@ func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEn
 		return err
 	}
 
+	entry.Accessor = consts.TokenAccessorPrefix + entry.Accessor
+
 	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return err

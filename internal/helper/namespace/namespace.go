@@ -323,6 +323,9 @@ func SplitIDFromString(input string) (string, string) {
 	case strings.HasPrefix(input, consts.ServiceTokenPrefix):
 		prefix = consts.ServiceTokenPrefix
 		input = input[4:]
+	case strings.HasPrefix(input, consts.TokenAccessorPrefix):
+		prefix = consts.TokenAccessorPrefix
+		input = input[len(prefix):]
 
 	case slashIdx > 0:
 		// Leases will never have a b./s. to start
