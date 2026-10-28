@@ -221,7 +221,8 @@ flowchart TD
 
 ## Future work
 The mechanism proposed in the RFC can be extended further in the future to
-support more use cases and improve robustness.
+support more use cases and improve robustness. Below are possible extensions for
+the future but are not necessarily in scope for the first implementation.
 
 ### Recreating a deleted namespace
 Since the backup archive contains the seal configuration and encryption
@@ -247,18 +248,11 @@ in a namespace. For example, a backup request can look like this:
 POST sys/namespaces/<namespace>/backup 
 {
   "secrets": ["pki/", "kv/"],
-  "auth": ["userpass/", "oidc/"],
-  "include_encryption_materials": true,
-  "include_settings": true
+  "auth": ["userpass/", "oidc/"]
 }
 ```
 * `secrets` contains the secret mounts to be backed up. Defaults to `["*"]`.
 * `auth` contains the auth mounts to be backed up. Defaults to `["*"]`.
-* `include_encryption_materials` denotes if the namespace seal configuration, root
-  key and barrier key ring is included in the back up.
-* `include_settings` denotes if the namespace settings should be included in the 
-  backup. This includes policies, identities, external keys, workflows, mfa...
-  Defaults to `true`.
 
 The same parameters can be included in the restore request to allow for
 selective restore. A small tool/binary can be supplied to the user to inspect a
