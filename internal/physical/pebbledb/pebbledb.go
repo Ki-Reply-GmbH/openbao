@@ -13,15 +13,14 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"uuid"
 	"weak"
-
-	"github.com/openbao/openbao/sdk/v2/physical"
 
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/vfs"
+	"github.com/google/uuid"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 /*
@@ -271,7 +270,7 @@ func (b *Backend) beginTx(ctx context.Context, writable bool) (physical.Transact
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
-	id := uuid.NewV4().String()
+	id := uuid.New().String()
 
 	snapshot := b.db.NewSnapshot()
 	txn := &Transaction{
