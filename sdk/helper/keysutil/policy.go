@@ -3046,10 +3046,6 @@ func (p *Policy) validateKeyVersionCertificateKeyMatch(keyEntry KeyEntry, certif
 		if certificatePublicKeyAlgorithm == x509.RSA {
 			keyTypeMatches = true
 		}
-	case KeyType_MLDSA44, KeyType_MLDSA65, KeyType_MLDSA87:
-		if certificatePublicKeyAlgorithm == x509.MLDSA {
-			keyTypeMatches = true
-		}
 	}
 	if !keyTypeMatches {
 		return false, errutil.UserError{Err: fmt.Sprintf("provided leaf certificate public key algorithm '%s' does not match the transit key type '%s'", certificatePublicKeyAlgorithm, p.Type)}
@@ -3091,22 +3087,6 @@ func (p *Policy) validateKeyVersionCertificateKeyMatch(keyEntry KeyEntry, certif
 			return false, nil
 		}
 		publicKey := keyEntry.RSAKey.PublicKey
-
-		return publicKey.Equal(certificatePublicKey), nil
-	case x509.MLDSA:
-		certificatePublicKey, ok := certificatePublicKey.(*mldsa.PublicKey)
-		if !ok {
-			return false, nil
-		}
-
-		publicKeyRaw, err := base64.StdEncoding.DecodeString(keyEntry.FormattedPublicKey)
-		if err != nil {
-			return false, err
-		}
-		publicKey, err := mldsa.NewPublicKey(p.Type.MLDSAParams(), publicKeyRaw)
-		if err != nil {
-			return false, err
-		}
 
 		return publicKey.Equal(certificatePublicKey), nil
 	case x509.UnknownPublicKeyAlgorithm:

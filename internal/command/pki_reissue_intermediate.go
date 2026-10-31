@@ -250,7 +250,7 @@ func findSignatureBits(algo x509.SignatureAlgorithm) int {
 		return 384
 	case x509.SHA512WithRSA, x509.SHA512WithRSAPSS, x509.ECDSAWithSHA512:
 		return 512
-	case x509.PureEd25519, x509.MLDSA44, x509.MLDSA65, x509.MLDSA87:
+	case x509.PureEd25519:
 		return 0
 	default:
 		return -1

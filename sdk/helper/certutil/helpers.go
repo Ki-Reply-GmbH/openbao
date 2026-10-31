@@ -65,9 +65,6 @@ var SignatureAlgorithmNames = map[string]x509.SignatureAlgorithm{
 	"sha512withrsapss": x509.SHA512WithRSAPSS,
 	"pureed25519":      x509.PureEd25519,
 	"ed25519":          x509.PureEd25519, // Duplicated for clarity; most won't expect the "Pure" prefix.
-	"mldsa44":          x509.MLDSA44,
-	"mldsa65":          x509.MLDSA65,
-	"mldsa87":          x509.MLDSA87,
 }
 
 // Mapping of constant values<->constant names for SignatureAlgorithm
@@ -82,9 +79,6 @@ var InvSignatureAlgorithmNames = map[x509.SignatureAlgorithm]string{
 	x509.SHA384WithRSAPSS: "SHA384WithRSAPSS",
 	x509.SHA512WithRSAPSS: "SHA512WithRSAPSS",
 	x509.PureEd25519:      "Ed25519",
-	x509.MLDSA44:          "MLDSA44",
-	x509.MLDSA65:          "MLDSA65",
-	x509.MLDSA87:          "MLDSA87",
 }
 
 // OID for RFC 5280 CRL Number extension.

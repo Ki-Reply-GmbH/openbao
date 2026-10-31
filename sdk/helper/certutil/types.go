@@ -505,16 +505,6 @@ func (p *ParsedCertBundle) GetKeyBits() (int, error) {
 		}
 	case x509.Ed25519:
 		return 0, nil
-	case x509.MLDSA:
-		pub, ok := p.Certificate.PublicKey.(*mldsa.PublicKey)
-		if !ok {
-			return -1, fmt.Errorf("unable to cast mldsa type certificate's key to mldsa.PublicKey: actually of type %T", p.Certificate.PublicKey)
-		}
-		label := GetMLDSAParameterSetLabel(pub)
-		if label == -1 {
-			return -1, fmt.Errorf("unknown size for ML-DSA Public Key: %v", pub.Parameters().String())
-		}
-		return label, nil
 	default:
 		return -1, fmt.Errorf("unknown public key algorithm on bundle: %v", p.Certificate.PublicKeyAlgorithm)
 	}

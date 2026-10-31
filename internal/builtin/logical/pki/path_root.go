@@ -8,7 +8,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -654,18 +653,6 @@ func publicKeyType(pub crypto.PublicKey) (pubType x509.PublicKeyAlgorithm, sigAl
 	case ed25519.PublicKey:
 		pubType = x509.Ed25519
 		sigAlgo = x509.PureEd25519
-	case *mldsa.PublicKey:
-		pubType = x509.MLDSA
-		switch pub.Parameters() {
-		case mldsa.MLDSA44():
-			sigAlgo = x509.MLDSA44
-		case mldsa.MLDSA65():
-			sigAlgo = x509.MLDSA65
-		case mldsa.MLDSA87():
-			sigAlgo = x509.MLDSA87
-		default:
-			err = errors.New("x509: unknown ML-DSA parameters")
-		}
 	default:
 		err = errors.New("x509: only RSA, ECDSA, Ed25519, and ML-DSA keys supported")
 	}
