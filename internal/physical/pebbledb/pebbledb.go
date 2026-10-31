@@ -633,6 +633,14 @@ func (t *Transaction) confirmParallelWrites() {
 	}
 }
 
+// cutLast is inlined from the Go 1.27 standard library.
+func cutLast(s, sep string) (before, after string, found bool) {
+	if i := strings.LastIndex(s, sep); i >= 0 {
+		return s[:i], s[i+len(sep):], true
+	}
+	return s, "", false
+}
+
 // notifyWriteWithLock checks whether this write operation (from another
 // transaction or direct write) causes a conflict.
 func (t *Transaction) notifyWriteWithLock(written string, deleted bool) {
@@ -664,7 +672,7 @@ func (t *Transaction) notifyWriteWithLock(written string, deleted bool) {
 	// would've included this entry. We can't use path.Base(...) because
 	// we don't want to implicitly call path.Clean(...) and deal with its
 	// semantics.
-	base, suffix, found := strings.CutLast(written, "/")
+	base, suffix, found := cutLast(written, "/")
 	if !found {
 		suffix = written
 	}
