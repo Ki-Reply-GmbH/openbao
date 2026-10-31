@@ -1475,12 +1475,6 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 		}
 
 		opts := crypto.Hash(0)
-		if options.Prehashed && options.HashAlgorithm == HashTypeMLDSAMu {
-			if muSize := crypto.MLDSAMu.Size(); len(input) != muSize {
-				return nil, errutil.UserError{Err: fmt.Sprintf("external ML-DSA mu must be %d bytes, got %d", muSize, len(input))}
-			}
-			opts = crypto.MLDSAMu
-		}
 
 		sig, err = key.Sign(rand.Reader, input, opts)
 		if err != nil {
@@ -1501,13 +1495,9 @@ func (p *Policy) SignWithOptions(ver int, derivationContext, input []byte, optio
 		}
 
 		var algo crypto.Hash
-		if hashAlgorithm == HashTypeMLDSAMu {
-			algo = crypto.MLDSAMu
-		} else {
-			var ok bool
-			if algo, ok = CryptoHashMap[hashAlgorithm]; !ok {
-				return nil, errutil.InternalError{Err: "unsupported hash algorithm"}
-			}
+		var ok bool
+		if algo, ok = CryptoHashMap[hashAlgorithm]; !ok {
+			return nil, errutil.InternalError{Err: "unsupported hash algorithm"}
 		}
 
 		opts := &kms.SignOptions{
