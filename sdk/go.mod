@@ -5,7 +5,7 @@ module github.com/openbao/openbao/sdk/v2
 // automatically track the Go version used to build Vault itself.  Many projects import
 // the sdk module and we don't want to impose a newer version on them any more than we
 // have to.
-go 1.27.0
+go 1.26.0
 
 replace github.com/openbao/openbao/api/v2 => ../api
 
