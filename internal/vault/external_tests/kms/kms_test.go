@@ -11,8 +11,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	transitKMS "github.com/openbao/go-kms-wrapping/kms/transit/v2"
-	"github.com/openbao/go-kms-wrapping/plugin/v2"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/builtin/logical/pki"
@@ -26,20 +24,6 @@ import (
 )
 
 const TestPluginServerEnv = "BAO_TEST_PLUGIN_SERVER"
-
-// TestTransitPluginServer runs a plugin that serves the Transit KMS.
-func TestTransitPluginServer(t *testing.T) {
-	if _, ok := os.LookupEnv(TestPluginServerEnv); !ok {
-		t.Skip()
-	}
-
-	plugin.Serve(&plugin.ServeOpts{
-		KMSFactoryFunc: transitKMS.New,
-		Metadata: plugin.Metadata{
-			SensitiveKMSFields: transitKMS.SensitiveKMSFields,
-		},
-	})
-}
 
 func TransitPluginConfig(t *testing.T) *server.PluginConfig {
 	contents, err := os.ReadFile(os.Args[0])

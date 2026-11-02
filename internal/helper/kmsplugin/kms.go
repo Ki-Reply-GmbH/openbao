@@ -10,14 +10,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/openbao/go-kms-wrapping/kms/transit/v2"
 	gkwplugin "github.com/openbao/go-kms-wrapping/plugin/v2"
 	"github.com/openbao/go-kms-wrapping/v2/kms"
 )
 
-var builtinKMSes = map[string]func() kms.KMS{
-	"transit": transit.New,
-}
+var builtinKMSes = map[string]func() kms.KMS{}
 
 // OpenKMS creates a new KMS instance and calls Open with the provided options.
 // This may dispatch to either a builtin KMS or an external pluginized one.

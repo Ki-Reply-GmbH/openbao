@@ -7,15 +7,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/openbao/go-kms-wrapping/kms/transit/v2"
 	"github.com/openbao/go-kms-wrapping/plugin/v2"
 )
 
-var builtinMetadata = map[string]plugin.Metadata{
-	"transit": {
-		SensitiveKMSFields: transit.SensitiveKMSFields,
-	},
-}
+var builtinMetadata = map[string]plugin.Metadata{}
 
 // GetMetadata returns a KMS plugin's metadata.
 func (c *Catalog) GetMetadata(ctx context.Context, name string) (plugin.Metadata, error) {
