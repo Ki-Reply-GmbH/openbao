@@ -9,7 +9,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
-	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -26,6 +25,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/openbao/openbao/sdk/v2/helper/mldsa"
 
 	"github.com/openbao/openbao/sdk/v2/helper/structtomap"
 )

@@ -10,7 +10,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
-	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -27,6 +26,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/openbao/openbao/sdk/v2/helper/mldsa"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"

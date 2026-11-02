@@ -8,7 +8,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
-	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/x509"
@@ -16,6 +15,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/openbao/openbao/sdk/v2/helper/mldsa"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 

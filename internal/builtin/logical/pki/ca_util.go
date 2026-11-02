@@ -6,12 +6,13 @@ package pki
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/mldsa"
 	"crypto/rsa"
 	"errors"
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/openbao/openbao/sdk/v2/helper/mldsa"
 
 	"golang.org/x/crypto/ed25519"
 

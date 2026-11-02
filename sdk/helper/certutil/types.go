@@ -16,7 +16,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
-	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -31,6 +30,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/openbao/openbao/sdk/v2/helper/mldsa"
 
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 )

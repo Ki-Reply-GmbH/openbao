@@ -6,7 +6,6 @@ package pki
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/mldsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -14,6 +13,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/openbao/openbao/sdk/v2/helper/mldsa"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
