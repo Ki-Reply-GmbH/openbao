@@ -87,6 +87,20 @@ the namespace under restore are rejected.
 For sealable namespaces, if a restore is interrupted by a crash, the namespace
 needs to be unsealed again upon restart to retry.
 
+There can only be one active restore operation on a namespace.
+
+### Configurable limits and cleanup
+Because of the likely large size of the restore archive, `max_request_size` is
+bypassed for the restore call. There are also configurable limits:
+* Maximum number of concurrent restore/backup jobs on the cluster.
+* Shared maximum disk space allowed for restore/backup jobs.
+* Maximum restore archive file size.
+
+These limits do not apply to Raft snapshotting because it is a privileged
+operation, while namespace backup/restore is a tenant capability.
+
+Temporary backup files are cleaned up on success, failure and startup.
+
 ## Technical Description
 ### Backup format
 Currently, the Raft snapshot format is defined as a gzip-compressed tar with these files:
@@ -308,6 +322,8 @@ introduced after the backup.
 ## Unresolved Questions
 * The list of paths to backup is likely still incomplete. Would it be better if
   we decide on a deny list instead of an allow list?
+* Where should the restore limits configurations live, and which default values
+  should we give them?
 
 ## Related Issues
 * https://github.com/openbao/openbao/issues/1569
