@@ -137,22 +137,9 @@ of the root namespace. This has a couple of advantages:
 The `pb.StorageEntry` within `state.bin` are taken from the storage `Physical`
 layer. This means that all the entries are already encrypted.
 
-### Backup process
-The backup makes sure to capture a stable snapshot of the namespace by using a
-read only transaction, the steps are:
-* Start a read transaction.
-* Prepare `meta.json` and its sha256 hash for `SHA256SUMS`.
-* Walk through the physical storage entries eligible to be backed up.
-* With each entry, continuously calculate the sha256 hash for `state.bin` in
-  `SHA256SUMS` and write the entry to a temporary file.
-* Close the transaction.
-* Encrypt `SHA256SUMS` with the root's barrier to create `SHA256SUMS.sealed`.
-* Assemble the backup archive from `meta.json`, `SHA256SUMS`,
-  `SHA256SUMS.sealed` and the temporary file.
-* Stream the backup archive to the client and delete it on the server side.
-
-There's two types of storage entries eligible for backup, all are relative to
-`namespaces/<namespace uuid>`:
+### What to back up & restore
+There are two types of storage entries eligible for backup, all are relative to
+`namespaces/<namespace uuid>`, this is our "allowlist":
 * Namespace seal config and encryption materials, only for sealable namespaces:
   * `core/seal-config`: seal configuration.
   * `core/keyring`, `core/root-key`, `core/shamir-kek`, `core/hsm/barrier-unseal-keys`.
@@ -164,8 +151,40 @@ There's two types of storage entries eligible for backup, all are relative to
   * `sys/token/roles/*`: token roles
   * `sys/login-mfa/**`: MFA configuration
   * `sys/mfa/totpkeys/**`
-  * `sys/quotas/`
-  * Password policy, external keys, workflows...
+  * `sys/password_policy/*`
+  * `sys/external-keys/**`
+  * `workflows/**`
+
+There's also a "denylist" of paths not to be included in the backup:
+* `sys/token/<id,accessor>/*`, `sys/token/salt`, `sys/token/parent/**`
+* `sys/expire/**`
+* `logical/<cubbyhole>/`
+* `core/namespaces/*`
+* `core/upgrade/*`
+* `core/login/lockedUsers/**`
+
+If during backup/restore, a path is detected but does not belong to either lists:
+* For a backup, a warning is issued in the server logs and also in `meta.json`.
+* For a restore, a warning is issued in the server logs and in the API response. 
+  The non-classified entries are left as-is and not wiped nor written.
+
+As regression guard, there can be an integration test that creates a fully
+populated namespace and checks that all storage paths are classified in either
+list.
+
+### Backup process
+The backup makes sure to capture a stable snapshot of the namespace by using a
+read only transaction, the steps are:
+* Start a read transaction.
+* Walk through the physical storage entries eligible to be backed up.
+* With each entry, continuously calculate the sha256 hash for `state.bin` in
+  `SHA256SUMS` and write the entry to a temporary file.
+* Close the transaction.
+* Prepare `meta.json` and its sha256 hash for `SHA256SUMS`.
+* Encrypt `SHA256SUMS` with the root's barrier to create `SHA256SUMS.sealed`.
+* Assemble the backup archive from `meta.json`, `SHA256SUMS`,
+  `SHA256SUMS.sealed` and the temporary file.
+* Stream the backup archive to the client and delete it on the server side.
 
 ### Restore process
 Restore operations can only be done from the active node. Standby nodes always
@@ -320,8 +339,6 @@ A restore undoes stored revocation state (CRL, revoked login credentials etc.)
 introduced after the backup.
 
 ## Unresolved Questions
-* The list of paths to backup is likely still incomplete. Would it be better if
-  we decide on a deny list instead of an allow list?
 * Where should the restore limits configurations live, and which default values
   should we give them?
 
