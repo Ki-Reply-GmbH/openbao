@@ -25,6 +25,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	"github.com/openbao/openbao/v2/internal/vault/policy"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 // Namespace id length; upstream uses 5 characters so we use one more to
@@ -64,6 +65,7 @@ var knownNamespaceCoreEntriesToCleanup = []string{
 	barrier.RootKeyPath,
 	barrier.ShamirKekPath,
 	barrierSealConfigPath,
+	namespaceSealKMSConfigPath,
 	recoverySealConfigPath,
 	recoveryKeyPath,
 	StoredBarrierKeysPath,
@@ -247,7 +249,21 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
 				return false, fmt.Errorf("failed to decode seal config entry for namespace %s: %w", namespace.ID, err)
 			}
-			return true, ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false)
+			if err := ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false); err != nil {
+				return false, err
+			}
+			if sealConfig.Type == vaultseal.WrapperTypeShamir.String() || namespace.ManuallySealed {
+				return true, nil
+			}
+
+			// Namespaces protected by an auto seal are unsealed right away with
+			// the barrier key stored encrypted by their KMS, so their children
+			// can be loaded through their own barrier.
+			if err := ns.core.sealManager.UnsealWithStoredKeys(ctx, &namespace); err != nil {
+				return false, fmt.Errorf("failed to unseal namespace %s with stored keys: %w", namespace.ID, err)
+			}
+			nsStorage := ns.core.NamespaceView(&namespace)
+			return true, ns.loadNamespacesRecursive(ctx, nsStorage, nsStorage, callback)
 		}
 
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
@@ -535,6 +551,15 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 			if err != nil {
 				return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
 			}
+
+			// Auto seals have no unseal key shares; the shares returned to the
+			// caller are the recovery key shares instead.
+			if sealConfig.recoveryConfig != nil {
+				sealKeyShares, err = ns.core.sealManager.InitializeRecovery(ctx, entry, sealConfig.recoveryConfig)
+				if err != nil {
+					return nil, fmt.Errorf("failed to initialize namespace recovery key: %w", err)
+				}
+			}
 		}
 
 		// unlock before initializeNamespace since that will re-acquire the lock.
@@ -559,8 +584,10 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 		return nil, fmt.Errorf("failed to persist namespace: %w", err)
 	}
 
-	// Seal the namespace, as we've finished the setup.
-	if sealConfig != nil {
+	// Seal the namespace, as we've finished the setup. Namespaces protected by
+	// an auto seal are left unsealed, since no operator action is required to
+	// unseal them.
+	if sealConfig != nil && sealConfig.Type == vaultseal.WrapperTypeShamir.String() {
 		if err := ns.sealNamespaceLocked(ctx, entry); err != nil {
 			return nil, fmt.Errorf("failed to seal namespace: %w", err)
 		}
