@@ -18,6 +18,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
+	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
 var namespacePathSchema = &framework.FieldSchema{
@@ -202,6 +203,10 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					Type:        framework.TypeStringSlice,
 					Description: "Specifies an array of PGP public keys used to encrypt the output unseal keys.",
 				},
+				"recovery_pgp_keys": {
+					Type:        framework.TypeStringSlice,
+					Description: "Specifies an array of PGP public keys used to encrypt the output recovery keys of a namespace protected by an auto seal. The size of this array must be the same as `recovery_shares`.",
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -374,34 +379,22 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 				return nil, errors.New("seal config must contain exactly one seal stanza")
 			}
 			kms := kmses[0]
-			if kms.Type != "shamir" {
-				return nil, errors.New("namespaces currently only support shamir seals")
+			if kms.Type == vaultseal.WrapperTypeShamir.String() {
+				sealConfig, err = parseShamirSealConfig(kms, data)
+			} else {
+				sealConfig, err = parseAutoSealConfig(kms, data)
 			}
-
-			sealConfig = &SealConfig{
-				Type: kms.Type,
-			}
-
-			if val, ok := kms.Config["shares"]; ok {
-				shares, err := parseutil.ParseInt(val)
-				if err != nil {
-					return nil, errors.New("value of shares parameter must be integer")
-				}
-				sealConfig.SecretShares = int(shares)
-			}
-			if val, ok := kms.Config["threshold"]; ok {
-				threshold, err := parseutil.ParseInt(val)
-				if err != nil {
-					return nil, errors.New("value of shares parameter must be integer")
-				}
-				sealConfig.SecretThreshold = int(threshold)
-			}
-			if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
-				sealConfig.PGPKeys = pgpkeys.([]string)
+			if err != nil {
+				return nil, err
 			}
 
 			if err := sealConfig.Validate(); err != nil {
 				return logical.ErrorResponse("invalid seal config: %v", err), err
+			}
+			if sealConfig.recoveryConfig != nil {
+				if err := sealConfig.recoveryConfig.ValidateRecovery(); err != nil {
+					return logical.ErrorResponse("invalid recovery config: %v", err), err
+				}
 			}
 		}
 
@@ -420,12 +413,107 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			for _, share := range keyShares {
 				encoded = append(encoded, hex.EncodeToString(share))
 			}
-			resp.Data["key_shares"] = encoded
-			resp.Data["key_threshold"] = sealConfig.SecretThreshold
+			if sealConfig.recoveryConfig != nil {
+				resp.Data["recovery_key_shares"] = encoded
+				resp.Data["recovery_key_threshold"] = sealConfig.recoveryConfig.SecretThreshold
+			} else {
+				resp.Data["key_shares"] = encoded
+				resp.Data["key_threshold"] = sealConfig.SecretThreshold
+			}
 		}
 
 		return resp, nil
 	}
+}
+
+// parseShamirSealConfig builds the seal configuration of a namespace protected
+// by a Shamir seal from the shares and threshold set in the seal stanza.
+func parseShamirSealConfig(kms *configutil.KMS, data *framework.FieldData) (*SealConfig, error) {
+	sealConfig := &SealConfig{
+		Type: kms.Type,
+	}
+
+	if val, ok := kms.Config["shares"]; ok {
+		shares, err := parseutil.ParseInt(val)
+		if err != nil {
+			return nil, errors.New("value of shares parameter must be integer")
+		}
+		sealConfig.SecretShares = int(shares)
+	}
+	if val, ok := kms.Config["threshold"]; ok {
+		threshold, err := parseutil.ParseInt(val)
+		if err != nil {
+			return nil, errors.New("value of shares parameter must be integer")
+		}
+		sealConfig.SecretThreshold = int(threshold)
+	}
+	if pgpkeys, ok := data.GetOk("pgp_keys"); ok {
+		sealConfig.PGPKeys = pgpkeys.([]string)
+	}
+	if _, ok := data.GetOk("recovery_pgp_keys"); ok {
+		return nil, errors.New("recovery_pgp_keys is only supported for auto seals, use pgp_keys instead")
+	}
+
+	return sealConfig, nil
+}
+
+// Default recovery settings for namespaces protected by an auto seal, used
+// when the seal stanza does not set them. They match the defaults of the
+// root namespace initialization.
+const (
+	defaultNamespaceRecoveryShares    = 5
+	defaultNamespaceRecoveryThreshold = 3
+)
+
+// parseAutoSealConfig builds the seal configuration of a namespace protected
+// by an auto seal. Recovery settings are taken out of the seal stanza and all
+// remaining entries are passed to the wrapper as its configuration.
+func parseAutoSealConfig(kms *configutil.KMS, data *framework.FieldData) (*SealConfig, error) {
+	if _, ok := data.GetOk("pgp_keys"); ok {
+		return nil, errors.New("pgp_keys is only supported for shamir seals, use recovery_pgp_keys instead")
+	}
+
+	recoveryConfig := &SealConfig{
+		SecretShares:    defaultNamespaceRecoveryShares,
+		SecretThreshold: defaultNamespaceRecoveryThreshold,
+	}
+	if pgpkeys, ok := data.GetOk("recovery_pgp_keys"); ok {
+		recoveryConfig.PGPKeys = pgpkeys.([]string)
+	}
+
+	wrapperConfig := make(map[string]string, len(kms.Config))
+	for key, val := range kms.Config {
+		switch key {
+		case "recovery_shares":
+			shares, err := parseutil.ParseInt(val)
+			if err != nil {
+				return nil, errors.New("value of recovery_shares parameter must be integer")
+			}
+			recoveryConfig.SecretShares = int(shares)
+		case "recovery_threshold":
+			threshold, err := parseutil.ParseInt(val)
+			if err != nil {
+				return nil, errors.New("value of recovery_threshold parameter must be integer")
+			}
+			recoveryConfig.SecretThreshold = int(threshold)
+		case "shares", "threshold":
+			return nil, fmt.Errorf("%s is only supported for shamir seals, use recovery_%s instead", key, key)
+		default:
+			wrapperConfig[key] = val
+		}
+	}
+
+	// As for the root namespace, auto seals use a single stored barrier key.
+	return &SealConfig{
+		Type:            kms.Type,
+		SecretShares:    1,
+		SecretThreshold: 1,
+		kmsConfig: &namespaceKMSConfig{
+			Type:   kms.Type,
+			Config: wrapperConfig,
+		},
+		recoveryConfig: recoveryConfig,
+	}, nil
 }
 
 // handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace's custom metadata.

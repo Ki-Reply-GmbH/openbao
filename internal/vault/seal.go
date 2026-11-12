@@ -318,6 +318,12 @@ type SealConfig struct {
 
 	// Stores the progress of the verification operation (key shares)
 	VerificationProgress shamir.Shares `json:"-"`
+
+	// kmsConfig and recoveryConfig are only set in memory when creating a
+	// namespace protected by an auto seal. They are never persisted as part
+	// of the seal configuration.
+	kmsConfig      *namespaceKMSConfig
+	recoveryConfig *SealConfig
 }
 
 // baseValidate is used as a shared base between `Validate` and `ValidateRecovery`
