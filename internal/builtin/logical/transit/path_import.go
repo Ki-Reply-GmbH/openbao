@@ -25,6 +25,10 @@ import (
 
 const EncryptedKeyBytes = 512
 
+const sha1KeyWrappingDeprecationWarning = "SHA-1 for RSA-OAEP key wrapping " +
+	"is deprecated and will be removed in v2.9.0. " +
+	"Use SHA256 or another supported hash algorithm instead."
+
 func (b *backend) pathImport() *framework.Path {
 	return &framework.Path{
 		Pattern: "keys/" + framework.GenericNameRegex("name") + "/import",
@@ -55,7 +59,9 @@ The type of key being imported. Currently, "aes128-gcm96" , "aes256-gcm96",
 				Type:    framework.TypeString,
 				Default: "SHA256",
 				Description: `The hash function used as a random oracle in the OAEP wrapping of the user-generated,
-ephemeral AES key. Can be one of "SHA1", "SHA224", "SHA256" (default), "SHA384", or "SHA512"`,
+ephemeral AES key. Can be one of "SHA1", "SHA224", "SHA256" (default), "SHA384", or "SHA512".
+"SHA1" is deprecated and will no longer be accepted starting with v2.9.0.
+Use "SHA256" or another supported hash instead.`,
 			},
 			"ciphertext": {
 				Type: framework.TypeString,
@@ -145,7 +151,9 @@ with the wrapping key and then concatenated with the import key, wrapped by the 
 				Type:    framework.TypeString,
 				Default: "SHA256",
 				Description: `The hash function used as a random oracle in the OAEP wrapping of the user-generated,
-ephemeral AES key. Can be one of "SHA1", "SHA224", "SHA256" (default), "SHA384", or "SHA512"`,
+ephemeral AES key. Can be one of "SHA1", "SHA224", "SHA256" (default), "SHA384", or "SHA512.
+"SHA1" is deprecated and will no longer be accepted starting with v2.9.0.
+Use "SHA256" or another supported hash instead.`,
 			},
 			"version": {
 				Type: framework.TypeInt,
@@ -255,7 +263,7 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 		return nil, err
 	}
 
-	return nil, nil
+	return resp, nil
 }
 
 func (b *backend) pathImportVersionWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -321,7 +329,7 @@ func (b *backend) pathImportVersionWrite(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 
-	return nil, nil
+	return resp, nil
 }
 
 func (b *backend) decryptImportedKey(ctx context.Context, storage logical.Storage, ciphertext []byte, hashFn hash.Hash) ([]byte, error) {
@@ -392,6 +400,12 @@ func (b *backend) extractKeyFromFields(ctx context.Context, req *logical.Request
 		key, err = b.decryptImportedKey(ctx, req.Storage, ciphertext, hashFn)
 		if err != nil {
 			return key, nil, err
+		}
+
+		if strings.EqualFold(hashFnStr, "SHA1") {
+			resp := &logical.Response{}
+			resp.AddWarning(sha1KeyWrappingDeprecationWarning)
+			return key, resp, nil
 		}
 	} else {
 		publicKeyString := d.Get("public_key").(string)

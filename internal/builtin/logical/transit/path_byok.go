@@ -165,6 +165,10 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 
+	if strings.EqualFold(hash, "SHA1") && len(retKeys) > 0 {
+		resp.AddWarning(sha1KeyWrappingDeprecationWarning)
+	}
+
 	return resp, nil
 }
 
