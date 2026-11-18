@@ -516,6 +516,39 @@ func parseAutoSealConfig(kms *configutil.KMS, data *framework.FieldData) (*SealC
 	}, nil
 }
 
+// parseAutoSealUpdateConfig builds the new auto seal configuration of a
+// namespace from a seal stanza. The recovery key is left unchanged on update,
+// so recovery settings are rejected, as are Shamir settings.
+func parseAutoSealUpdateConfig(sealString string) (*namespaceKMSConfig, error) {
+	kmses, err := configutil.ParseKMSes(sealString)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse seal config: %w", err)
+	}
+	if len(kmses) != 1 {
+		return nil, errors.New("seal config must contain exactly one seal stanza")
+	}
+
+	kms := kmses[0]
+	if kms.Type == vaultseal.WrapperTypeShamir.String() {
+		return nil, errors.New("the seal configuration of a shamir sealed namespace cannot be updated")
+	}
+
+	wrapperConfig := make(map[string]string, len(kms.Config))
+	for key, val := range kms.Config {
+		switch key {
+		case "shares", "threshold", "recovery_shares", "recovery_threshold":
+			return nil, fmt.Errorf("%s cannot be changed when updating the seal configuration", key)
+		default:
+			wrapperConfig[key] = val
+		}
+	}
+
+	return &namespaceKMSConfig{
+		Type:   kms.Type,
+		Config: wrapperConfig,
+	}, nil
+}
+
 // handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace's custom metadata.
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

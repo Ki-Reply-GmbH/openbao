@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/v2/internal/helper/configutil"
 	"github.com/openbao/openbao/v2/internal/helper/fairshare"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
@@ -57,6 +59,11 @@ const (
 		1 + /* locked user entries */
 		1 /* final view clearing */
 )
+
+// namespaceAutoUnsealRetryInterval is how often the unseal of namespaces
+// protected by an auto seal, whose KMS was unreachable when they were loaded,
+// is retried. It matches the root seal health check interval when unhealthy.
+const namespaceAutoUnsealRetryInterval = configutil.DefaultSealHealthCheckIntervalUnhealthy
 
 // knownNamespaceCoreEntriesToCleanup is a "whitelist" of known paths to storage
 // entries we delete during final view clearing while namespace deletion.
@@ -101,6 +108,10 @@ type NamespaceStore struct {
 	deletionDispatcher            *fairshare.JobManager
 	creationDeletionJobContext    context.Context
 	creationDeletionJobCancelFunc context.CancelFunc
+
+	// autoUnsealRetryRunning is set while the background process retrying
+	// the unseal of auto seal namespaces is running.
+	autoUnsealRetryRunning atomic.Bool
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -249,10 +260,15 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			if err := sealConfigEntry.DecodeJSON(&sealConfig); err != nil {
 				return false, fmt.Errorf("failed to decode seal config entry for namespace %s: %w", namespace.ID, err)
 			}
+			isShamir := sealConfig.Type == vaultseal.WrapperTypeShamir.String()
 			if err := ns.core.sealManager.SetSeal(ctx, &sealConfig, &namespace, false); err != nil {
-				return false, err
+				if isShamir {
+					return false, err
+				}
+				ns.deferAutoUnseal(&namespace, &sealConfig, err)
+				return true, nil
 			}
-			if sealConfig.Type == vaultseal.WrapperTypeShamir.String() || namespace.ManuallySealed {
+			if isShamir || namespace.ManuallySealed {
 				return true, nil
 			}
 
@@ -260,7 +276,8 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			// the barrier key stored encrypted by their KMS, so their children
 			// can be loaded through their own barrier.
 			if err := ns.core.sealManager.UnsealWithStoredKeys(ctx, &namespace); err != nil {
-				return false, fmt.Errorf("failed to unseal namespace %s with stored keys: %w", namespace.ID, err)
+				ns.deferAutoUnseal(&namespace, &sealConfig, err)
+				return true, nil
 			}
 			nsStorage := ns.core.NamespaceView(&namespace)
 			return true, ns.loadNamespacesRecursive(ctx, nsStorage, nsStorage, callback)
@@ -272,6 +289,88 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 
 		return true, nil
 	}, nil)
+}
+
+// deferAutoUnseal records a namespace protected by an auto seal that could
+// not be unsealed when loaded. It stays sealed, as do its children, and its
+// unseal is retried in the background without blocking the server startup.
+func (ns *NamespaceStore) deferAutoUnseal(target *namespace.Namespace, sealConfig *SealConfig, cause error) {
+	ns.logger.Warn("unable to unseal namespace with its auto seal, will retry",
+		"namespace", target.Path, "retry_interval", namespaceAutoUnsealRetryInterval, "error", cause)
+	ns.core.sealManager.RegisterPendingAutoUnseal(target, sealConfig)
+
+	if ns.autoUnsealRetryRunning.CompareAndSwap(false, true) {
+		go ns.runAutoUnsealRetry()
+	}
+}
+
+// runAutoUnsealRetry periodically retries the unseal of the namespaces
+// waiting for their KMS. It stops once none is left, or when the namespace
+// store is torn down.
+func (ns *NamespaceStore) runAutoUnsealRetry() {
+	ctx := ns.creationDeletionJobContext
+	ticker := time.NewTicker(namespaceAutoUnsealRetryInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			ns.autoUnsealRetryRunning.Store(false)
+			return
+		case <-ticker.C:
+		}
+
+		if ns.retryPendingAutoUnseal(ctx) > 0 {
+			continue
+		}
+
+		// Stop when nothing is left, unless a namespace was deferred while
+		// stopping, in which case this goroutine keeps the retry running.
+		ns.autoUnsealRetryRunning.Store(false)
+		if len(ns.core.sealManager.PendingAutoUnseal()) == 0 ||
+			!ns.autoUnsealRetryRunning.CompareAndSwap(false, true) {
+			return
+		}
+	}
+}
+
+// retryPendingAutoUnseal makes one unseal attempt for every namespace waiting
+// for its KMS and returns how many are still waiting afterwards.
+func (ns *NamespaceStore) retryPendingAutoUnseal(ctx context.Context) int {
+	sm := ns.core.sealManager
+	remaining := 0
+
+	for _, pending := range sm.PendingAutoUnseal() {
+		// Build the seal from the stored configuration, or rebuild it if one
+		// exists, so that a configuration updated meanwhile is picked up.
+		var err error
+		if sm.NamespaceSeal(pending.ns.UUID) == nil {
+			err = sm.SetSeal(ctx, &pending.sealConfig, pending.ns, false)
+		} else {
+			err = sm.ReloadNamespaceSeal(ctx, pending.ns)
+		}
+		if err != nil {
+			ns.logger.Debug("namespace auto seal still unavailable", "namespace", pending.ns.Path, "error", err)
+			remaining++
+			continue
+		}
+		if err := sm.UnsealWithStoredKeys(ctx, pending.ns); err != nil {
+			ns.logger.Debug("namespace auto unseal still failing", "namespace", pending.ns.Path, "error", err)
+			remaining++
+			continue
+		}
+
+		sm.ClearPendingAutoUnseal(pending.ns.UUID)
+		ns.logger.Info("namespace unsealed after its KMS became reachable", "namespace", pending.ns.Path)
+
+		// Load the children of the namespace and run the post-unseal steps,
+		// such as mounting its secret engines and auth methods.
+		if err := ns.unsealNamespace(ctx, pending.ns); err != nil {
+			ns.logger.Error("failed to load namespace after auto unseal", "namespace", pending.ns.Path, "error", err)
+		}
+	}
+
+	return remaining
 }
 
 // setupNamespaceStore is used to initialize the namespace store
@@ -542,6 +641,12 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 
 	var sealKeyShares [][]byte
 	if !exists {
+		// Unlock before the seal setup, which may call a remote KMS, and before
+		// initializeNamespace, which re-acquires the lock. The namespace is guarded
+		// meanwhile by creationDeletionMap and its tainted storage entry.
+		ns.lock.Unlock()
+		unlocked = true
+
 		if sealConfig != nil {
 			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
 				return nil, fmt.Errorf("failed to set namespace seal: %w", err)
@@ -561,10 +666,6 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 				}
 			}
 		}
-
-		// unlock before initializeNamespace since that will re-acquire the lock.
-		ns.lock.Unlock()
-		unlocked = true
 
 		// Create sys/, token/ mounts and policies for the new namespace.
 		if err := ns.initializeNamespace(ctx, entry); err != nil {

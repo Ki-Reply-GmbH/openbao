@@ -51,6 +51,58 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 	}
 
 	return []*framework.Path{
+		// This path must come before "namespaces/<path>/seal", which would
+		// otherwise also match "<path>/config/seal".
+		{
+			Pattern: "namespaces/(?P<path>.+)/config/seal",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+				OperationSuffix: "seal-config",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"path": namespacePathSchema,
+				"seal": {
+					Type:        framework.TypeString,
+					Description: "New seal configuration, as an HCL or JSON string with a single seal stanza of the current seal type.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Summary:  "Read the non-sensitive seal configuration metadata of a namespace.",
+					Callback: b.handleNamespaceSealConfigRead(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: http.StatusText(http.StatusOK),
+							Fields: map[string]*framework.FieldSchema{
+								"type": {
+									Type:     framework.TypeString,
+									Required: true,
+								},
+								"metadata": {
+									Type:     framework.TypeMap,
+									Required: true,
+								},
+							},
+						}},
+					},
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Update the auto seal configuration of a namespace.",
+					Callback: b.handleNamespaceSealConfigUpdate(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{
+							Description: http.StatusText(http.StatusNoContent),
+						}},
+					},
+					ForwardPerformanceStandby: true,
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][0]),
+			HelpDescription: strings.TrimSpace(sysNamespacesSealsHelp["namespaces-seal"][1]),
+		},
+
 		{
 			Pattern: "namespaces/(?P<path>.+)/seal-status",
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -178,6 +230,72 @@ func (b *SystemBackend) namespaceSealPaths() []*framework.Path {
 			HelpSynopsis:    "Delete a sealed namespace.",
 			HelpDescription: "Physically deletes a sealed namespace by wiping its storage. Requires sudo privilege. Pass force=true to also delete child namespaces.",
 		},
+	}
+}
+
+// handleNamespaceSealConfigRead handles reads of the
+// "/sys/namespaces/<path>/config/seal" endpoint.
+func (b *SystemBackend) handleNamespaceSealConfigRead() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		if err != nil {
+			return handleError(err)
+		}
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", path)
+		}
+
+		sealType, metadata, err := b.Core.sealManager.NamespaceSealMetadata(ns)
+		if err != nil {
+			return handleError(err)
+		}
+
+		return &logical.Response{
+			Data: map[string]any{
+				"type":     sealType,
+				"metadata": metadata,
+			},
+		}, nil
+	}
+}
+
+// handleNamespaceSealConfigUpdate handles updates of the
+// "/sys/namespaces/<path>/config/seal" endpoint.
+func (b *SystemBackend) handleNamespaceSealConfigUpdate() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path, err := namespace.ParseName(data.Get("path").(string))
+		if err != nil {
+			return handleError(err)
+		}
+
+		sealString, ok := data.Get("seal").(string)
+		if !ok || sealString == "" {
+			return logical.ErrorResponse("missing seal configuration"), logical.ErrInvalidRequest
+		}
+
+		kmsConfig, err := parseAutoSealUpdateConfig(sealString)
+		if err != nil {
+			return logical.ErrorResponse("invalid seal config: %v", err), logical.ErrInvalidRequest
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		if err != nil {
+			return handleError(err)
+		}
+		if ns == nil {
+			return nil, fmt.Errorf("namespace %q doesn't exist", path)
+		}
+
+		if err := b.Core.sealManager.UpdateNamespaceSeal(ctx, ns, kmsConfig); err != nil {
+			return handleError(err)
+		}
+
+		return nil, nil
 	}
 }
 
@@ -352,6 +470,12 @@ This path responds to the following HTTP methods.
 
 	DELETE /<path>/delete-sealed
 		Delete a sealed namespace by wiping its storage.
+
+	GET /<path>/config/seal
+		Returns the seal type and the non-sensitive seal configuration metadata.
+
+	PUT /<path>/config/seal
+		Updates the auto seal configuration of the namespace.
 		`,
 	},
 }
