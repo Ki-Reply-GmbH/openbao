@@ -148,7 +148,7 @@ func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
-	pe, err := d.core.physical.Get(ctx, StoredBarrierKeysPath)
+	pe, err := d.core.physical.Get(ctx, d.metaPrefix+StoredBarrierKeysPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch stored keys: %w", err)
 	}

@@ -2395,6 +2395,10 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 		seal.StartHealthCheck()
 	}
 
+	// Namespaces protected by an auto seal re-encrypt their keys in the same
+	// way when their KMS key changes.
+	c.sealManager.UpgradeNamespaceKeys(c.activeContext.Load())
+
 	// This is intentionally (almost) the last block in this function. We want
 	// to allow writes just before allowing client requests, to ensure
 	// everything has been set up properly before any writes happen.

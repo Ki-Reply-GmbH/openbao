@@ -467,6 +467,11 @@ func (ij *invalidationJob) Execute() error {
 		// this is handled via periodicCheckKeyringUpgrades(...)
 		// for root namespace while run by read-disabled standby nodes.
 		return ij.keyringTermInvalidation(ctx, ns.Path)
+	case ij.nsKey == namespaceSealKMSConfigPath:
+		// The auto seal configuration of a namespace was updated on the active
+		// node; rebuild the in-memory seal so it uses the new configuration.
+		ij.fatal = true
+		return ij.im.core.sealManager.ReloadNamespaceSeal(ctx, ns)
 	case isCoreKeyPath(ij.nsKey):
 		// No need to invalidate these entries.
 	case strings.HasPrefix(ij.key, coreLeaderPrefix):

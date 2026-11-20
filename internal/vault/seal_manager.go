@@ -4,7 +4,9 @@
 package vault
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -13,13 +15,33 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 	"github.com/openbao/openbao/v2/internal/helper/namespace"
 	"github.com/openbao/openbao/v2/internal/vault/barrier"
 	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 )
 
+// namespaceSealKMSConfigPath holds the auto seal configuration of a namespace.
+// Like the seal configuration, it is stored under the parent barrier, scoped
+// to the namespace storage prefix.
+const namespaceSealKMSConfigPath = "core/seal-kms-config"
+
 var ErrNotSealable = errors.New("namespace is not sealable")
+
+// pendingAutoUnseal is a namespace protected by an auto seal that could not be
+// unsealed when it was loaded, typically because its KMS was unreachable.
+type pendingAutoUnseal struct {
+	ns         *namespace.Namespace
+	sealConfig SealConfig
+}
+
+// namespaceKMSConfig is the persisted auto seal configuration of a namespace,
+// that is the wrapper type and the configuration passed to it.
+type namespaceKMSConfig struct {
+	Type   string            `json:"type"`
+	Config map[string]string `json:"config"`
+}
 
 // ErrInvalidKey is returned if there is a user-based error with a provided
 // unseal key. This will be shown to the user, so should not contain
@@ -52,6 +74,14 @@ type SealManager struct {
 	rotationConfigByNamespace    map[string]*rotationConfig
 	barrierByNamespacePath       *radix.Tree
 
+	// wrapperMetadataByNamespace holds the non-sensitive metadata reported by
+	// the wrapper of each namespace protected by an auto seal.
+	wrapperMetadataByNamespace map[string]map[string]string
+
+	// pendingAutoUnsealByNamespace holds the namespaces protected by an auto
+	// seal that could not be unsealed when loaded, waiting to be retried.
+	pendingAutoUnsealByNamespace map[string]*pendingAutoUnseal
+
 	// logger is the server logger copied over from core
 	logger hclog.Logger
 }
@@ -68,6 +98,8 @@ func NewSealManager(core *Core, logger hclog.Logger) *SealManager {
 		},
 		unlockInformationByNamespace: make(map[string]*unlockInformation),
 		rotationConfigByNamespace:    make(map[string]*rotationConfig),
+		wrapperMetadataByNamespace:   make(map[string]map[string]string),
+		pendingAutoUnsealByNamespace: make(map[string]*pendingAutoUnseal),
 		logger:                       logger,
 	}
 }
@@ -102,12 +134,12 @@ func (sm *SealManager) Reset() {
 // SetSeal creates a seal with provided config and sets it as provided namespace seal;
 // Initializes seal, creating security barrier and persisting seal config.
 func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-
 	// Check if we have the seal present; if so, don't set any seal
 	// information as we don't want to overwrite what we have.
-	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
+	sm.lock.RLock()
+	_, present := sm.sealByNamespace[ns.UUID]
+	sm.lock.RUnlock()
+	if present {
 		return nil
 	}
 
@@ -117,36 +149,410 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 
 	metaPrefix := NamespaceStoragePathPrefix(ns)
 
-	// Seal type would depend on the provided arguments
-	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
-	defaultSeal.SetCore(sm.core)
-	defaultSeal.SetMetaPrefix(metaPrefix)
-
 	// The configuration access should always at least use the parent's seal
 	// configuration information.
 	parent, ok := ns.ParentPath()
 	if !ok {
 		return fmt.Errorf("cannot seal the root namespace via this approach")
 	}
-	parentBarrier := sm.namespaceBarrierByLongestPrefix(parent)
-	defaultSeal.SetConfigAccess(parentBarrier)
+	parentBarrier := sm.NamespaceBarrierByLongestPrefix(parent)
+	configAccess := &secureStorageAccess{barrier: parentBarrier}
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
-	if err := defaultSeal.Init(ctx); err != nil {
+
+	// The seal type depends on the provided configuration: Shamir seals need
+	// no further information, while auto seals are built from the KMS
+	// configuration supplied at creation or read back from storage.
+	var nsSeal Seal
+	var kmsConfig *namespaceKMSConfig
+	var metadata map[string]string
+	if sealConfig.Type == vaultseal.WrapperTypeShamir.String() {
+		nsSeal = NewDefaultSeal(vaultseal.NewAccess(vaultseal.NewShamirWrapper()))
+	} else {
+		var err error
+		kmsConfig, err = sm.namespaceKMSConfig(ctx, configAccess, metaPrefix, sealConfig, writeToStorage)
+		if err != nil {
+			return err
+		}
+		nsSeal, metadata, err = sm.newNamespaceAutoSeal(ctx, kmsConfig)
+		if err != nil {
+			return err
+		}
+	}
+
+	nsSeal.SetCore(sm.core)
+	nsSeal.SetMetaPrefix(metaPrefix)
+	nsSeal.SetConfigAccess(parentBarrier)
+
+	if err := nsSeal.Init(ctx); err != nil {
+		if kmsConfig != nil {
+			_ = nsSeal.Finalize(ctx)
+		}
 		return fmt.Errorf("error initializing seal: %w", err)
+	}
+
+	// A new auto seal configuration must work for both encryption and
+	// decryption before the namespace is created on top of it.
+	if writeToStorage && kmsConfig != nil {
+		if err := verifySealRoundTrip(ctx, nsSeal.GetAccess()); err != nil {
+			_ = nsSeal.Finalize(ctx)
+			return fmt.Errorf("auto seal verification failed: %w", err)
+		}
+	}
+
+	// All KMS calls above run without the lock, so that a slow KMS, or a
+	// transit seal served by this same server, cannot block other requests.
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
+		if kmsConfig != nil {
+			_ = nsSeal.Finalize(ctx)
+		}
+		return nil
 	}
 
 	nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
 	sm.barrierByNamespacePath.Insert(ns.Path, nsBarrier)
-	sm.sealByNamespace[ns.UUID] = defaultSeal
+	sm.sealByNamespace[ns.UUID] = nsSeal
+	if metadata != nil {
+		sm.wrapperMetadataByNamespace[ns.UUID] = metadata
+	}
 
 	if writeToStorage {
-		if err := defaultSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
+		if kmsConfig != nil {
+			buf, err := json.Marshal(kmsConfig)
+			if err != nil {
+				return fmt.Errorf("failed to encode auto seal configuration: %w", err)
+			}
+			if err := configAccess.Put(ctx, metaPrefix+namespaceSealKMSConfigPath, buf); err != nil {
+				return fmt.Errorf("failed to write auto seal configuration: %w", err)
+			}
+		}
+
+		if err := nsSeal.SetBarrierConfig(ctx, sealConfig); err != nil {
 			return fmt.Errorf("failed to set barrier config: %w", err)
 		}
 	}
 
 	return nil
+}
+
+// namespaceKMSConfig returns the auto seal configuration of a namespace. At
+// creation it is taken from the provided seal configuration; otherwise it is
+// read back from storage under the parent barrier.
+func (sm *SealManager) namespaceKMSConfig(ctx context.Context, configAccess StorageAccess, metaPrefix string, sealConfig *SealConfig, fromRequest bool) (*namespaceKMSConfig, error) {
+	if fromRequest {
+		if sealConfig.kmsConfig == nil {
+			return nil, errors.New("missing auto seal configuration")
+		}
+		return sealConfig.kmsConfig, nil
+	}
+
+	buf, err := configAccess.Get(ctx, metaPrefix+namespaceSealKMSConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read auto seal configuration: %w", err)
+	}
+	if buf == nil {
+		return nil, errors.New("auto seal configuration not found")
+	}
+
+	var kmsConfig namespaceKMSConfig
+	if err := json.Unmarshal(buf, &kmsConfig); err != nil {
+		return nil, fmt.Errorf("failed to decode auto seal configuration: %w", err)
+	}
+	if kmsConfig.Type != sealConfig.Type {
+		return nil, fmt.Errorf("auto seal type %q does not match seal type %q", kmsConfig.Type, sealConfig.Type)
+	}
+
+	return &kmsConfig, nil
+}
+
+// sealTestValueSize is the size of the random value used to verify that an
+// auto seal works for both encryption and decryption.
+const sealTestValueSize = 32
+
+// verifySealRoundTrip encrypts a random test value with the given seal access
+// and decrypts it again, checking the result. This proves that the KMS
+// configuration works in both directions, which matters for public key KMSes.
+func verifySealRoundTrip(ctx context.Context, access vaultseal.Access) error {
+	testValue, err := uuid.GenerateRandomBytes(sealTestValueSize)
+	if err != nil {
+		return fmt.Errorf("failed to generate seal test value: %w", err)
+	}
+
+	blob, err := access.Encrypt(ctx, testValue)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt seal test value: %w", err)
+	}
+
+	plaintext, err := access.Decrypt(ctx, blob)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt seal test value: %w", err)
+	}
+
+	if !bytes.Equal(testValue, plaintext) {
+		return errors.New("seal test value did not decrypt to the expected value")
+	}
+
+	return nil
+}
+
+// verifyNamespaceSealSwap is the test-before-swap guard for a new namespace
+// seal configuration: the new seal must decrypt the stored barrier key and
+// then pass an encryption and decryption round-trip.
+func verifyNamespaceSealSwap(ctx context.Context, newSeal Seal) error {
+	storedKeys, err := newSeal.GetStoredKeys(ctx)
+	if err != nil {
+		return fmt.Errorf("new seal cannot decrypt stored keys: %w", err)
+	}
+	if len(storedKeys) != 1 {
+		return fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
+	}
+
+	return verifySealRoundTrip(ctx, newSeal.GetAccess())
+}
+
+// newNamespaceAutoSeal builds an auto seal for a namespace through the KMS
+// plugin catalog. Wrappers never read environment variables in this context,
+// so that a namespace cannot pick up configuration belonging to the server.
+func (sm *SealManager) newNamespaceAutoSeal(ctx context.Context, kmsConfig *namespaceKMSConfig) (Seal, map[string]string, error) {
+	if sm.core.kmsPluginCatalog == nil {
+		return nil, nil, errors.New("no KMS plugin catalog available")
+	}
+
+	wrapper, wrapperConfig, err := sm.core.kmsPluginCatalog.ConfigureWrapper(ctx, kmsConfig.Type,
+		wrapping.WithConfigMap(kmsConfig.Config), wrapping.WithDisallowEnvVars(true))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to configure %q wrapper: %w", kmsConfig.Type, err)
+	}
+
+	nsSeal, err := NewAutoSeal(vaultseal.NewAccess(wrapper))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create auto seal: %w", err)
+	}
+
+	return nsSeal, wrapperConfig.Metadata, nil
+}
+
+// initNamespaceAutoSeal builds and initializes an auto seal for an existing
+// namespace from the given KMS configuration. It also returns the parent
+// barrier access, under which the configuration of the namespace is stored.
+func (sm *SealManager) initNamespaceAutoSeal(ctx context.Context, ns *namespace.Namespace, kmsConfig *namespaceKMSConfig) (Seal, map[string]string, StorageAccess, error) {
+	parent, ok := ns.ParentPath()
+	if !ok {
+		return nil, nil, nil, errors.New("cannot change the seal of the root namespace via this approach")
+	}
+	parentBarrier := sm.NamespaceBarrierByLongestPrefix(parent)
+
+	nsSeal, metadata, err := sm.newNamespaceAutoSeal(ctx, kmsConfig)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	nsSeal.SetCore(sm.core)
+	nsSeal.SetMetaPrefix(NamespaceStoragePathPrefix(ns))
+	nsSeal.SetConfigAccess(parentBarrier)
+
+	if err := nsSeal.Init(ctx); err != nil {
+		_ = nsSeal.Finalize(ctx)
+		return nil, nil, nil, fmt.Errorf("error initializing seal: %w", err)
+	}
+
+	return nsSeal, metadata, &secureStorageAccess{barrier: parentBarrier}, nil
+}
+
+// UpdateNamespaceSeal replaces the auto seal configuration of a namespace.
+// The new configuration must pass the test-before-swap guard before it is
+// stored; the stored keys are then re-encrypted if the KMS key changed.
+func (sm *SealManager) UpdateNamespaceSeal(ctx context.Context, ns *namespace.Namespace, kmsConfig *namespaceKMSConfig) error {
+	// A namespace waiting for an auto unseal retry may have no seal yet, for
+	// example when its wrapper could not be configured; updating its
+	// configuration is how an operator fixes that.
+	current := sm.NamespaceSeal(ns.UUID)
+	var currentType string
+	if current != nil {
+		if current.BarrierType() == vaultseal.WrapperTypeShamir {
+			return errors.New("the seal configuration of a shamir sealed namespace cannot be updated")
+		}
+		currentType = current.BarrierType().String()
+	} else {
+		sm.lock.RLock()
+		pending, ok := sm.pendingAutoUnsealByNamespace[ns.UUID]
+		sm.lock.RUnlock()
+		if !ok {
+			return ErrNotSealable
+		}
+		currentType = pending.sealConfig.Type
+	}
+	if currentType != kmsConfig.Type {
+		return fmt.Errorf("changing the seal type from %q to %q is not supported", currentType, kmsConfig.Type)
+	}
+
+	ctx = namespace.ContextWithNamespace(ctx, ns)
+	newSeal, metadata, configAccess, err := sm.initNamespaceAutoSeal(ctx, ns, kmsConfig)
+	if err != nil {
+		return err
+	}
+
+	if err := verifyNamespaceSealSwap(ctx, newSeal); err != nil {
+		_ = newSeal.Finalize(ctx)
+		return fmt.Errorf("new seal configuration rejected: %w", err)
+	}
+
+	buf, err := json.Marshal(kmsConfig)
+	if err != nil {
+		_ = newSeal.Finalize(ctx)
+		return fmt.Errorf("failed to encode auto seal configuration: %w", err)
+	}
+
+	// The KMS calls above run without the lock; under the lock, make sure no
+	// other update replaced the seal in the meantime before storing ours.
+	sm.lock.Lock()
+	if sm.sealByNamespace[ns.UUID] != current {
+		sm.lock.Unlock()
+		_ = newSeal.Finalize(ctx)
+		return errors.New("the seal configuration was changed concurrently, retry the update")
+	}
+	if err := configAccess.Put(ctx, NamespaceStoragePathPrefix(ns)+namespaceSealKMSConfigPath, buf); err != nil {
+		sm.lock.Unlock()
+		_ = newSeal.Finalize(ctx)
+		return fmt.Errorf("failed to write auto seal configuration: %w", err)
+	}
+	sm.swapNamespaceSeal(ns, newSeal, metadata)
+	sm.lock.Unlock()
+
+	if current != nil {
+		sm.finalizeNamespaceSeal(ctx, ns, current)
+	}
+	sm.upgradeNamespaceKeys(ctx, ns, newSeal)
+
+	return nil
+}
+
+// ReloadNamespaceSeal rebuilds the auto seal of a namespace from the
+// configuration in storage. It is used on standby nodes after the
+// configuration was updated on the active node.
+func (sm *SealManager) ReloadNamespaceSeal(ctx context.Context, ns *namespace.Namespace) error {
+	current := sm.NamespaceSeal(ns.UUID)
+	if current == nil || current.BarrierType() == vaultseal.WrapperTypeShamir {
+		return nil
+	}
+
+	parent, ok := ns.ParentPath()
+	if !ok {
+		return errors.New("cannot reload the seal of the root namespace via this approach")
+	}
+	configAccess := &secureStorageAccess{barrier: sm.NamespaceBarrierByLongestPrefix(parent)}
+
+	ctx = namespace.ContextWithNamespace(ctx, ns)
+	kmsConfig, err := sm.namespaceKMSConfig(ctx, configAccess, NamespaceStoragePathPrefix(ns),
+		&SealConfig{Type: current.BarrierType().String()}, false)
+	if err != nil {
+		return err
+	}
+
+	newSeal, metadata, _, err := sm.initNamespaceAutoSeal(ctx, ns, kmsConfig)
+	if err != nil {
+		return err
+	}
+
+	sm.lock.Lock()
+	if sm.sealByNamespace[ns.UUID] != current {
+		// Another reload or update already replaced the seal.
+		sm.lock.Unlock()
+		_ = newSeal.Finalize(ctx)
+		return nil
+	}
+	sm.swapNamespaceSeal(ns, newSeal, metadata)
+	sm.lock.Unlock()
+
+	sm.finalizeNamespaceSeal(ctx, ns, current)
+	sm.logger.Info("reloaded namespace seal configuration", "namespace", ns.Path)
+
+	return nil
+}
+
+// swapNamespaceSeal replaces the seal of a namespace in memory. The caller
+// must hold the write lock, and finalize the previous seal once released.
+func (sm *SealManager) swapNamespaceSeal(ns *namespace.Namespace, newSeal Seal, metadata map[string]string) {
+	sm.sealByNamespace[ns.UUID] = newSeal
+	sm.wrapperMetadataByNamespace[ns.UUID] = metadata
+}
+
+// finalizeNamespaceSeal releases the resources of a namespace seal that is
+// no longer in use, such as an external plugin client.
+func (sm *SealManager) finalizeNamespaceSeal(ctx context.Context, ns *namespace.Namespace, s Seal) {
+	if err := s.Finalize(ctx); err != nil {
+		sm.logger.Warn("failed to finalize previous namespace seal", "namespace", ns.Path, "error", err)
+	}
+}
+
+// UpgradeNamespaceKeys re-encrypts, for every unsealed namespace protected by
+// an auto seal, the stored keys whose KMS key differs from the current one,
+// as is done for the root namespace after unseal.
+func (sm *SealManager) UpgradeNamespaceKeys(ctx context.Context) {
+	type namespaceSeal struct {
+		ns   *namespace.Namespace
+		seal Seal
+	}
+
+	var seals []namespaceSeal
+	sm.lock.RLock()
+	sm.barrierByNamespacePath.Walk(func(_ string, b any) bool {
+		if b == nil {
+			return false
+		}
+
+		nsBarrier := b.(barrier.SecurityBarrier)
+		ns := nsBarrier.Namespace()
+		if ns.UUID == namespace.RootNamespaceUUID || nsBarrier.Sealed() {
+			return false
+		}
+
+		if s := sm.sealByNamespace[ns.UUID]; s != nil && s.BarrierType() != vaultseal.WrapperTypeShamir {
+			seals = append(seals, namespaceSeal{ns: ns, seal: s})
+		}
+		return false
+	})
+	sm.lock.RUnlock()
+
+	for _, s := range seals {
+		sm.upgradeNamespaceKeys(ctx, s.ns, s.seal)
+	}
+}
+
+// upgradeNamespaceKeys re-encrypts the stored keys of a namespace with the
+// current KMS key if needed. A failure is only logged: the keys remain
+// readable and re-encryption is attempted again after the next unseal.
+func (sm *SealManager) upgradeNamespaceKeys(ctx context.Context, ns *namespace.Namespace, s Seal) {
+	as, ok := s.(*autoSeal)
+	if !ok {
+		return
+	}
+
+	if err := as.UpgradeKeys(ctx); err != nil {
+		sm.logger.Warn("failed to re-encrypt namespace seal keys, will retry after next unseal", "namespace", ns.Path, "error", err)
+	}
+}
+
+// NamespaceSealMetadata returns the seal type of a namespace and, for auto
+// seals, the non-sensitive metadata reported by its wrapper.
+func (sm *SealManager) NamespaceSealMetadata(ns *namespace.Namespace) (string, map[string]string, error) {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	s := sm.sealByNamespace[ns.UUID]
+	if s == nil {
+		return "", nil, ErrNotSealable
+	}
+
+	metadata := make(map[string]string, len(sm.wrapperMetadataByNamespace[ns.UUID]))
+	for k, v := range sm.wrapperMetadataByNamespace[ns.UUID] {
+		metadata[k] = v
+	}
+
+	return s.BarrierType().String(), metadata, nil
 }
 
 // RemoveNamespace removes the given namespace from the SealManager's internal state.
@@ -161,7 +567,45 @@ func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) {
 	delete(sm.sealByNamespace, ns.UUID)
 	delete(sm.unlockInformationByNamespace, ns.UUID)
 	delete(sm.rotationConfigByNamespace, ns.UUID)
+	delete(sm.wrapperMetadataByNamespace, ns.UUID)
+	delete(sm.pendingAutoUnsealByNamespace, ns.UUID)
 	sm.barrierByNamespacePath.Delete(ns.Path)
+}
+
+// RegisterPendingAutoUnseal records a namespace protected by an auto seal that
+// could not be unsealed when loaded. A sealed barrier is registered for it if
+// none exists yet, so that the namespace and its children are reported sealed.
+func (sm *SealManager) RegisterPendingAutoUnseal(ns *namespace.Namespace, sealConfig *SealConfig) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	if sm.namespaceBarrier(ns.Path) == nil {
+		sm.barrierByNamespacePath.Insert(ns.Path, barrier.NewAESGCMBarrier(sm.core.physical, ns))
+	}
+	sm.pendingAutoUnsealByNamespace[ns.UUID] = &pendingAutoUnseal{
+		ns:         ns,
+		sealConfig: *sealConfig,
+	}
+}
+
+// PendingAutoUnseal returns the namespaces waiting for an auto unseal retry.
+func (sm *SealManager) PendingAutoUnseal() []*pendingAutoUnseal {
+	sm.lock.RLock()
+	defer sm.lock.RUnlock()
+
+	pending := make([]*pendingAutoUnseal, 0, len(sm.pendingAutoUnsealByNamespace))
+	for _, p := range sm.pendingAutoUnsealByNamespace {
+		pending = append(pending, p)
+	}
+	return pending
+}
+
+// ClearPendingAutoUnseal removes a namespace from the auto unseal retry list.
+func (sm *SealManager) ClearPendingAutoUnseal(nsUUID string) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	delete(sm.pendingAutoUnsealByNamespace, nsUUID)
 }
 
 // NamespaceView returns the BarrierView that applies to the given namespace.
@@ -243,9 +687,19 @@ func (sm *SealManager) SealStatus(ctx context.Context, ns *namespace.Namespace) 
 	sm.lock.RLock()
 	defer sm.lock.RUnlock()
 
-	// Verify that seal exists for a namespace
+	// Verify that seal exists for a namespace. A namespace waiting for an
+	// auto unseal retry may have no seal yet, but is reported as sealed.
 	seal := sm.sealByNamespace[ns.UUID]
 	if seal == nil {
+		if pending, ok := sm.pendingAutoUnsealByNamespace[ns.UUID]; ok {
+			return &SealStatusResponse{
+				Type:        pending.sealConfig.Type,
+				Initialized: true,
+				Sealed:      true,
+				T:           pending.sealConfig.SecretThreshold,
+				N:           pending.sealConfig.SecretShares,
+			}, nil
+		}
 		return nil, ErrNotSealable
 	}
 
@@ -541,16 +995,14 @@ func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Na
 }
 
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
+	// Only the lookups need the lock: storing the keys may call a remote KMS,
+	// which must not block other requests.
 	sm.lock.RLock()
-	defer sm.lock.RUnlock()
-
 	seal := sm.sealByNamespace[ns.UUID]
-	if seal == nil {
-		return nil, ErrNotSealable
-	}
-
 	b := sm.namespaceBarrier(ns.Path)
-	if b == nil {
+	sm.lock.RUnlock()
+
+	if seal == nil || b == nil {
 		return nil, ErrNotSealable
 	}
 
@@ -600,6 +1052,81 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	}
 
 	return sealKeyShares, nil
+}
+
+// InitializeRecovery stores the recovery configuration of a namespace
+// protected by an auto seal and, unless generation is deferred with zero
+// shares, generates its recovery key and returns the recovery key shares.
+func (sm *SealManager) InitializeRecovery(ctx context.Context, ns *namespace.Namespace, recoveryConfig *SealConfig) ([][]byte, error) {
+	seal := sm.NamespaceSeal(ns.UUID)
+	if seal == nil {
+		return nil, ErrNotSealable
+	}
+	if !seal.RecoveryKeySupported() {
+		return nil, errors.New("namespace seal does not support recovery keys")
+	}
+
+	if err := seal.SetRecoveryConfig(ctx, recoveryConfig); err != nil {
+		return nil, fmt.Errorf("failed to set recovery config: %w", err)
+	}
+
+	if recoveryConfig.SecretShares == 0 {
+		return nil, nil
+	}
+
+	recoveryKey, recoveryKeyShares, err := sm.core.generateShares(recoveryConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate namespace recovery key: %w", err)
+	}
+
+	if err := seal.SetRecoveryKey(ctx, recoveryKey); err != nil {
+		return nil, fmt.Errorf("failed to set recovery key: %w", err)
+	}
+
+	return recoveryKeyShares, nil
+}
+
+// UnsealWithStoredKeys unseals the barrier of a namespace protected by an auto
+// seal, using the barrier key stored encrypted by its KMS. No key shares are
+// needed; it is a no-op if the namespace is already unsealed.
+func (sm *SealManager) UnsealWithStoredKeys(ctx context.Context, ns *namespace.Namespace) error {
+	sm.lock.RLock()
+	b := sm.namespaceBarrier(ns.Path)
+	seal := sm.sealByNamespace[ns.UUID]
+	sm.lock.RUnlock()
+
+	if b == nil || seal == nil {
+		return ErrNotSealable
+	}
+	if !b.Sealed() {
+		return nil
+	}
+	if seal.BarrierType() == vaultseal.WrapperTypeShamir {
+		return errors.New("shamir sealed namespaces cannot be unsealed with stored keys")
+	}
+
+	// Decrypting the stored keys calls the KMS, so it runs without the lock.
+	storedKeys, err := seal.GetStoredKeys(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to retrieve stored keys: %w", err)
+	}
+	if len(storedKeys) != 1 {
+		return fmt.Errorf("expected exactly one stored key, got %d", len(storedKeys))
+	}
+
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	if !b.Sealed() {
+		return nil
+	}
+	if err := b.Unseal(ctx, storedKeys[0]); err != nil {
+		return err
+	}
+
+	sm.logger.Info("unsealed namespace with stored keys", "namespace", ns.Path)
+
+	return nil
 }
 
 // UnsealWithRootKey is used for standby<->active key sharing, passing root
