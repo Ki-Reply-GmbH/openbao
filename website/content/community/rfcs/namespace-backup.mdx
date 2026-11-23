@@ -45,12 +45,18 @@ passing the backup archive file as `data-binary`, similar to [Raft snapshot
 restore](https://openbao.org/docs/api/system/storage/raft/#sample-request-6). A
 `sudo` grant is required for this call.
 
-By initiating a restore on the namespace, the namespace is tainted and its
-tokens and leases revoked before the actual restore can begin. A successful
-restore brings the persistent state of the namespace back to that of the backup
-archive, meaning new data/mounts created after the backup are removed.
+By initiating a restore on the namespace, the namespace is tainted before the
+actual restore can begin. The restore happens on the staging storage connected
+to the namespace, as described in the [Staging Namespace
+RFC](https://github.com/openbao/openbao/pull/4609/). Live tokens and leases are
+revoked after the restore has successfully written and validated the written
+staging namespace. A successful restore brings the persistent state of the
+namespace back to that of the backup archive, meaning new data/mounts created
+after the backup are removed.
 
-A restore does not rewrite seal config and encryption key materials.
+A restore does not rewrite seal config and encryption key materials, these are
+copied from the namespace storage to the staging namespace storage during
+restores.
 
 Once started, the restore progress can be monitored by this API call:
 
@@ -65,16 +71,21 @@ GET sys/namespaces/<namespace>/restore/status
 ```
 
 * `status` can be one of these states:
-  * `pending`: the restore is initiated and the backup archive is being checked for
-    validity.
-  * `running`: the restore is being carried out.
-  * `interrupted`: the restore operation failed to be finished, a retry is
-    possible via `POST sys/namespaces/<namespace>/restore`. This state can be
-    the result of a restore being interrupted by a crash for example.
+  * `pending`: the restore is initiated and the backup archive is being checked
+    for validity.
+  * `staging`: the restore is being carried out on the staging namespace.
+  * `validating`: the restored staging namespace is being validated via a test
+    reload. If validation fails, we move to `rejected`.
+  * `revoking`: tokens and leases are being revoked, then the namespace storage is 
+    switched to the staging namespace storage.
+  * `failed`: the restore operation failed to be finished, a retry is possible
+    via `POST sys/namespaces/<namespace>/restore`. Namespace is unchanged. This state
+    can be the result of a transient error, leader change or crash before `revoking`...
   * `rejected`: the restore is rejected, the namespace is unchanged. This can happen
-    if the backup archive is malformed.
-  * `failed`: the restore failed and cannot be retried. The namespace must be
-    restored from a different backup or deleted.
+    if the backup archive is malformed. Retrying with the same backup archive would
+    result in `rejected` again.
+  * `incomplete`: the restore failed. Static data is unchanged, but tokens and leases 
+    can be partly or fully revoked. Can be a result of `revoking` failing.
   * `succeeded`: the restore finished successfully.
 
 Restoring is only possible on existing namespaces that are either non-sealable
@@ -85,7 +96,7 @@ During the restore, the namespace remains inaccessible and requests to delete
 the namespace under restore are rejected.
 
 For sealable namespaces, if a restore is interrupted by a crash, the namespace
-needs to be unsealed again upon restart to retry.
+needs to be unsealed again upon restart to either automatically recover or retry.
 
 There can only be one active restore operation on a namespace.
 
@@ -155,18 +166,23 @@ There are two types of storage entries eligible for backup, all are relative to
   * `sys/external-keys/**`
   * `workflows/**`
 
-There's also a "denylist" of paths not to be included in the backup:
-* `sys/token/<id,accessor>/*`, `sys/token/salt`, `sys/token/parent/**`
-* `sys/expire/**`
-* `logical/<cubbyhole>/`
-* `core/namespaces/*`
-* `core/upgrade/*`
-* `core/login/lockedUsers/**`
+There's also a "denylist" of paths not to be included in the backup, these are split
+up into 2 groups:
+* Whose entries are not copied to the staging namespace during a restore:
+  * `sys/token/<id,accessor>/*`, `sys/token/salt`, `sys/token/parent/**`
+  * `sys/expire/**`
+  * `logical/<cubbyhole>/`
+  * `core/upgrade/*`
+* Whose entries are copied to the staging namespace during a restore:
+  * `core/namespaces/*`
+  * `core/login/lockedUsers/**`
 
-If during backup/restore, a path is detected but does not belong to either lists:
+If during backup/restore, a path is detected but does not belong to either
+lists:
 * For a backup, a warning is issued in the server logs and also in `meta.json`.
 * For a restore, a warning is issued in the server logs and in the API response. 
-  The non-classified entries are left as-is and not wiped nor written.
+  The non-classified entries on the live namespace are copied to the staging 
+  namespace storage. Non-classified entries in the backup archive are ignored.
 
 As regression guard, there can be an integration test that creates a fully
 populated namespace and checks that all storage paths are classified in either
@@ -217,20 +233,28 @@ The process for restoring is as follows:
     plugins for them exist. Also check for UUID uniqueness against other
     namespaces.
 * Taint the namespace. This takes the namespace offline for users. In the same
-  write transaction, set `restore.status` to `running`.
-* Revoke leases and tokens.
-* Unload the namespace.
-* Wipe the entries under the prefixes eligible for backups, skipping entries in the
-  encryption material group: `core/seal-config`, `core/keyring`, `core/root-key`, 
-  `core/shamir-kek`, `core/hsm/barrier-unseal-keys`.
-* Write the entries from the backup into storage, skipping entries in the
-  encryption material group.
+  write transaction, set `restore.status` to `staging`.
+* Copy these entries to the staging namespace, reencrypting them under the new
+  path if necessary:
+  * Encryption materials: `core/seal-config`, `core/keyring`, `core/root-key`, 
+  `core/shamir-kek`, `core/hsm/barrier-unseal-keys`
+  * The "to-copy" entries in the deny list along with unclassified entries from 
+  the live namespace.
+* Write the entries from the backup into the staging namespace storage, skipping
+  entries in the encryption material group. Failure sets `restore.status` to
+  `failed`, staging namespace is discarded and the original namespace is
+  untainted.
 * Delete the temporary backup file.
-* Reload the tainted namespace (this needs implementation, but there's precedent
-  of something similar in `clearNamespaceResources`). If this fails, set
-  `restore.status` to `failed` and the namespace stays tainted.
-* Untaint the namespace.
-* Set `restore.status` to `succeeded`.
+* Set `restore.status` to `validating`, try loading and validating the staging
+  namespace. Failure sets `restore.status` to `rejected`, staging namespace is
+  discarded and the original namespace is untainted.
+* Set `restore.status` to `revoking` and start revoking tokens and leases on the
+  original namespace. If this step fails mid-way, set `restore.status` to
+  `incomplete`, staging namespace is discarded and the original namespace is
+  untainted.
+* Switch the namespace storage to the staging namespace, writing `succeeded` to 
+  `restore.status`.
+* Load the namespace and untaint.
 
 ### Recover from interruptions during restores
 
@@ -239,18 +263,15 @@ change. The active node detects upon startup or when a parent namespace is
 loaded/unsealed if a restore operation has been interrupted and proceed based on
 the status of the `restore` and `tainted` field.
 
-```mermaid
-flowchart TD
-  Startup[Begins] --> CheckForPending{ restore.status == pending? }
-  CheckForPending -->|True| SetToInterruptedPending[restore.status = interrupted, namespace stays untainted]
-  CheckForPending --> |False| CheckForRunning{ restore.status == running? }
-  CheckForRunning --> |True| CheckForTainted{ namespace is tainted }
-  CheckForTainted --> |False| SetSucceeded[restore.status = succeeded]
-  CheckForTainted -->|True| SetToInterruptedRunning[restore.status = interrupted, namespace stays tainted]
-  SetToInterruptedRunning --> CheckForSeal{ namespace sealed? }
-  CheckForSeal -->|True| RequireUnseal[Require unseal to retry restore]
-  CheckForSeal -->|False| ReadyToRetry[Ready to retry restore]
-```
+Recovery of a sealable namespace can only run once it is unsealed.
+
+| Status   | Recovery |
+| -------- | ------- |
+| `pending`  | Transition to `failed`, namespace is not tainted yet |
+| `staging`, `validating` | Discard staging namespace, then set to `failed` and untaint namespace in one write|
+| `revoking` | Continue revoking tokens and leases, then go on with the restore |
+| `succeeded`, namespace is tainted | Load the namespace then untaint |
+| `succeeded`, `failed`, `rejected`, `incomplete`, namespace is untainted | Nothing to do |
 
 ## Future work
 The mechanism proposed in the RFC can be extended further in the future to
@@ -268,11 +289,9 @@ making backup verification more complex.
 
 ### Atomic switch with per-namespace storage backend
 With support for [Per-namespace Storage
-Backends](https://github.com/openbao/openbao/pull/4171), the restore process can
-be made more resilient to crashes. The restore operation could write the backup
-into a separate partition and afterwards carry out an atomic switch from the
-namespace's original partition to this new partition. This way, the namespace
-never ends up in a half-restored state.
+Backends](https://github.com/openbao/openbao/pull/4171), the staging namespace
+RFC can be backed by partitions. The atomic switch is then done based on storage
+partitions.
 
 ### Selective Backup/Restore
 The backup archive format is flexible enough to allow for a per-mount selection
@@ -293,12 +312,11 @@ backup archive offline.
 
 ## Rationale and alternatives
 Creating backups from the physical ciphertext allows backup/restore to be done
-while preserving storage identities and avoids the need for data re-encryption.
-This comes at the cost of portability: no transplantation across
-namespaces/cluster is possible. However, this is suitable to support the use
-case of tenants backing up/restoring the namespaces that they are responsible
-for. Namespace transplantation can be made possible via [Namespace
-Transfer](https://github.com/openbao/openbao/issues/1569)
+while preserving storage identities. This comes at the cost of portability: no
+transplantation across namespaces/cluster is possible. However, this is suitable
+to support the use case of tenants backing up/restoring the namespaces that they
+are responsible for. Namespace transplantation can be made possible via
+[Namespace Transfer](https://github.com/openbao/openbao/issues/1569)
 
 Even though they are not strictly needed to restore an unsealed namespace, the 
 encryption materials of the namespace (seal config, root key, barrier key ring...)
@@ -314,6 +332,10 @@ read sensitive data stored within it. A way around this could be to have dedicat
 backup-bound encryption keys, which introduces the need to manage another class
 of encryption materials.
 
+Another alternative is in-place restoring without a staging namespace. While
+this is simpler in implementation, the namespace can end up in a broken state
+after a failed restore, requiring an explicit retry from the operator.
+
 ### Downsides
 Since backup/restore both have to walk through the storage entries, the process
 can take a long time for large namespaces.
@@ -321,8 +343,14 @@ can take a long time for large namespaces.
 The backup/restore operations both write to a temporary file, increasing disk
 space usage.
 
-If the restore fails after lease & token revocation, the leases and tokens still
-end up revoked.
+If the restore fails during lease & token revocation, the leases and tokens
+still end up revoked. This is reflected in the `incomplete` state.
+
+Restore writes to the staging namespace storage, doubling namespace storage
+temporarily.
+
+Restore has to re-encrypt entries because of the path change, this takes compute
+time.
 
 ## Security Implications
 A user with access to the root namespace's barrier key can tamper with a backup
