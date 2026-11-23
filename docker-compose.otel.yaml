@@ -1,0 +1,11 @@
+name: openbao-otel-dev
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:0.165.0
+
+    ports:
+      - "127.0.0.1:4318:4318"
+
+    volumes:
+      - ./container_fixtures/otel/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
