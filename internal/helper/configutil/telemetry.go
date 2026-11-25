@@ -388,7 +388,7 @@ func SetupTelemetry(opts *SetupTelemetryOpts) (*metrics.InmemSink, *metricsutil.
 	} else {
 		metricsConf.EnableHostname = false
 	}
-	fanout = append(fanout, inm)
+	fanout = append(fanout, inm, OTLAdapter{})
 	globalMetrics, err := metrics.NewGlobal(metricsConf, fanout)
 	if err != nil {
 		return nil, nil, false, err
