@@ -65,6 +65,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/vault/routing"
 	vaultseal "github.com/openbao/openbao/v2/internal/vault/seal"
 	"github.com/openbao/openbao/v2/internal/version"
+	otelmetric "go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
@@ -644,6 +645,8 @@ type Core struct {
 	workflowStore          *WorkflowStore
 
 	unsafeRelativePaths bool
+
+	otelMetrics *coreMetrics
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -763,6 +766,7 @@ type CoreConfig struct {
 	// Telemetry objects
 	MetricsHelper *metricsutil.MetricsHelper
 	MetricSink    *metricsutil.ClusterMetricSink
+	MeterProvider otelmetric.MeterProvider
 
 	RecoveryMode bool
 
@@ -929,6 +933,11 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	coreLogger := conf.Logger.Named("core")
 	routerLogger := coreLogger.Named("router")
 
+	otelMetrics, metricsErr := newCoreMetrics(conf.MeterProvider)
+	if metricsErr != nil {
+		return nil, fmt.Errorf("error initializing core metrics: %w", metricsErr)
+	}
+
 	// Setup the core
 	c := &Core{
 		devToken:            conf.DevToken,
@@ -959,6 +968,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		kmsPluginCatalog:               conf.KMSPluginCatalog,
 		metricsHelper:                  conf.MetricsHelper,
 		metricSink:                     conf.MetricSink,
+		otelMetrics:                    otelMetrics,
 		recoveryMode:                   conf.RecoveryMode,
 		raftJoinDoneCh:                 make(chan struct{}),
 		pendingRaftPeerChallengeKey:    make([]byte, 32),

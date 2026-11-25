@@ -1058,6 +1058,27 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 	metricsHelper := metricsutil.NewMetricsHelper(inmemMetrics, prometheusEnabled)
 
+	otelResource, err := configutil.NewOTelResource(context.Background())
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("error creating OTel resource: %s", err))
+		return 1
+	}
+
+	meterProvider, err := configutil.NewMetrics(context.Background(), otelResource)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("error initializing OTel metrics: %s", err))
+		return 1
+	}
+
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := meterProvider.Shutdown(shutdownCtx); err != nil {
+			c.logger.Warn("error shutting down OTel metrics", "error", err)
+		}
+	}()
+
 	// Initialize the storage backend
 	var backend physical.Backend
 	if !c.flagDev || config.Storage != nil {
@@ -1131,6 +1152,8 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, kms, metricsHelper, metricSink)
+	coreConfig.MeterProvider = meterProvider
+
 	if c.flagDevThreeNode {
 		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
