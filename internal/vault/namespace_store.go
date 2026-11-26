@@ -497,6 +497,12 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 
 	var sealKeyShares [][]byte
 	if !exists {
+		// Unlock before the seal setup, which may call a remote KMS, and before
+		// initializeNamespace, which re-acquires the lock. The namespace is guarded
+		// meanwhile by creationDeletionMap and its tainted storage entry.
+		ns.lock.Unlock()
+		unlocked = true
+
 		if sealConfig != nil {
 			if err := ns.core.sealManager.SetSeal(ctx, sealConfig, entry, true); err != nil {
 				return nil, fmt.Errorf("failed to set namespace seal: %w", err)
@@ -507,10 +513,6 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 				return nil, fmt.Errorf("failed to initialize namespace barrier: %w", err)
 			}
 		}
-
-		// unlock before initializeNamespace since that will re-acquire the lock.
-		ns.lock.Unlock()
-		unlocked = true
 
 		// Create sys/, token/ mounts and policies for the new namespace.
 		if err := ns.initializeNamespace(ctx, entry); err != nil {
