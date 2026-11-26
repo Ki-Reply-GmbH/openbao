@@ -102,12 +102,12 @@ func (sm *SealManager) Reset() {
 // SetSeal creates a seal with provided config and sets it as provided namespace seal;
 // Initializes seal, creating security barrier and persisting seal config.
 func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *namespace.Namespace, writeToStorage bool) error {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-
 	// Check if we have the seal present; if so, don't set any seal
 	// information as we don't want to overwrite what we have.
-	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
+	sm.lock.RLock()
+	_, present := sm.sealByNamespace[ns.UUID]
+	sm.lock.RUnlock()
+	if present {
 		return nil
 	}
 
@@ -128,12 +128,21 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	if !ok {
 		return fmt.Errorf("cannot seal the root namespace via this approach")
 	}
-	parentBarrier := sm.namespaceBarrierByLongestPrefix(parent)
+	parentBarrier := sm.NamespaceBarrierByLongestPrefix(parent)
 	defaultSeal.SetConfigAccess(parentBarrier)
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 	if err := defaultSeal.Init(ctx); err != nil {
 		return fmt.Errorf("error initializing seal: %w", err)
+	}
+
+	// Initializing a seal may call a remote KMS, so it runs without the lock;
+	// the lock is only taken to record the seal, checking it again first.
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	if _, ok := sm.sealByNamespace[ns.UUID]; ok {
+		return nil
 	}
 
 	nsBarrier := barrier.NewAESGCMBarrier(sm.core.physical, ns)
@@ -541,16 +550,14 @@ func (sm *SealManager) AuthenticateRootKey(ctx context.Context, ns *namespace.Na
 }
 
 func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Namespace) ([][]byte, error) {
+	// Only the lookups need the lock: storing the keys may call a remote KMS,
+	// which must not block other requests.
 	sm.lock.RLock()
-	defer sm.lock.RUnlock()
-
 	seal := sm.sealByNamespace[ns.UUID]
-	if seal == nil {
-		return nil, ErrNotSealable
-	}
-
 	b := sm.namespaceBarrier(ns.Path)
-	if b == nil {
+	sm.lock.RUnlock()
+
+	if seal == nil || b == nil {
 		return nil, ErrNotSealable
 	}
 
