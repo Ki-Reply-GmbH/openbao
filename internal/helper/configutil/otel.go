@@ -3,24 +3,18 @@ package configutil
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
-	"time"
 
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/v2/internal/version"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 )
 
 const (
-	serviceName    = "openbao"
-	serviceVersion = ""
-
-	envOTLPEndpoint        = "OTEL_EXPORTER_OTLP_ENDPOINT"
-	envOTLPMetricsEndpoint = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
+	serviceName = "openbao"
 )
 
 func NewOTelResource(ctx context.Context) (*resource.Resource, error) {
@@ -34,27 +28,28 @@ func NewOTelResource(ctx context.Context) (*resource.Resource, error) {
 		resource.WithTelemetrySDK(),
 		resource.WithAttributes(
 			semconv.ServiceName(serviceName),
-			semconv.ServiceVersion(serviceVersion),
+			semconv.ServiceVersion(version.GetVersion().VersionNumber()),
 			semconv.ServiceInstanceID(instanceID),
 		),
 	)
 }
 
-func NewMetrics(ctx context.Context, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
+// NewMetrics creates OTel MeterProvider. Metrics are exported via OTLP/gRPC.
+func NewMetrics(ctx context.Context, res *resource.Resource, config *Telemetry) (*sdkmetric.MeterProvider, error) {
 	options := []sdkmetric.Option{sdkmetric.WithResource(res)}
 
-	metricsEndpoint := strings.TrimSpace(os.Getenv(envOTLPMetricsEndpoint))
-	commonEndpoint := strings.TrimSpace(os.Getenv(envOTLPEndpoint))
-
-	if metricsEndpoint != "" || commonEndpoint != "" {
-		exporter, err := otlpmetrichttp.New(ctx)
+	if config != nil && config.OTLPEndpoint != "" {
+		exporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpointURL(config.OTLPEndpoint))
 		if err != nil {
-			return nil, fmt.Errorf("create OTLP metrics exporter: %w", err)
+			return nil, fmt.Errorf("error creating OTLP metrics exporter: %w", err)
 		}
 
-		reader := sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(5*time.Second))
+		var readerOpts []sdkmetric.PeriodicReaderOption
+		if config.OTLPExportInterval > 0 {
+			readerOpts = append(readerOpts, sdkmetric.WithInterval(config.OTLPExportInterval))
+		}
 
-		options = append(options, sdkmetric.WithReader(reader))
+		options = append(options, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter, readerOpts...)))
 	}
 
 	provider := sdkmetric.NewMeterProvider(options...)

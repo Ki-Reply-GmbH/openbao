@@ -33,6 +33,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/vault/seal"
 	"github.com/openbao/openbao/v2/internal/version"
 	"github.com/posener/complete"
+	otelmetric "go.opentelemetry.io/otel/metric"
 	"golang.org/x/term"
 )
 
@@ -278,6 +279,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 
 	var metricSink *metricsutil.ClusterMetricSink
 	var metricsHelper *metricsutil.MetricsHelper
+	var meterProvider otelmetric.MeterProvider
 
 	var backend *physical.Backend
 	_ = diagnose.Test(ctx, "Check Storage", func(ctx context.Context) error {
@@ -488,7 +490,7 @@ SEALFAIL:
 		return nil
 	})
 
-	coreConfig := createCoreConfig(server, config, *backend, configSR, barrierSeal, unwrapSeal, kms, metricsHelper, metricSink)
+	coreConfig := createCoreConfig(server, config, *backend, configSR, barrierSeal, unwrapSeal, kms, metricsHelper, metricSink, meterProvider)
 
 	var disableClustering bool
 	_ = diagnose.Test(ctx, "HA Storage", func(ctx context.Context) error {

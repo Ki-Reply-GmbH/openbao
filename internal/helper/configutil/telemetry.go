@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -162,6 +163,14 @@ type Telemetry struct {
 	// PrefixFilter is a list of filter rules to apply for allowing
 	// or blocking metrics by prefix.
 	PrefixFilter []string `hcl:"prefix_filter"`
+
+	// OTLPEndpoint is the base URL for an OTLP receiver
+	OTLPEndpoint string `hcl:"otlp_endpoint"`
+
+	// OTLPExportInterval is the time interval between two OTLP exports
+	// Default: 60s
+	OTLPExportInterval    time.Duration `hcl:"-"`
+	OTLPExportIntervalRaw any           `hcl:"otlp_export_interval"`
 }
 
 func (t *Telemetry) Validate(source string) []ConfigError {
@@ -232,6 +241,20 @@ func parseTelemetry(result *SharedConfig, list *ast.ObjectList) error {
 
 	if result.Telemetry.NumLeaseMetricsTimeBuckets == 0 {
 		result.Telemetry.NumLeaseMetricsTimeBuckets = NumLeaseMetricsTimeBucketsDefault
+	}
+
+	if result.Telemetry.OTLPEndpoint != "" {
+		if _, err := url.Parse(result.Telemetry.OTLPEndpoint); err != nil {
+			return errors.New("telemetry: otlp_endpoint must be an valid URL")
+		}
+	}
+
+	if result.Telemetry.OTLPExportIntervalRaw != nil {
+		var err error
+		if result.Telemetry.OTLPExportInterval, err = parseutil.ParseDurationSecond(result.Telemetry.OTLPExportIntervalRaw); err != nil {
+			return fmt.Errorf("telemetry: invalid otlp_export_interval: %w", err)
+		}
+		result.Telemetry.OTLPExportIntervalRaw = nil
 	}
 
 	return nil

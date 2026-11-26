@@ -61,6 +61,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/version"
 	"github.com/posener/complete"
 	"github.com/sasha-s/go-deadlock"
+	otelmetric "go.opentelemetry.io/otel/metric"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -1064,7 +1065,7 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	meterProvider, err := configutil.NewMetrics(context.Background(), otelResource)
+	meterProvider, err := configutil.NewMetrics(context.Background(), otelResource, config.Telemetry)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("error initializing OTel metrics: %s", err))
 		return 1
@@ -1151,8 +1152,7 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, kms, metricsHelper, metricSink)
-	coreConfig.MeterProvider = meterProvider
+	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, kms, metricsHelper, metricSink, meterProvider)
 
 	if c.flagDevThreeNode {
 		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
@@ -2799,7 +2799,7 @@ func runUnseal(c *ServerCommand, core *vault.Core, sealShutdownCh chan<- struct{
 }
 
 func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.Backend, configSR sr.ServiceRegistration, barrierSeal, unwrapSeal vault.Seal,
-	kmsPluginCatalog *kmsplugin.Catalog, metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink,
+	kmsPluginCatalog *kmsplugin.Catalog, metricsHelper *metricsutil.MetricsHelper, metricSink *metricsutil.ClusterMetricSink, meterProvider otelmetric.MeterProvider,
 ) vault.CoreConfig {
 	coreConfig := &vault.CoreConfig{
 		RawConfig:                      config,
@@ -2838,6 +2838,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		DisableKeyEncodingChecks:       config.DisablePrintableCheck,
 		MetricsHelper:                  metricsHelper,
 		MetricSink:                     metricSink,
+		MeterProvider:                  meterProvider,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
 		UnsafeCrossNamespaceIdentity:   config.UnsafeCrossNamespaceIdentity,

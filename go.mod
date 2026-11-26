@@ -27,6 +27,7 @@ require (
 	cel.dev/cel-go v0.33.2
 	cloud.google.com/go/monitoring v1.31.0
 	github.com/ProtonMail/go-crypto v1.5.2
+	github.com/armon/go-metrics v0.4.1
 	github.com/armon/go-radix v1.0.0
 	github.com/caddyserver/certmagic v0.25.6
 	github.com/cenkalti/backoff/v5 v5.0.3
@@ -124,7 +125,7 @@ require (
 	github.com/yeqown/go-qrcode/v2 v2.3.0
 	go.etcd.io/bbolt v1.5.0
 	go.opentelemetry.io/otel v1.47.0
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.47.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.47.0
 	go.opentelemetry.io/otel/metric v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/otel/sdk/metric v1.47.0
@@ -173,7 +174,6 @@ require (
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v17 v17.0.1 // indirect
-	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.34.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.29.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.54 // indirect
