@@ -1307,8 +1307,7 @@ func (c *Core) needsApproval(req *logical.Request, auth *logical.Auth) bool {
 
 func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp *logical.Response, retAuth *logical.Auth, retErr error) {
 	defer metrics.MeasureSince([]string{"core", "handle_request"}, time.Now())
-	// todo: test otel metrics
-	// defer c.otelMetrics.recordRequestDuration(ctx, time.Now())
+	defer c.otelMetrics.recordRequestDuration(ctx, time.Now())
 
 	// Validate that we're only executing external operation types; do not
 	// allow routing internal operation types through this mechanism.
