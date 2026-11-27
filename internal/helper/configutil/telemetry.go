@@ -33,6 +33,7 @@ const (
 	MaximumGaugeCardinalityDefault    = 500
 	LeaseMetricsEpsilonDefault        = time.Hour
 	NumLeaseMetricsTimeBucketsDefault = 168
+	OTLPDefaultExportInterval         = 60 * time.Second
 )
 
 // Telemetry is the telemetry configuration for the server
@@ -164,10 +165,14 @@ type Telemetry struct {
 	// or blocking metrics by prefix.
 	PrefixFilter []string `hcl:"prefix_filter"`
 
-	// OTLPEndpoint is the base URL for an OTLP receiver
+	// OTelEnabled enables experimental OpenTelemetry metrics.
+	// Default: false
+	OTelEnabled bool `hcl:"otel_enabled"`
+
+	// OTLPEndpoint is the base OTLP receiver URL.
 	OTLPEndpoint string `hcl:"otlp_endpoint"`
 
-	// OTLPExportInterval is the time interval between two OTLP exports
+	// OTLPExportInterval is the time interval between metric exports.
 	// Default: 60s
 	OTLPExportInterval    time.Duration `hcl:"-"`
 	OTLPExportIntervalRaw any           `hcl:"otlp_export_interval"`
@@ -243,18 +248,35 @@ func parseTelemetry(result *SharedConfig, list *ast.ObjectList) error {
 		result.Telemetry.NumLeaseMetricsTimeBuckets = NumLeaseMetricsTimeBucketsDefault
 	}
 
-	if result.Telemetry.OTLPEndpoint != "" {
-		if _, err := url.Parse(result.Telemetry.OTLPEndpoint); err != nil {
-			return errors.New("telemetry: otlp_endpoint must be an valid URL")
-		}
-	}
-
+	result.Telemetry.OTLPExportInterval = OTLPDefaultExportInterval
 	if result.Telemetry.OTLPExportIntervalRaw != nil {
-		var err error
-		if result.Telemetry.OTLPExportInterval, err = parseutil.ParseDurationSecond(result.Telemetry.OTLPExportIntervalRaw); err != nil {
+		interval, err := parseutil.ParseDurationSecond(
+			result.Telemetry.OTLPExportIntervalRaw,
+		)
+		if err != nil {
 			return fmt.Errorf("telemetry: invalid otlp_export_interval: %w", err)
 		}
+		if interval <= 0 {
+			return errors.New("telemetry: otlp_export_interval must be positive")
+		}
+
+		result.Telemetry.OTLPExportInterval = interval
 		result.Telemetry.OTLPExportIntervalRaw = nil
+	}
+
+	if result.Telemetry.OTelEnabled && result.Telemetry.OTLPEndpoint == "" {
+		return errors.New("telemetry: otlp_endpoint is required when otel_enabled is true")
+	}
+
+	if result.Telemetry.OTLPEndpoint != "" {
+		endpoint, err := url.Parse(result.Telemetry.OTLPEndpoint)
+		if err != nil {
+			return fmt.Errorf("telemetry: invalid otlp_endpoint: %w", err)
+		}
+
+		if (endpoint.Scheme != "http" && endpoint.Scheme != "https") || endpoint.Hostname() == "" {
+			return errors.New("telemetry: otlp_endpoint must be an http or https URL with a host")
+		}
 	}
 
 	return nil

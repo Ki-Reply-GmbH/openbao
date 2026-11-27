@@ -3,10 +3,10 @@ package configutil
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/v2/internal/version"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -34,26 +34,23 @@ func NewOTelResource(ctx context.Context) (*resource.Resource, error) {
 	)
 }
 
-// NewMetrics creates OTel MeterProvider. Metrics are exported via OTLP/gRPC.
-func NewMetrics(ctx context.Context, res *resource.Resource, config *Telemetry) (*sdkmetric.MeterProvider, error) {
-	options := []sdkmetric.Option{sdkmetric.WithResource(res)}
-
-	if config != nil && config.OTLPEndpoint != "" {
-		exporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpointURL(config.OTLPEndpoint))
-		if err != nil {
-			return nil, fmt.Errorf("error creating OTLP metrics exporter: %w", err)
-		}
-
-		var readerOpts []sdkmetric.PeriodicReaderOption
-		if config.OTLPExportInterval > 0 {
-			readerOpts = append(readerOpts, sdkmetric.WithInterval(config.OTLPExportInterval))
-		}
-
-		options = append(options, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter, readerOpts...)))
+// NewMeterProvider creates an OTLP/gRPC metrics pipeline.
+func NewMeterProvider(ctx context.Context, res *resource.Resource, endpoint string, exportInterval time.Duration) (*sdkmetric.MeterProvider, error) {
+	exporter, err := otlpmetricgrpc.New(
+		ctx,
+		otlpmetricgrpc.WithEndpointURL(endpoint),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating OTLP metrics exporter: %w", err)
 	}
 
-	provider := sdkmetric.NewMeterProvider(options...)
-	otel.SetMeterProvider(provider)
+	reader := sdkmetric.NewPeriodicReader(
+		exporter,
+		sdkmetric.WithInterval(exportInterval),
+	)
 
-	return provider, nil
+	return sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(res),
+		sdkmetric.WithReader(reader),
+	), nil
 }

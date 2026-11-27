@@ -95,6 +95,7 @@ func testLoadConfigFile_topLevel(t *testing.T) {
 				LeaseMetricsEpsilon:         time.Hour,
 				NumLeaseMetricsTimeBuckets:  168,
 				LeaseMetricsNameSpaceLabels: false,
+				OTLPExportInterval:          configutil.OTLPDefaultExportInterval,
 			},
 
 			PidFile: "./pidfile",
@@ -242,6 +243,7 @@ func testLoadConfigFile_json2(t *testing.T) {
 				LeaseMetricsEpsilon:                time.Hour,
 				NumLeaseMetricsTimeBuckets:         168,
 				LeaseMetricsNameSpaceLabels:        false,
+				OTLPExportInterval:                 configutil.OTLPDefaultExportInterval,
 			},
 		},
 
@@ -380,6 +382,7 @@ func testLoadConfigFile(t *testing.T) {
 				LeaseMetricsEpsilon:         time.Hour,
 				NumLeaseMetricsTimeBuckets:  168,
 				LeaseMetricsNameSpaceLabels: false,
+				OTLPExportInterval:          configutil.OTLPDefaultExportInterval,
 			},
 
 			PidFile: "./pidfile",
@@ -582,6 +585,7 @@ func testLoadConfigFile_json(t *testing.T) {
 				LeaseMetricsEpsilon:                time.Hour,
 				NumLeaseMetricsTimeBuckets:         168,
 				LeaseMetricsNameSpaceLabels:        false,
+				OTLPExportInterval:                 configutil.OTLPDefaultExportInterval,
 			},
 
 			PidFile:     "./pidfile",
@@ -656,6 +660,7 @@ func testLoadConfigDir(t *testing.T) {
 				LeaseMetricsEpsilon:         time.Hour,
 				NumLeaseMetricsTimeBuckets:  168,
 				LeaseMetricsNameSpaceLabels: false,
+				OTLPExportInterval:          configutil.OTLPDefaultExportInterval,
 			},
 			ClusterName: "testcluster",
 		},
@@ -788,6 +793,9 @@ func testConfig_Sanitized(t *testing.T) {
 			"lease_metrics_epsilon":                  time.Hour,
 			"num_lease_metrics_buckets":              168,
 			"add_lease_metrics_namespace_labels":     false,
+			"otel_enabled":                           false,
+			"otlp_endpoint":                          "",
+			"otlp_export_interval":                   configutil.OTLPDefaultExportInterval,
 		},
 		"imprecise_lease_role_tracking":   false,
 		"unsafe_cross_namespace_identity": false,
@@ -1148,6 +1156,7 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 				LeaseMetricsEpsilon:         time.Hour,
 				NumLeaseMetricsTimeBuckets:  2,
 				LeaseMetricsNameSpaceLabels: true,
+				OTLPExportInterval:          configutil.OTLPDefaultExportInterval,
 			},
 
 			PidFile: "./pidfile",

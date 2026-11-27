@@ -250,6 +250,7 @@ func (c *SharedConfig) Sanitized() map[string]any {
 			"lease_metrics_epsilon":                  c.Telemetry.LeaseMetricsEpsilon,
 			"num_lease_metrics_buckets":              c.Telemetry.NumLeaseMetricsTimeBuckets,
 			"add_lease_metrics_namespace_labels":     c.Telemetry.LeaseMetricsNameSpaceLabels,
+			"otel_enabled":                           c.Telemetry.OTelEnabled,
 			"otlp_endpoint":                          c.Telemetry.OTLPEndpoint,
 			"otlp_export_interval":                   c.Telemetry.OTLPExportInterval,
 		}

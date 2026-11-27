@@ -3,9 +3,30 @@ name: openbao-otel-dev
 services:
   otel-collector:
     image: otel/opentelemetry-collector:0.165.0
-
     ports:
-      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:4317:4317"
+    configs:
+      - source: otel-collector-config
+        target: /etc/otelcol/config.yaml
 
-    volumes:
-      - ./container_fixtures/otel/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+configs:
+  otel-collector-config:
+    content: |
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: "0.0.0.0:4317"
+
+      exporters:
+        debug:
+          verbosity: detailed
+
+      service:
+        pipelines:
+          metrics:
+            receivers: [otlp]
+            exporters: [debug]
+          logs:
+            receivers: [otlp]
+            exporters: [debug]

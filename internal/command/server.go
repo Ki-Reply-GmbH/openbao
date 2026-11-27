@@ -61,6 +61,7 @@ import (
 	"github.com/openbao/openbao/v2/internal/version"
 	"github.com/posener/complete"
 	"github.com/sasha-s/go-deadlock"
+	"go.opentelemetry.io/otel"
 	otelmetric "go.opentelemetry.io/otel/metric"
 	"golang.org/x/net/http/httpproxy"
 	"golang.org/x/text/cases"
@@ -1059,26 +1060,12 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 	metricsHelper := metricsutil.NewMetricsHelper(inmemMetrics, prometheusEnabled)
 
-	otelResource, err := configutil.NewOTelResource(context.Background())
+	meterProvider, shutdownOTel, err := c.setupOTel(config)
 	if err != nil {
-		c.UI.Error(fmt.Sprintf("error creating OTel resource: %s", err))
+		c.UI.Error(err.Error())
 		return 1
 	}
-
-	meterProvider, err := configutil.NewMetrics(context.Background(), otelResource, config.Telemetry)
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("error initializing OTel metrics: %s", err))
-		return 1
-	}
-
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := meterProvider.Shutdown(shutdownCtx); err != nil {
-			c.logger.Warn("error shutting down OTel metrics", "error", err)
-		}
-	}()
+	defer shutdownOTel()
 
 	// Initialize the storage backend
 	var backend physical.Backend
@@ -3247,4 +3234,43 @@ func (g *grpclogFaker) Fatalln(args ...any) {
 func (g *grpclogFaker) V(l int) bool {
 	currentLevel := int(g.logger.GetLevel())
 	return l >= currentLevel
+}
+
+// setupOTel initializes experimental OpenTelemetry metrics.
+func (c *ServerCommand) setupOTel(config *server.Config) (otelmetric.MeterProvider, func(), error) {
+	telemetry := config.Telemetry
+	if telemetry == nil || !telemetry.OTelEnabled {
+		return nil, func() {}, nil
+	}
+
+	res, err := configutil.NewOTelResource(context.Background())
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating OTel resource: %w", err)
+	}
+
+	provider, err := configutil.NewMeterProvider(
+		context.Background(),
+		res,
+		telemetry.OTLPEndpoint,
+		telemetry.OTLPExportInterval,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing OTel metrics: %w", err)
+	}
+
+	// set global OTel provider
+	otel.SetMeterProvider(provider)
+
+	shutdownTimeout := 5 * time.Second
+
+	shutdown := func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+
+		if err := provider.Shutdown(shutdownCtx); err != nil {
+			otel.Handle(err)
+		}
+	}
+
+	return provider, shutdown, nil
 }
