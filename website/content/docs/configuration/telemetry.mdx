@@ -62,6 +62,28 @@ The following options are available on all telemetry configurations.
   A leading "**+**" will enable any metrics with the given prefix, and a leading "**-**" will block them.
   If there is overlap between two rules, the more specific rule will take precedence. Blocking will take priority if the same prefix is listed multiple times.
 
+### OpenTelemetry (experimental)
+
+OpenBao supports exporting OpenTelemetry metrics. Instrumentation is being
+added incrementally, not all metrics are available via OpenTelemetry.
+When enabled, OpenTelemetry metrics are exported in addition to existing
+telemetry sinks.
+
+- `otel_enabled` `(bool: false)` - Enables OpenTelemetry metrics.
+
+- `otlp_endpoint` `(string: "")` - URL of an endpoint that accepts OTLP over
+gRPC.
+
+- `otlp_export_interval` `(string: "60s")` - The interval between metric
+  exports. Uses [duration format strings](../concepts/duration-format.mdx).
+
+```hcl
+telemetry {
+  otel_enabled         = true
+  otlp_endpoint        = "https://otel-collector.company.local:4317"
+  otlp_export_interval = "60s"
+}
+```
 
 ### `statsite`
 
